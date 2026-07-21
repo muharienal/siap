@@ -236,8 +236,6 @@ tests/
 
 ## License
 
-This project is proprietary software developed exclusively for internal operational use within **PT Petrokopindo Cipta Selaras**.
+This project is proprietary software developed exclusively for internal operational use within **IT PT Petrokopindo Cipta Selaras**.
 
-Unauthorized copying, distribution, modification, or disclosure of this software, in whole or in part, is prohibited without prior written permission.
-
-© 2026 PT Petrokopindo Cipta Selaras. All rights reserved.
+© 2026 IT PT Petrokopindo Cipta Selaras.
