@@ -33,7 +33,7 @@ SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web untuk me
 
 | Layer | Technology |
 |--------|------------|
-| Backend | Laravel 10 |
+| Framework | Laravel 10 |
 | Language | PHP 8.2+ |
 | Database | MySQL / MariaDB |
 | ORM | Eloquent ORM |
@@ -41,7 +41,6 @@ SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web untuk me
 | UI Framework | Bootstrap 5 |
 | Icons | Bootstrap Icons |
 | Styling | HTML5, CSS3, JavaScript |
-| Build Tool | Vite |
 
 ---
 
@@ -49,10 +48,9 @@ SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web untuk me
 
 - PHP 8.2 atau lebih baru
 - Composer 2.x
-- Node.js 18+
-- npm 9+
-- MySQL 8.x / MariaDB 10.x
+- MySQL 8.x atau MariaDB 10.x
 - Git
+- Web Server (Apache, Nginx, atau Laragon)
 
 ---
 
@@ -69,11 +67,10 @@ cd siap
 
 ## 2. Install Dependencies
 
-Install seluruh dependency backend dan frontend.
+Install seluruh dependency Laravel menggunakan Composer.
 
 ```bash
 composer install
-npm install
 ```
 
 ---
@@ -88,7 +85,7 @@ Linux / macOS
 cp .env.example .env
 ```
 
-Windows CMD
+Windows Command Prompt
 
 ```cmd
 copy .env.example .env
@@ -104,7 +101,7 @@ Copy-Item .env.example .env
 
 ## 4. Configure Database
 
-Buat database baru pada MySQL atau MariaDB, kemudian sesuaikan konfigurasi pada file **.env**
+Buat database baru, kemudian sesuaikan konfigurasi database pada file **.env**.
 
 Contoh konfigurasi:
 
@@ -129,22 +126,16 @@ php artisan key:generate
 
 ## 6. Run Database Migration
 
-Membuat seluruh struktur tabel database.
-
-```bash
-php artisan migrate
-```
-
-Jika project menggunakan seeder:
-
-```bash
-php artisan db:seed
-```
-
-atau
+Jika project menggunakan migration dan seeder:
 
 ```bash
 php artisan migrate --seed
+```
+
+Jika hanya menggunakan migration:
+
+```bash
+php artisan migrate
 ```
 
 ---
@@ -157,29 +148,13 @@ php artisan storage:link
 
 ---
 
-## 8. Build Frontend Assets
-
-Development
-
-```bash
-npm run dev
-```
-
-Production
-
-```bash
-npm run build
-```
-
----
-
-## 9. Start Development Server
+## 8. Start Development Server
 
 ```bash
 php artisan serve
 ```
 
-Aplikasi dapat diakses melalui
+Aplikasi akan berjalan pada:
 
 ```
 http://127.0.0.1:8000
@@ -213,14 +188,14 @@ http://127.0.0.1:8000
 
 | Table | Description |
 |--------|-------------|
-| users | User and employee accounts |
+| users | User accounts and employee information |
 | rooms | Meeting room master data |
-| room_photos | Room gallery |
+| room_photos | Meeting room photos |
 | facilities | Facility master data |
-| bookings | Meeting room reservations |
+| bookings | Room booking records |
 | booking_facilities | Booking facility details |
-| complaints | Facility complaints |
-| attendances | Meeting attendance |
+| complaints | Facility complaint records |
+| attendances | Meeting attendance records |
 | divisions | Division master data |
 | positions | Position master data |
 | notifications | System notifications |
