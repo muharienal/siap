@@ -10,22 +10,24 @@
 
 ## Overview
 
-SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web yang dirancang untuk mengelola proses administrasi rapat secara terpusat. Sistem menyediakan pengelolaan peminjaman ruang rapat, penjadwalan, complaint fasilitas, absensi berbasis QR Code, manajemen data karyawan, serta konfigurasi master data dalam satu platform yang terintegrasi.
+SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web untuk mengelola administrasi rapat secara terpusat, meliputi peminjaman ruang rapat, penjadwalan, complaint fasilitas, absensi QR Code, manajemen karyawan, serta konfigurasi sistem.
 
 ---
 
 ## Key Features
 
-- Dashboard monitoring peminjaman ruang secara real-time
-- Manajemen peminjaman ruang rapat
-- Kalender penggunaan ruang
-- Complaint management
-- QR Code attendance
+- Dashboard Monitoring
+- Room Booking Management
+- Meeting Schedule Calendar
+- Complaint Management
+- QR Code Attendance
 - Employee & User Management
 - Room & Facility Management
 - Notification System
-- Master Data Configuration
+- Master Data Management
 - Role-Based Access Control (RBAC)
+
+---
 
 ## Technology Stack
 
@@ -41,14 +43,158 @@ SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web yang dir
 | Styling | HTML5, CSS3, JavaScript |
 | Build Tool | Vite |
 
+---
+
 ## System Requirements
 
 - PHP 8.2 atau lebih baru
 - Composer 2.x
 - Node.js 18+
 - npm 9+
-- MySQL 8.x atau MariaDB 10.x
-- Laravel 10
+- MySQL 8.x / MariaDB 10.x
+- Git
+
+---
+
+# Installation
+
+## 1. Clone Repository
+
+```bash
+git clone https://github.com/muharienal/siap.git
+cd siap
+```
+
+---
+
+## 2. Install Dependencies
+
+Install seluruh dependency backend dan frontend.
+
+```bash
+composer install
+npm install
+```
+
+---
+
+## 3. Configure Environment
+
+Salin file environment.
+
+Linux / macOS
+
+```bash
+cp .env.example .env
+```
+
+Windows CMD
+
+```cmd
+copy .env.example .env
+```
+
+Windows PowerShell
+
+```powershell
+Copy-Item .env.example .env
+```
+
+---
+
+## 4. Configure Database
+
+Buat database baru pada MySQL atau MariaDB, kemudian sesuaikan konfigurasi pada file **.env**
+
+Contoh konfigurasi:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=siap
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+---
+
+## 5. Generate Application Key
+
+```bash
+php artisan key:generate
+```
+
+---
+
+## 6. Run Database Migration
+
+Membuat seluruh struktur tabel database.
+
+```bash
+php artisan migrate
+```
+
+Jika project menggunakan seeder:
+
+```bash
+php artisan db:seed
+```
+
+atau
+
+```bash
+php artisan migrate --seed
+```
+
+---
+
+## 7. Create Storage Link
+
+```bash
+php artisan storage:link
+```
+
+---
+
+## 8. Build Frontend Assets
+
+Development
+
+```bash
+npm run dev
+```
+
+Production
+
+```bash
+npm run build
+```
+
+---
+
+## 9. Start Development Server
+
+```bash
+php artisan serve
+```
+
+Aplikasi dapat diakses melalui
+
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## Demo Login
+
+| Role | Username | Password |
+|------|----------|----------|
+| Administrator | `ADM001` | `password` |
+| Karyawan | `ITD004` | `password` |
+
+---
 
 ## Business Rules
 
@@ -61,27 +207,58 @@ SIAP (Sistem Informasi Administrasi Rapat) adalah aplikasi berbasis web yang dir
 | Conflict Detection | Automatic |
 | Booking Status | Pending, Approved, Rejected |
 
+---
+
+## Database Structure
+
+| Table | Description |
+|--------|-------------|
+| users | User and employee accounts |
+| rooms | Meeting room master data |
+| room_photos | Room gallery |
+| facilities | Facility master data |
+| bookings | Meeting room reservations |
+| booking_facilities | Booking facility details |
+| complaints | Facility complaints |
+| attendances | Meeting attendance |
+| divisions | Division master data |
+| positions | Position master data |
+| notifications | System notifications |
+
+---
+
+## Project Structure
+
+```
+app/
+bootstrap/
+config/
+database/
+public/
+resources/
+routes/
+storage/
+tests/
+```
+
+---
+
 ## Security
 
 - Authentication
-- Authorization (RBAC)
-- CSRF Protection
+- Role-Based Access Control (RBAC)
 - Password Hashing (Bcrypt)
-- Request Validation
-- Session Management
+- CSRF Protection
 - Route Middleware
+- Request Validation
+- Session Authentication
 
-## Demo Login
-
-| Role | Username | Password |
-|------|----------|----------|
-| Administrator | `ADM001` | `password` |
-| Karyawan | `ITD004` | `password` |
+---
 
 ## License
 
-This project is proprietary software developed exclusively for internal operational use within PT Petrokopindo Cipta Selaras.
+This project is proprietary software developed exclusively for internal operational use within **PT Petrokopindo Cipta Selaras**.
 
-Unauthorized copying, distribution, modification, or public disclosure of any part of this project is prohibited without prior written permission.
+Unauthorized copying, distribution, modification, or disclosure of this software, in whole or in part, is prohibited without prior written permission.
 
 © 2026 PT Petrokopindo Cipta Selaras. All rights reserved.
