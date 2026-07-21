@@ -79,19 +79,19 @@ composer install
 
 Salin file environment.
 
-Linux / macOS
+**Linux / macOS**
 
 ```bash
 cp .env.example .env
 ```
 
-Windows Command Prompt
+**Windows Command Prompt**
 
 ```cmd
 copy .env.example .env
 ```
 
-Windows PowerShell
+**Windows PowerShell**
 
 ```powershell
 Copy-Item .env.example .env
@@ -101,7 +101,7 @@ Copy-Item .env.example .env
 
 ## 4. Configure Database
 
-Buat database baru, kemudian sesuaikan konfigurasi database pada file **.env**.
+Buat database baru pada MySQL atau MariaDB, kemudian sesuaikan konfigurasi database pada file `.env`.
 
 Contoh konfigurasi:
 
@@ -126,13 +126,13 @@ php artisan key:generate
 
 ## 6. Run Database Migration
 
-Jika project menggunakan migration dan seeder:
+Jika project menggunakan seeder:
 
 ```bash
 php artisan migrate --seed
 ```
 
-Jika hanya menggunakan migration:
+Jika tidak menggunakan seeder:
 
 ```bash
 php artisan migrate
@@ -141,6 +141,8 @@ php artisan migrate
 ---
 
 ## 7. Create Storage Link
+
+Jalankan perintah berikut apabila aplikasi menggunakan penyimpanan file pada direktori `storage/app/public`.
 
 ```bash
 php artisan storage:link
@@ -154,7 +156,7 @@ php artisan storage:link
 php artisan serve
 ```
 
-Aplikasi akan berjalan pada:
+Aplikasi dapat diakses melalui:
 
 ```
 http://127.0.0.1:8000
@@ -164,8 +166,10 @@ http://127.0.0.1:8000
 
 ## Demo Login
 
-| Role | Username | Password |
-|------|----------|----------|
+> Akun berikut tersedia apabila data awal (Seeder) telah dijalankan.
+
+| Role | Username (NIK) | Password |
+|------|----------------|----------|
 | Administrator | `ADM001` | `password` |
 | Karyawan | `ITD004` | `password` |
 
@@ -188,7 +192,7 @@ http://127.0.0.1:8000
 
 | Table | Description |
 |--------|-------------|
-| users | User accounts and employee information |
+| users | User and employee accounts |
 | rooms | Meeting room master data |
 | room_photos | Meeting room photos |
 | facilities | Facility master data |
