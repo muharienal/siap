@@ -50,7 +50,7 @@ class NotificationService
      */
     public function notifyNewBookingToAdmins(Booking $booking)
     {
-        $userName = $booking->user->employee->full_name ?? $booking->user->email;
+        $userName = $booking->user->full_name ?? $booking->user->email;
         $message = "Peminjaman ruangan baru dari {$userName} untuk ruangan {$booking->room->name} pada " . 
                    $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') . 
                    ". Keperluan: {$booking->purpose}";

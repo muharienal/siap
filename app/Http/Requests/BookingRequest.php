@@ -17,6 +17,32 @@ class BookingRequest extends FormRequest
     }
 
     /**
+     * Combine start_date with start_time/end_time into full datetimes
+     * before the rules() below run, since the form sends them as
+     * separate fields (date input + two time-only inputs).
+     */
+    protected function prepareForValidation(): void
+    {
+        $date = $this->input('start_date');
+
+        if ($date) {
+            $merged = [];
+
+            if ($this->filled('start_time') && !str_contains($this->input('start_time'), $date)) {
+                $merged['start_time'] = $date . ' ' . $this->input('start_time') . ':00';
+            }
+
+            if ($this->filled('end_time') && !str_contains($this->input('end_time'), $date)) {
+                $merged['end_time'] = $date . ' ' . $this->input('end_time') . ':00';
+            }
+
+            if (!empty($merged)) {
+                $this->merge($merged);
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>

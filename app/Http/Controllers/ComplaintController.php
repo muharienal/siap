@@ -151,8 +151,8 @@ class ComplaintController extends Controller
      */
     public function destroy(Complaint $complaint)
     {
-        // Only allow deletion if user owns the complaint and it's still pending
-        if ($complaint->user_id !== Auth::id() || $complaint->status !== 0) {
+        // Boleh dihapus oleh pemilik complaint atau admin, terlepas dari statusnya
+        if ($complaint->user_id !== Auth::id() && Auth::user()->role != 1) {
             return redirect()->route('complaints.index')
                            ->with('error', 'Anda tidak dapat menghapus complaint ini.');
         }

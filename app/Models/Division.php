@@ -19,6 +19,6 @@ class Division extends Model
     // Relationships
     public function employees()
     {
-        return $this->hasMany(Employee::class);
+        return $this->hasMany(User::class);
     }
 }

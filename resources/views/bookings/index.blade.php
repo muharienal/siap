@@ -243,6 +243,13 @@
     .btn-action.qr:hover {
         background: rgba(16,185,129,0.16);
     }
+    .btn-action.delete {
+        background: rgba(239,68,68,0.08);
+        color: #dc2626;
+    }
+    .btn-action.delete:hover {
+        background: rgba(239,68,68,0.16);
+    }
 
     .no-results {
         padding: var(--space-7);
@@ -404,6 +411,13 @@
                                                 <i class="bi bi-qr-code"></i> QR
                                             </button>
                                         @endif
+                                        <form action="{{ route('bookings.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus peminjaman ini?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn-action delete">
+                                                <i class="bi bi-trash"></i> Hapus
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>

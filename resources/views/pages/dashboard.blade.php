@@ -206,6 +206,248 @@
         flex: 1;
     }
 
+    .date-nav {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    .date-arrows {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+    }
+    .date-arrows .date-nav-btn {
+        border: none;
+        border-radius: 0;
+    }
+    .date-arrows .date-nav-btn:first-child {
+        border-right: 1px solid var(--border-color);
+    }
+    .date-nav-btn {
+        height: 38px;
+        width: 38px;
+        padding: 0;
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition-fast);
+    }
+    .date-nav-btn:hover {
+        border-color: var(--brand-orange);
+        color: var(--brand-orange-dark);
+        background: rgba(249, 115, 22, 0.04);
+    }
+    .date-display {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 0 var(--space-3);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        cursor: pointer;
+        background: var(--bg-input);
+    }
+    .date-display i { color: var(--brand-orange); }
+    .date-display input {
+        border: none;
+        background: transparent;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+    .work-hours-boxed {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--font-size-sm);
+    }
+    .work-hours-boxed .hour-box {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 var(--space-3);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .work-hours-boxed i {
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+    }
+    .work-hours-boxed .hour-suffix {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .filter-divider {
+        width: 1px;
+        align-self: stretch;
+        background: var(--border-color-light);
+    }
+    .time-range {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    .time-range input[type="time"] {
+        height: 38px;
+        padding: 0 var(--space-3);
+        font-size: var(--font-size-sm);
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        width: 110px;
+    }
+    .time-range i {
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+    }
+    .filter-more-wrapper {
+        position: relative;
+    }
+    .btn-filter-more {
+        height: 38px;
+        padding: 0 var(--space-4);
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        position: relative;
+        transition: all var(--transition-fast);
+    }
+    .btn-filter-more:hover {
+        border-color: var(--brand-orange);
+        color: var(--brand-orange-dark);
+    }
+    .filter-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--brand-orange);
+        margin-left: 2px;
+    }
+    .filter-more-panel {
+        display: none;
+        position: absolute;
+        top: calc(100% + var(--space-2));
+        right: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-dropdown);
+        padding: var(--space-4);
+        min-width: 220px;
+        z-index: 30;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+    .filter-more-panel.open {
+        display: flex;
+    }
+    .filter-more-panel .form-group {
+        min-width: 0;
+    }
+    .filter-more-panel .form-group label {
+        font-weight: 600;
+        font-size: var(--font-size-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--text-muted);
+        margin-bottom: var(--space-1);
+        display: block;
+    }
+    .filter-more-panel .form-select {
+        height: 38px;
+        padding: 0 var(--space-3);
+        font-size: var(--font-size-sm);
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        width: 100%;
+    }
+
+    .room-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: var(--space-3);
+    }
+    .room-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border-color-light);
+        box-shadow: var(--shadow-card);
+        padding: var(--space-4);
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        transition: all var(--transition-fast);
+    }
+    .room-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--brand-orange);
+    }
+    .room-card-thumb {
+        width: 100%;
+        height: 96px;
+        border-radius: var(--radius-sm);
+        background: var(--bg-input);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .room-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .room-card-thumb i { font-size: 1.5rem; color: var(--text-muted); }
+    .room-card-name {
+        font-weight: 700;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+    }
+    .room-card-meta {
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+    }
+    .room-card-status {
+        align-self: flex-start;
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: var(--radius-pill);
+    }
+    .room-card-status.available {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--status-available);
+    }
+    .room-card-status.busy {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--status-rejected);
+    }
+
     .schedule-card {
         background: var(--bg-card);
         border-radius: var(--radius-card);
@@ -647,10 +889,10 @@
     @media (max-width: 991.98px) {
         .dashboard-content { padding: var(--space-3); }
         .filter-bar { flex-direction: column; align-items: stretch; padding: var(--space-3); }
-        .filter-bar .form-group { min-width: 100%; }
-        .filter-bar .work-hours { margin-left: 0; align-self: flex-start; }
-        .filter-bar .btn-today { align-self: flex-start; }
-        .filter-bar .btn-refresh { align-self: flex-start; }
+        .filter-bar .filter-spacer { display: none; }
+        .filter-divider { display: none; }
+        .date-nav, .time-range { flex-wrap: wrap; }
+        .filter-more-panel { right: auto; left: 0; }
         .table-schedule { font-size: var(--font-size-xs); min-width: 600px; }
         .table-schedule thead th { min-width: 100px; height: auto; padding: var(--space-1) var(--space-1); }
         .table-schedule thead th .room-header .room-photo { width: 60px; height: 60px; }
@@ -766,29 +1008,34 @@
 
     <!-- ========== FILTER BAR ========== -->
     <div class="filter-bar">
-        <div class="form-group">
-            <label for="dateSelector">Tanggal</label>
-            <input type="date" id="dateSelector" name="date" class="form-control" value="{{ $selectedDate }}" onchange="filterByDate(this.value)" {{ $isWeekend ? 'disabled' : '' }}>
+        <div class="date-nav">
+            <button type="button" class="btn-today" onclick="resetToToday()">
+                <i class="bi bi-arrow-clockwise"></i> Hari Ini
+            </button>
+            <div class="date-arrows">
+                <button type="button" class="date-nav-btn" onclick="shiftDate(-1)" aria-label="Tanggal sebelumnya">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <button type="button" class="date-nav-btn" onclick="shiftDate(1)" aria-label="Tanggal berikutnya">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+            <label class="date-display">
+                <i class="bi bi-calendar3"></i>
+                <input type="date" id="dateSelector" name="date" value="{{ $selectedDate }}" onchange="filterByDate(this.value)">
+            </label>
         </div>
-        <div class="form-group" style="min-width:120px;">
-            <label for="roomFilter">Ruangan</label>
-            <select id="roomFilter" name="room" class="form-select" onchange="filterByRoom(this.value)">
-                <option value="all">Semua</option>
-                @foreach($allRooms as $room)
-                    <option value="{{ $room->id }}" {{ in_array($room->id, $selectedRoomIds) ? 'selected' : '' }}>{{ $room->name }}</option>
-                @endforeach
-            </select>
+
+        <div class="filter-divider"></div>
+
+        <div class="work-hours-boxed">
+            <input type="time" id="startTimeInput" class="hour-box" value="{{ $startTime }}" onchange="filterByTimeRange()">
+            <i class="bi bi-arrow-right"></i>
+            <input type="time" id="endTimeInput" class="hour-box" value="{{ $endTime }}" onchange="filterByTimeRange()">
+            <span class="hour-suffix">WIB</span>
         </div>
-        <button class="btn-today" onclick="resetToToday()">
-            <i class="bi bi-arrow-clockwise"></i> Hari Ini
-        </button>
-        <button class="btn-refresh" onclick="window.location.reload()" title="Refresh">
-            <i class="bi bi-arrow-repeat"></i>
-        </button>
+
         <div class="filter-spacer"></div>
-        <div class="work-hours">
-            <i class="bi bi-clock"></i> 07:00 – 16:00 WIB
-        </div>
     </div>
 
     <!-- ========== SCHEDULE TABLE ========== -->
@@ -963,6 +1210,8 @@
         </div>
     </div>
 
+    <!-- Meeting Room cards section dihapus atas permintaan -->
+
 </div>
 
 <!-- ========== LIGHTBOX ========== -->
@@ -1078,25 +1327,44 @@
             window.location.href = url.toString();
         };
 
-        window.filterByRoom = function(roomId) {
-            const url = new URL(window.location);
-            if (roomId !== 'all') {
-                url.searchParams.set('room', roomId);
+        window.shiftDate = function(days) {
+            const input = document.getElementById('dateSelector');
+            let base;
+            if (input && input.value) {
+                const parts = input.value.split('-');
+                base = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             } else {
-                url.searchParams.delete('room');
+                base = new Date();
             }
+            base.setDate(base.getDate() + days);
+            const y = base.getFullYear();
+            const m = String(base.getMonth() + 1).padStart(2, '0');
+            const d = String(base.getDate()).padStart(2, '0');
+            filterByDate(`${y}-${m}-${d}`);
+        };
+
+        window.filterByTimeRange = function() {
+            const start = document.getElementById('startTimeInput').value;
+            const end = document.getElementById('endTimeInput').value;
+            const url = new URL(window.location);
+            if (start) url.searchParams.set('start_time', start);
+            if (end) url.searchParams.set('end_time', end);
             window.location.href = url.toString();
         };
 
         window.resetToToday = function() {
-            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const today = `${y}-${m}-${d}`;
             const input = document.getElementById('dateSelector');
             if (input) {
                 input.value = today;
             }
             const url = new URL(window.location);
             url.searchParams.set('date', today);
-            url.searchParams.delete('room');
+            url.searchParams.delete('rooms');
             window.location.href = url.toString();
         };
 
