@@ -19,6 +19,8 @@ class DashboardController extends Controller
         $selectedDate = $request->get('date', date('Y-m-d'));
         $selectedRoomIds = $request->get('rooms', []);
         $statusFilter = $request->get('status', 'all');
+        $startTime = $request->get('start_time', '07:00');
+        $endTime = $request->get('end_time', '16:00');
 
         if (is_string($selectedRoomIds)) {
             $selectedRoomIds = $selectedRoomIds ? explode(',', $selectedRoomIds) : [];
@@ -66,7 +68,7 @@ class DashboardController extends Controller
             $rooms = $allRooms;
         }
 
-        $timeSlots = $this->generateTimeSlots();
+        $timeSlots = $this->generateTimeSlots($startTime, $endTime);
 
         $currentSlot = null;
         if ($isToday && !$isWeekend) {
@@ -109,9 +111,11 @@ class DashboardController extends Controller
             $start = Carbon::parse($booking->start_time);
             $end = Carbon::parse($booking->end_time);
             foreach ($timeSlots as $slot) {
-                $slotTime = Carbon::createFromFormat('H:i', $slot);
+                // Pakai tanggal booking itu sendiri ($start), bukan tanggal "sekarang" dari server,
+                // supaya perbandingan jam benar-benar akurat terlepas dari tanggal yang dipilih.
+                $slotTime = $start->copy()->setTimeFromTimeString($slot);
                 if ($slotTime->between($start, $end, true) && $slotTime->lt($end)) {
-                    if (isset($bookingSchedule[$booking->room_id][$slot])) {
+                    if (array_key_exists($booking->room_id, $bookingSchedule) && array_key_exists($slot, $bookingSchedule[$booking->room_id])) {
                         $bookingSchedule[$booking->room_id][$slot] = $booking;
                     }
                 }
@@ -161,15 +165,25 @@ class DashboardController extends Controller
             'allRooms',
             'statusFilter',
             'currentSlot',
-            'roomsData'
+            'roomsData',
+            'startTime',
+            'endTime'
         ));
     }
 
-    private function generateTimeSlots()
+    private function generateTimeSlots($startTime = '07:00', $endTime = '16:00')
     {
         $slots = [];
-        $start = Carbon::createFromTime(7, 0, 0);
-        $end = Carbon::createFromTime(16, 0, 0);
+        try {
+            $start = Carbon::createFromFormat('H:i', $startTime);
+            $end = Carbon::createFromFormat('H:i', $endTime);
+        } catch (\Exception $e) {
+            $start = Carbon::createFromTime(7, 0, 0);
+            $end = Carbon::createFromTime(16, 0, 0);
+        }
+        if ($end->lt($start)) {
+            $end = $start->copy()->addHour();
+        }
         while ($start->lte($end)) {
             $slots[] = $start->format('H:i');
             $start->addMinutes(30);

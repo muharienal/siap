@@ -68,9 +68,5 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
-    // Login menggunakan NIK
-    public function getAuthIdentifierName()
-    {
-        return 'nip';
-    }
+    // Login menggunakan NIK sudah dihandle di LoginController (username() + Auth::attempt)
 }

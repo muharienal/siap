@@ -43,20 +43,12 @@
                         <!-- Filters -->
                         <form method="GET" action="{{ route('complaints.index') }}" class="row mb-4">
                             <div class="col-md-4 mb-3">
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text" id="search-icon">
-                                            <i class="ri-search-line"></i>
-                                        </span>
-                                    </div>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="search" 
-                                           value="{{ request('search') }}" 
-                                           placeholder="Cari deskripsi complaint" 
-                                           aria-label="Search" 
-                                           aria-describedby="search-icon">
-                                </div>
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="search" 
+                                       value="{{ request('search') }}" 
+                                       placeholder="Cari deskripsi complaint" 
+                                       aria-label="Search">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <select class="form-control" name="category">
@@ -143,7 +135,9 @@
                                                class="btn btn-sm btn-outline-warning">
                                                 <i class="ri-edit-line"></i> Edit
                                             </a>
-                                            
+                                        @endif
+
+                                        @if($complaint->user_id == Auth::id() || Auth::user()->role == 1)
                                             <button type="button" 
                                                     class="btn btn-sm btn-outline-danger" 
                                                     onclick="deleteComplaint({{ $complaint->id }})">
@@ -168,7 +162,7 @@
                                 </div>
 
                                 <!-- Hidden delete form -->
-                                @if($complaint->user_id == Auth::id() && $complaint->status == 0)
+                                @if($complaint->user_id == Auth::id() || Auth::user()->role == 1)
                                     <form id="delete-form-{{ $complaint->id }}" 
                                           action="{{ route('complaints.destroy', $complaint) }}" 
                                           method="POST" 

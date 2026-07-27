@@ -32,7 +32,7 @@ class Booking extends Model
 
     public function user()
     {
-        return $this->belongsTo(Employee::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function room()
@@ -42,7 +42,7 @@ class Booking extends Model
 
     public function processedBy()
     {
-        return $this->belongsTo(Employee::class, 'processed_by');
+        return $this->belongsTo(User::class, 'processed_by');
     }
 
     public function bookingFacilities()

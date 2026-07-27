@@ -130,7 +130,7 @@ class BookingController extends Controller
                 }
             }
 
-            $booking->load(['user.employee', 'room']);
+            $booking->load(['user', 'room']);
             $this->notificationService->notifyNewBookingToAdmins($booking);
 
             DB::commit();
@@ -176,9 +176,9 @@ class BookingController extends Controller
                 ]);
             }
 
-            // 3. Working hours 07:00-16:00
-            $workStart = Carbon::createFromTime(7, 0, 0);
-            $workEnd = Carbon::createFromTime(16, 0, 0);
+            // 3. Working hours 07:00-16:00 (compare time-of-day only, not the full date)
+            $workStart = $startTime->copy()->setTime(7, 0, 0);
+            $workEnd = $startTime->copy()->setTime(16, 0, 0);
 
             if ($startTime->lt($workStart) || $endTime->gt($workEnd) || $startTime->gt($workEnd) || $endTime->lt($workStart)) {
                 return response()->json([
@@ -247,7 +247,7 @@ class BookingController extends Controller
      */
     public function show(Booking $booking)
     {
-        $booking->load('room', 'facilities', 'user.employee', 'bookingFacilities.facility', 'attendances.user', 'processedBy');
+        $booking->load('room', 'facilities', 'user', 'bookingFacilities.facility', 'attendances.user', 'processedBy');
         return view('bookings.show', compact('booking'));
     }
 
@@ -315,7 +315,7 @@ class BookingController extends Controller
                 }
             }
 
-            $booking->load(['user.employee', 'room']);
+            $booking->load(['user', 'room']);
 
             if ($isAdminEdit) {
                 if ($oldRoomId != $request->room_id) {
@@ -382,7 +382,7 @@ class BookingController extends Controller
                 'processed_at' => now(),
             ]);
 
-            $booking->load(['user.employee', 'room']);
+            $booking->load(['user', 'room']);
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '1');
 
             return back()->with('success', 'Booking berhasil disetujui dan kode absensi telah dibuat.');
@@ -426,7 +426,7 @@ class BookingController extends Controller
                 'processed_at' => now(),
             ]);
 
-            $booking->load(['user.employee', 'room']);
+            $booking->load(['user', 'room']);
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '2');
 
             return back()->with('success', $actionMessage);
