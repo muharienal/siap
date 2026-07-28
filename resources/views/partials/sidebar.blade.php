@@ -8,6 +8,9 @@
         <a href="/dashboard" class="nav-item {{ request()->is('dashboard') ? 'active' : '' }}">
             <i class="bi bi-grid-1x2-fill"></i> Dashboard
         </a>
+        <a href="/rooms" class="nav-item {{ request()->is('rooms*') ? 'active' : '' }}">
+            <i class="bi bi-building"></i> Ruang Meeting
+        </a>
         <a href="/bookings" class="nav-item {{ request()->is('bookings*') ? 'active' : '' }}">
             <i class="bi bi-calendar-event-fill"></i> Peminjaman
         </a>
