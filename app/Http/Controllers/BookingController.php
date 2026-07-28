@@ -93,7 +93,7 @@ class BookingController extends Controller
     public function create()
     {
         $facilities = Facility::all();
-        $rooms = Room::all();
+        $rooms = Room::with('photos')->get();
         return view('bookings.add', compact('facilities', 'rooms'));
     }
 
@@ -187,14 +187,6 @@ class BookingController extends Controller
                 ]);
             }
 
-            // 4. 30-minute interval check
-            if ($startTime->minute % 30 != 0 || $endTime->minute % 30 != 0) {
-                return response()->json([
-                    'available' => false,
-                    'message' => 'Waktu mulai dan selesai harus kelipatan 30 menit (contoh: 07:00, 07:30, 08:00).'
-                ]);
-            }
-
             $excludeBookingId = $request->exclude_booking_id;
 
             // 5. Overlap check with approved or pending bookings
@@ -266,7 +258,7 @@ class BookingController extends Controller
         }
 
         $facilities = Facility::all();
-        $rooms = Room::all();
+        $rooms = Room::with('photos')->get();
         $bookingFacilities = $booking->bookingFacilities()->with('facility')->get();
 
         return view('bookings.edit', compact('booking', 'facilities', 'rooms', 'bookingFacilities'));

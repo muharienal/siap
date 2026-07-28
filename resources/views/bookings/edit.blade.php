@@ -4,6 +4,8 @@
 @section('page_subtitle', 'Ubah detail peminjaman ruangan')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
 <style>
     .form-content {
         padding: var(--space-5) var(--space-6);
@@ -167,6 +169,75 @@
     .recommended-slots .slot-btn i { font-size: 0.7rem; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .form-card { animation: fadeUp 0.4s ease forwards; }
+
+    .room-select-wrapper, .facility-select-wrapper { position: relative; }
+    .room-select-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-2) var(--space-3);
+        min-height: 60px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        text-align: left;
+    }
+    .room-select-trigger.is-invalid { border-color: var(--bs-danger, #dc3545); }
+    .room-select-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: var(--radius-xs);
+        overflow: hidden;
+        flex-shrink: 0;
+        background: var(--surface-1, #f1f1f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .room-select-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .room-select-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .room-select-name { font-weight: 600; font-size: var(--font-size-sm); color: var(--text-primary); }
+    .room-select-capacity { font-size: var(--font-size-xs); color: var(--text-muted); }
+    .room-select-chevron { color: var(--text-muted); flex-shrink: 0; }
+    .room-select-panel, .facility-select-panel {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        z-index: 40;
+        max-height: 280px;
+        overflow-y: auto;
+        padding: var(--space-2);
+    }
+    .room-select-panel.open, .facility-select-panel.open { display: block; }
+    .room-select-option {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-2);
+        border-radius: var(--radius-xs);
+        cursor: pointer;
+    }
+    .room-select-option:hover { background: var(--bg-hover, #f8f9fa); }
+    .facility-checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2);
+        border-radius: var(--radius-xs);
+        cursor: pointer;
+        font-size: var(--font-size-sm);
+        margin: 0;
+    }
+    .facility-checkbox-row:hover { background: var(--bg-hover, #f8f9fa); }
+    .facility-checkbox { width: 16px; height: 16px; cursor: pointer; }
 </style>
 
 <div class="form-content">
@@ -217,7 +288,8 @@
                             <label for="room_id" class="form-label">
                                 <i class="bi bi-door-open me-1"></i> Ruangan <span class="text-danger">*</span>
                             </label>
-                            <select name="room_id" id="room_id" class="form-select @error('room_id') is-invalid @enderror" required>
+
+                            <select name="room_id" id="room_id" class="d-none @error('room_id') is-invalid @enderror" required>
                                 <option value="">-- Pilih Ruangan --</option>
                                 @foreach($rooms as $room)
                                     <option value="{{ $room->id }}" {{ (old('room_id', $booking->room_id) == $room->id) ? 'selected' : '' }}
@@ -226,13 +298,60 @@
                                     </option>
                                 @endforeach
                             </select>
+
+                            <div class="room-select-wrapper">
+                                <button type="button" id="roomSelectTrigger" class="room-select-trigger @error('room_id') is-invalid @enderror" onclick="toggleRoomPanel()">
+                                    <span id="roomSelectThumb" class="room-select-thumb" style="display:none;"><img id="roomSelectImg" src="" alt=""></span>
+                                    <span class="room-select-text">
+                                        <span id="roomSelectName" class="room-select-name">-- Pilih Ruangan --</span>
+                                        <span id="roomSelectCapacity" class="room-select-capacity" style="display:none;"></span>
+                                    </span>
+                                    <i class="bi bi-chevron-down room-select-chevron"></i>
+                                </button>
+
+                                <div id="roomSelectPanel" class="room-select-panel">
+                                    @foreach($rooms as $room)
+                                        <div class="room-select-option" onclick="pickRoom({{ $room->id }}, '{{ addslashes($room->name) }}', {{ $room->capacity }})">
+                                            <span class="room-select-thumb">
+                                                @if($room->photos->count())
+                                                    <img src="{{ $room->photos->first()->photo_url }}" alt="{{ $room->name }}">
+                                                @else
+                                                    <i class="bi bi-door-open"></i>
+                                                @endif
+                                            </span>
+                                            <span class="room-select-text">
+                                                <span class="room-select-name">{{ $room->name }}</span>
+                                                <span class="room-select-capacity">Kapasitas {{ $room->capacity }} orang</span>
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
                             <div id="roomCapacityHint" class="form-text text-muted" style="font-size:var(--font-size-xs); margin-top:var(--space-1); display:none;">
                                 <i class="bi bi-people"></i> Kapasitas: <span id="capacityDisplay">0</span> orang
                             </div>
                             @error('room_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                var preId = document.getElementById('room_id').value;
+                                var roomsMap = @json($rooms->keyBy('id'));
+                                if (preId && roomsMap[preId]) {
+                                    var r = roomsMap[preId];
+                                    document.getElementById('roomSelectName').textContent = r.name;
+                                    document.getElementById('roomSelectCapacity').textContent = 'Kapasitas ' + r.capacity + ' orang';
+                                    document.getElementById('roomSelectCapacity').style.display = '';
+                                    if (r.photos && r.photos.length) {
+                                        document.getElementById('roomSelectImg').src = r.photos[0].photo_url;
+                                        document.getElementById('roomSelectThumb').style.display = '';
+                                    }
+                                }
+                            });
+                        </script>
 
                         <div class="form-group">
                             <label class="form-label">
@@ -249,25 +368,56 @@
                                 </div>
                                 <div class="time-input">
                                     <i class="bi bi-clock input-icon"></i>
-                                    <input type="time" name="start_time" id="start_time"
+                                    <input type="text" name="start_time" id="start_time"
                                            class="form-control @error('start_time') is-invalid @enderror"
                                            value="{{ old('start_time', \Carbon\Carbon::parse($booking->start_time)->format('H:i')) }}"
-                                           step="1800"
+                                           placeholder="--:--" readonly style="cursor:pointer;background:var(--bg-input);"
+                                           onclick="openTimePicker('start_time')"
                                            required>
                                 </div>
                                 <span class="time-separator">sampai</span>
                                 <div class="time-input">
                                     <i class="bi bi-clock input-icon"></i>
-                                    <input type="time" name="end_time" id="end_time"
+                                    <input type="text" name="end_time" id="end_time"
                                            class="form-control @error('end_time') is-invalid @enderror"
                                            value="{{ old('end_time', \Carbon\Carbon::parse($booking->end_time)->format('H:i')) }}"
-                                           step="1800"
+                                           placeholder="--:--" readonly style="cursor:pointer;background:var(--bg-input);"
+                                           onclick="openTimePicker('end_time')"
                                            required>
                                 </div>
                             </div>
                             <small class="form-text text-muted" style="font-size:var(--font-size-xs);">
-                                <i class="bi bi-info-circle me-1"></i> Jam kerja 07:00 – 16:00 WIB · Interval 30 menit
+                                <i class="bi bi-info-circle me-1"></i> Jam kerja 07:00 – 16:00 WIB
                             </small>
+
+                            <div id="timePickerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+                                <div style="background:#fff;border-radius:16px;padding:1.5rem;width:280px;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+                                    <p style="font-size:14px;color:#6b7280;margin:0 0 1rem;">Masukkan waktu</p>
+                                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:1.25rem;">
+                                        <div style="text-align:center;">
+                                            <input id="tpHour" type="text" maxlength="2" inputmode="numeric"
+                                                   class="tp-box"
+                                                   style="width:72px;height:64px;font-size:32px;text-align:center;border-radius:10px;background:#f3f4f6;color:#111827;border:2px solid transparent;font-weight:600;">
+                                            <p style="font-size:12px;color:#9ca3af;margin:6px 0 0;">Jam</p>
+                                        </div>
+                                        <span style="font-size:32px;color:#9ca3af;padding-bottom:20px;">:</span>
+                                        <div style="text-align:center;">
+                                            <input id="tpMinute" type="text" maxlength="2" inputmode="numeric"
+                                                   class="tp-box"
+                                                   style="width:72px;height:64px;font-size:32px;text-align:center;border-radius:10px;background:#f3f4f6;color:#111827;border:2px solid transparent;font-weight:600;">
+                                            <p style="font-size:12px;color:#9ca3af;margin:6px 0 0;">Menit</p>
+                                        </div>
+                                    </div>
+                                    <p id="tpError" style="font-size:12px;color:#dc2626;text-align:center;margin:0 0 0.75rem;display:none;"></p>
+                                    <div style="display:flex;justify-content:flex-end;gap:8px;">
+                                        <button type="button" onclick="closeTimePicker()" style="height:38px;padding:0 16px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;font-size:14px;cursor:pointer;">Batal</button>
+                                        <button type="button" onclick="confirmTimePicker()" style="height:38px;padding:0 16px;border-radius:8px;border:none;background:#f97316;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">OK</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <style>
+                                .tp-box:focus { background:#fff7ed !important; color:#c2410c !important; border-color:#f97316 !important; outline:none; }
+                            </style>
                             @error('start_time')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -316,7 +466,7 @@
                             <label for="facilities" class="form-label">
                                 <i class="bi bi-tools me-1"></i> Fasilitas Tambahan <span class="text-muted">(Opsional)</span>
                             </label>
-                            <select name="facilities[]" id="facilities" class="form-select select2 @error('facilities') is-invalid @enderror" multiple="multiple" style="width:100%;">
+                            <select name="facilities[]" id="facilities" class="d-none @error('facilities') is-invalid @enderror" multiple="multiple">
                                 @foreach($facilities as $facility)
                                     @php
                                         $selected = false;
@@ -331,11 +481,40 @@
                                     </option>
                                 @endforeach
                             </select>
+
+                            <div class="facility-select-wrapper">
+                                <button type="button" id="facilitySelectTrigger" class="room-select-trigger" onclick="toggleFacilityPanel()">
+                                    <span class="room-select-text">
+                                        <span id="facilitySelectLabel" class="room-select-name">Pilih fasilitas tambahan</span>
+                                    </span>
+                                    <i class="bi bi-chevron-down room-select-chevron"></i>
+                                </button>
+
+                                <div id="facilitySelectPanel" class="facility-select-panel">
+                                    @foreach($facilities as $facility)
+                                        @php
+                                            $selected = false;
+                                            if (old('facilities')) {
+                                                $selected = in_array($facility->id, old('facilities'));
+                                            } else {
+                                                $selected = $bookingFacilities->contains('facility_id', $facility->id);
+                                            }
+                                        @endphp
+                                        <label class="facility-checkbox-row">
+                                            <input type="checkbox" class="facility-checkbox" value="{{ $facility->id }}"
+                                                   {{ $selected ? 'checked' : '' }}
+                                                   onchange="toggleFacility({{ $facility->id }}, this.checked)">
+                                            <span>{{ $facility->name }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+
                             <small class="form-text text-muted" style="font-size:var(--font-size-xs);">
-                                <i class="bi bi-info-circle me-1"></i> Pilih fasilitas tambahan yang diperlukan
+                                <i class="bi bi-info-circle me-1"></i> Pilih satu atau lebih fasilitas tambahan yang diperlukan
                             </small>
                             @error('facilities')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -372,13 +551,118 @@
 <script>
     $(document).ready(function() {
 
-        // Select2
-        $('#facilities').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Pilih fasilitas...',
-            allowClear: true,
-            width: '100%'
+        // ============================================================
+        // CUSTOM TIME PICKER (bebas, tidak harus kelipatan 30 menit)
+        // ============================================================
+        let tpTargetField = null;
+
+        window.openTimePicker = function(fieldId) {
+            tpTargetField = fieldId;
+            const current = $('#' + fieldId).val() || '07:00';
+            const parts = current.split(':');
+            $('#tpHour').val(parts[0] || '07');
+            $('#tpMinute').val(parts[1] || '00');
+            $('#tpError').hide();
+            $('#timePickerOverlay').css('display', 'flex');
+            setTimeout(() => $('#tpHour').select(), 50);
+        };
+
+        window.closeTimePicker = function() {
+            $('#timePickerOverlay').hide();
+            tpTargetField = null;
+        };
+
+        window.confirmTimePicker = function() {
+            let h = parseInt($('#tpHour').val(), 10);
+            let m = parseInt($('#tpMinute').val(), 10);
+
+            if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+                $('#tpError').text('Masukkan jam (00-23) dan menit (00-59) yang valid').show();
+                return;
+            }
+
+            const hStr = String(h).padStart(2, '0');
+            const mStr = String(m).padStart(2, '0');
+            const value = hStr + ':' + mStr;
+
+            $('#' + tpTargetField).val(value).trigger('change');
+            $('#timePickerOverlay').hide();
+            tpTargetField = null;
+        };
+
+        $('#tpHour, #tpMinute').on('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 2);
         });
+
+        $('#tpHour').on('input', function() {
+            if (this.value.length === 2) {
+                $('#tpMinute').select();
+            }
+        });
+
+        $('#timePickerOverlay').on('click', function(e) {
+            if (e.target.id === 'timePickerOverlay') {
+                closeTimePicker();
+            }
+        });
+
+        // ============================================================
+        // CUSTOM ROOM SELECT
+        // ============================================================
+        window.toggleRoomPanel = function() {
+            $('#roomSelectPanel').toggleClass('open');
+            $('#facilitySelectPanel').removeClass('open');
+        };
+
+        window.pickRoom = function(id, name, capacity) {
+            $('#room_id').val(id).trigger('change');
+            $('#roomSelectName').text(name);
+            $('#roomSelectCapacity').text('Kapasitas ' + capacity + ' orang').show();
+
+            const roomsData = @json($rooms->keyBy('id'));
+            const r = roomsData[id];
+            if (r && r.photos && r.photos.length) {
+                $('#roomSelectImg').attr('src', r.photos[0].photo_url);
+                $('#roomSelectThumb').show();
+            } else {
+                $('#roomSelectThumb').hide();
+            }
+            $('#roomSelectPanel').removeClass('open');
+        };
+
+        window.toggleFacilityPanel = function() {
+            $('#facilitySelectPanel').toggleClass('open');
+            $('#roomSelectPanel').removeClass('open');
+        };
+
+        window.toggleFacility = function(id, checked) {
+            const opt = $('#facilities option[value="' + id + '"]');
+            opt.prop('selected', checked);
+            $('#facilities').trigger('change');
+
+            const selectedNames = [];
+            $('#facilities option:selected').each(function() {
+                selectedNames.push($(this).text().trim());
+            });
+            $('#facilitySelectLabel').text(selectedNames.length ? selectedNames.join(', ') : 'Pilih fasilitas tambahan');
+        };
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('.room-select-wrapper').length) {
+                $('#roomSelectPanel').removeClass('open');
+            }
+            if (!$(e.target).closest('.facility-select-wrapper').length) {
+                $('#facilitySelectPanel').removeClass('open');
+            }
+        });
+
+        const preselectedFacilityNames = [];
+        $('.facility-checkbox:checked').each(function() {
+            preselectedFacilityNames.push($(this).next('span').text().trim());
+        });
+        if (preselectedFacilityNames.length) {
+            $('#facilitySelectLabel').text(preselectedFacilityNames.join(', '));
+        }
 
         const facilitiesData = @json($facilities->keyBy('id'));
         const existingQuantities = @json($bookingFacilities->pluck('quantity', 'facility_id'));
