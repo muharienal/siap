@@ -512,6 +512,219 @@
         scroll-behavior: smooth;
     }
 
+    /* ===== CALENDAR GRID VIEW ===== */
+    .cal-body {
+        display: flex;
+        flex-direction: column;
+        overflow: auto;
+        max-height: 640px;
+    }
+
+    .cal-grid-header {
+        display: grid;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--bg-card);
+        border-bottom: 2px solid var(--border-color-light);
+        min-width: fit-content;
+    }
+    .cal-header-cell {
+        padding: var(--space-2);
+    }
+    .cal-time-header {
+        position: sticky;
+        left: 0;
+        z-index: 21;
+        background: var(--bg-card);
+        border-right: 1px solid var(--border-color-light);
+    }
+    .cal-room-header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        border-right: 1px solid var(--border-color-light);
+    }
+    .cal-room-photo {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-sm);
+        object-fit: cover;
+        cursor: pointer;
+        border: 2px solid transparent;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        transition: all var(--transition-fast);
+    }
+    .cal-room-photo:hover {
+        transform: scale(1.05);
+        border-color: var(--brand-orange);
+    }
+    .cal-room-photo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 1.6rem;
+        background: var(--bg-body);
+        border: 1px dashed var(--border-color);
+        cursor: default;
+    }
+    .cal-room-info { text-align: left; }
+    .cal-room-name {
+        font-weight: 700;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .cal-room-capacity {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+    }
+
+    .cal-grid-body-wrapper {
+        position: relative;
+        min-width: fit-content;
+    }
+    .cal-grid-body {
+        display: grid;
+    }
+    .cal-time-col {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        background: var(--bg-card);
+        border-right: 1px solid var(--border-color-light);
+    }
+    .cal-time-label {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 4px;
+        font-size: var(--font-size-xs);
+        font-weight: 700;
+        color: var(--brand-orange-dark);
+        border-bottom: 1px solid var(--border-color-light);
+        box-sizing: border-box;
+    }
+    .cal-room-col {
+        position: relative;
+        border-right: 1px solid var(--border-color-light);
+        background-image: repeating-linear-gradient(
+            to bottom,
+            var(--border-color-light) 0px,
+            var(--border-color-light) 1px,
+            transparent 1px,
+            transparent 64px
+        );
+    }
+    .cal-slot-hover {
+        position: absolute;
+        left: 0;
+        right: 0;
+        cursor: pointer;
+        z-index: 1;
+    }
+    .cal-slot-hover-inner {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: calc(100% - 4px);
+        margin: 2px 6px;
+        border: 1.5px dashed var(--brand-orange);
+        border-radius: var(--radius-sm);
+        background: rgba(249, 115, 22, 0.06);
+        color: var(--brand-orange-dark);
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+    }
+    .cal-slot-hover:hover .cal-slot-hover-inner {
+        display: flex;
+    }
+    .cal-event {
+        position: absolute;
+        left: 6px;
+        right: 6px;
+        border-left: 4px solid;
+        border-radius: var(--radius-sm);
+        padding: 6px 10px;
+        z-index: 2;
+        cursor: pointer;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+    }
+    .cal-event:hover {
+        box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+        transform: translateY(-1px);
+    }
+    .cal-event-title {
+        font-weight: 700;
+        font-size: var(--font-size-sm);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cal-event-sub {
+        font-size: var(--font-size-xs);
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cal-event-time {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+    .cal-event-status {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-top: 2px;
+    }
+
+    .cal-weekend-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-weight: 600;
+        background: repeating-linear-gradient(
+            45deg,
+            var(--bg-body),
+            var(--bg-body) 10px,
+            var(--border-color-light) 10px,
+            var(--border-color-light) 20px
+        );
+    }
+
+    .cal-now-line {
+        position: absolute;
+        left: 80px;
+        right: 0;
+        height: 0;
+        border-top: 2px solid #ef4444;
+        z-index: 15;
+        pointer-events: none;
+    }
+    .cal-now-dot {
+        position: absolute;
+        left: -5px;
+        top: -5px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ef4444;
+    }
+
     .table-schedule {
         width: 100%;
         border-collapse: collapse;
@@ -1061,130 +1274,117 @@
                 </span>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body cal-body">
             @php
-                $hasResults = false;
-                foreach ($bookingSchedule as $roomId => $slots) {
-                    foreach ($slots as $time => $booking) {
-                        if ($booking) {
-                            $hasResults = true;
-                            break 2;
-                        }
-                    }
-                }
+                $slotHeight = 64; // px per 30 menit
+                $pxPerMin = $slotHeight / 30;
+                $slotCount = count($timeSlots);
+                $gridHeight = ($slotCount + 1) * $slotHeight;
+
+                $dayStartParts = explode(':', $timeSlots[0] ?? '07:00');
+                $dayStartMinutes = ((int) $dayStartParts[0]) * 60 + ((int) $dayStartParts[1]);
+
+                $nowMinutes = Carbon::now()->hour * 60 + Carbon::now()->minute;
+                $nowTopPx = ($nowMinutes - $dayStartMinutes) * $pxPerMin;
+                $showNowLine = $isToday && !$isWeekend && $nowTopPx >= 0 && $nowTopPx <= $gridHeight;
+
+                $statusColors = [
+                    0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'label' => 'Pending'],
+                    1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'label' => 'Disetujui'],
+                    2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'label' => 'Ditolak'],
+                ];
             @endphp
 
-            @if($hasResults || count($timeSlots) > 0)
-                <table class="table-schedule" id="scheduleTable">
-                    <thead>
-                        <tr>
-                            <th>Waktu</th>
-                            @foreach($rooms as $room)
-                                @php
-                                    $photos = $room->photos ?? collect();
-                                    $hasPhoto = $photos->count() > 0;
-                                    $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
-                                    $photoCount = $photos->count();
-                                @endphp
-                                <th>
-                                    <div class="room-header">
-                                        @if($hasPhoto)
-                                            <img src="{{ $firstPhoto }}"
-                                                 class="room-photo"
-                                                 onclick="openGallery({{ $room->id }}, {{ $loop->index }})"
-                                                 alt="{{ $room->name }}"
-                                                 title="Klik untuk lihat foto"
-                                                 loading="lazy">
-                                            <span class="photo-count" onclick="openGallery({{ $room->id }}, {{ $loop->index }})">
-                                                <i class="bi bi-images"></i> {{ $photoCount }}
-                                            </span>
-                                        @else
-                                            <div class="room-photo-placeholder">
-                                                <i class="bi bi-building"></i>
-                                            </div>
-                                        @endif
-                                        <div class="room-name">{{ $room->name }}</div>
-                                        <div class="room-capacity">
-                                            <i class="bi bi-people"></i> {{ $room->capacity }}
-                                        </div>
-                                    </div>
-                                </th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($timeSlots as $timeSlot)
-                            @php
-                                $isCurrent = ($isToday && !$isWeekend && $timeSlot == $currentSlot);
-                            @endphp
-                            <tr class="{{ $isCurrent ? 'current-time' : '' }}">
-                                <td>{{ $timeSlot }}</td>
-                                @foreach($rooms as $room)
-                                    @php
-                                        $booking = $bookingSchedule[$room->id][$timeSlot] ?? null;
-                                        $statusClass = 'available';
-                                        $statusIcon = '<i class="bi bi-check-circle"></i>';
-                                        $extra = '';
-                                        $isBooked = false;
+            @if($slotCount > 0 && $rooms->count() > 0)
+                @php $gridCols = "80px repeat({$rooms->count()}, minmax(200px, 1fr))"; @endphp
 
-                                        if ($isWeekend) {
-                                            $statusClass = 'weekend';
-                                            $statusIcon = '<i class="bi bi-calendar-x"></i>';
-                                            $extra = 'Libur';
-                                        } elseif ($booking) {
-                                            if ($booking->status == 0) {
-                                                $statusClass = 'pending';
-                                                $statusIcon = '<i class="bi bi-clock"></i>';
-                                                $extra = 'Pending';
-                                            } elseif ($booking->status == 1) {
-                                                $statusClass = 'booked';
-                                                $isBooked = true;
-                                                $extra = '
-                                                    <span class="b-name">' . e($booking->user->full_name ?? 'Unknown') . '</span>
-                                                    <span class="b-time">' . Carbon::parse($booking->start_time)->format('H:i') . '–' . Carbon::parse($booking->end_time)->format('H:i') . '</span>
-                                                    <span class="b-status">Disetujui</span>
-                                                ';
-                                            } elseif ($booking->status == 2) {
-                                                $statusClass = 'rejected';
-                                                $statusIcon = '<i class="bi bi-x-circle"></i>';
-                                                $extra = 'Ditolak';
-                                            }
-                                        }
-                                    @endphp
-                                    <td>
-                                        @if($isBooked)
-                                            <div class="slot-badge booked" onclick="showBookingDetails({{ $booking->id }})" title="Klik untuk detail">
-                                                {!! $extra !!}
+                <div class="cal-grid-header" style="grid-template-columns: {{ $gridCols }};">
+                    <div class="cal-header-cell cal-time-header"></div>
+                    @foreach($rooms as $room)
+                        @php
+                            $photos = $room->photos ?? collect();
+                            $hasPhoto = $photos->count() > 0;
+                            $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
+                        @endphp
+                        <div class="cal-header-cell cal-room-header">
+                            @if($hasPhoto)
+                                <img src="{{ $firstPhoto }}" class="cal-room-photo"
+                                     onclick="openGallery({{ $room->id }}, {{ $loop->index }})"
+                                     alt="{{ $room->name }}" title="Klik untuk lihat foto" loading="lazy">
+                            @else
+                                <div class="cal-room-photo cal-room-photo-placeholder">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                            @endif
+                            <div class="cal-room-info">
+                                <div class="cal-room-name">{{ $room->name }}</div>
+                                <div class="cal-room-capacity"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }}</div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="cal-grid-body-wrapper">
+                    <div class="cal-grid-body" style="grid-template-columns: {{ $gridCols }};">
+                        <div class="cal-time-col" style="height: {{ $gridHeight }}px;">
+                            @foreach($timeSlots as $timeSlot)
+                                <div class="cal-time-label" style="height: {{ $slotHeight }}px;">{{ $timeSlot }}</div>
+                            @endforeach
+                        </div>
+
+                        @foreach($rooms as $room)
+                            <div class="cal-room-col {{ $isWeekend ? 'cal-weekend' : '' }}" style="height: {{ $gridHeight }}px;">
+
+                                @if($isWeekend)
+                                    <div class="cal-weekend-overlay">
+                                        <i class="bi bi-calendar-x"></i> Libur
+                                    </div>
+                                @else
+                                    @foreach($timeSlots as $index => $timeSlot)
+                                        <div class="cal-slot-hover" style="top: {{ $index * $slotHeight }}px; height: {{ $slotHeight }}px;"
+                                             onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')"
+                                             title="Klik untuk booking jam {{ $timeSlot }}">
+                                            <div class="cal-slot-hover-inner">
+                                                <i class="bi bi-plus-lg"></i> Booking Ruangan
                                             </div>
-                                        @elseif($booking && $booking->status == 0)
-                                            <div class="slot-badge pending" title="Pending">
-                                                <i class="bi bi-clock"></i> {{ $extra }}
-                                                <span style="font-size:var(--font-size-xs);display:block;opacity:0.7;">
-                                                    {{ $booking->user->full_name ?? 'Unknown' }}
-                                                </span>
+                                        </div>
+                                    @endforeach
+
+                                    @foreach($dayBookings->where('room_id', $room->id) as $booking)
+                                        @php
+                                            $bStart = Carbon::parse($booking->start_time);
+                                            $bEnd = Carbon::parse($booking->end_time);
+                                            $bStartMin = $bStart->hour * 60 + $bStart->minute;
+                                            $bEndMin = $bEnd->hour * 60 + $bEnd->minute;
+                                            $topPx = max(0, ($bStartMin - $dayStartMinutes) * $pxPerMin);
+                                            $heightPx = max(28, ($bEndMin - $bStartMin) * $pxPerMin);
+                                            $colors = $statusColors[$booking->status] ?? $statusColors[0];
+                                        @endphp
+                                        <div class="cal-event" onclick="showBookingDetails({{ $booking->id }})"
+                                             title="Klik untuk lihat detail"
+                                             style="top: {{ $topPx }}px; height: {{ $heightPx }}px;
+                                                    background: {{ $colors['bg'] }}; border-left-color: {{ $colors['border'] }};">
+                                            <div class="cal-event-title" style="color: {{ $colors['text'] }};">
+                                                <i class="bi bi-person-workspace"></i> {{ Str::limit($booking->purpose, 28) }}
                                             </div>
-                                        @elseif($booking && $booking->status == 2)
-                                            <div class="slot-badge rejected" title="Ditolak">
-                                                <i class="bi bi-x-circle"></i> {{ $extra }}
-                                                <span style="font-size:var(--font-size-xs);display:block;opacity:0.7;">
-                                                    {{ $booking->user->full_name ?? 'Unknown' }}
-                                                </span>
+                                            <div class="cal-event-sub">{{ $booking->user->full_name ?? 'Unknown' }}</div>
+                                            <div class="cal-event-time">
+                                                <i class="bi bi-clock"></i> {{ $bStart->format('H:i') }} - {{ $bEnd->format('H:i') }}
                                             </div>
-                                        @elseif($isWeekend)
-                                            <div class="slot-badge weekend" title="Hari libur">
-                                                <i class="bi bi-calendar-x"></i> {{ $extra }}
-                                            </div>
-                                        @else
-                                            <div class="slot-badge available" title="Klik untuk booking" onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')">
-                                                <i class="bi bi-check-circle"></i> Tersedia
-                                            </div>
-                                        @endif
-                                    </td>
-                                @endforeach
-                            </tr>
+                                            <span class="cal-event-status" style="color: {{ $colors['text'] }};">{{ $colors['label'] }}</span>
+                                        </div>
+                                    @endforeach
+                                @endif
+                            </div>
                         @endforeach
-                    </tbody>
-                </table>
+                    </div>
+
+                    @if($showNowLine)
+                        <div class="cal-now-line" style="top: {{ $nowTopPx }}px;">
+                            <span class="cal-now-dot"></span>
+                        </div>
+                    @endif
+                </div>
             @else
                 <div class="no-results">
                     <i class="bi bi-inbox"></i>

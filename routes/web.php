@@ -35,7 +35,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
-    // Detail ruangan (untuk karyawan, bukan halaman settings admin)
+    // Ruang Meeting (halaman publik untuk karyawan lihat & pilih ruangan)
     Route::get('/rooms', [RoomController::class, 'list'])->name('rooms.list');
     Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 
@@ -99,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
 
     // booking availability check
     Route::post('bookings/check-availability', [App\Http\Controllers\BookingController::class, 'checkAvailability'])->name('bookings.check-availability');
+    Route::get('bookings/room-schedule', [App\Http\Controllers\BookingController::class, 'roomDaySchedule'])->name('bookings.room-schedule');
     Route::patch('bookings/{booking}/approve', [App\Http\Controllers\BookingController::class, 'approve'])->name('bookings.approve');
     Route::patch('bookings/{booking}/reject', [App\Http\Controllers\BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
