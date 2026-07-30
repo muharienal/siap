@@ -94,17 +94,14 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('complaints', App\Http\Controllers\ComplaintController::class);
     Route::post('complaints/{complaint}/respond', [App\Http\Controllers\ComplaintController::class, 'respond'])->name('complaints.respond');
 
-    // Bookings
+    // Booking routes
     Route::resource('bookings', App\Http\Controllers\BookingController::class);
-
-    // booking availability check
     Route::post('bookings/check-availability', [App\Http\Controllers\BookingController::class, 'checkAvailability'])->name('bookings.check-availability');
     Route::get('bookings/room-schedule', [App\Http\Controllers\BookingController::class, 'roomDaySchedule'])->name('bookings.room-schedule');
     Route::patch('bookings/{booking}/approve', [App\Http\Controllers\BookingController::class, 'approve'])->name('bookings.approve');
     Route::patch('bookings/{booking}/reject', [App\Http\Controllers\BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
-
-    // QR Code and Attendance routes
+    Route::get('bookings/export', [App\Http\Controllers\BookingController::class, 'export'])->name('bookings.export');
     Route::get('bookings/{booking}/qr-code', [App\Http\Controllers\BookingController::class, 'showQrCode'])->name('bookings.qr-code');
 
     // Notification routes

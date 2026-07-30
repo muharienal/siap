@@ -1,7 +1,7 @@
 @extends('templates.template')
 
-@section('page_title', 'Edit Peminjaman')
-@section('page_subtitle', 'Perbarui detail peminjaman ruangan')
+@section('page_title', 'Ajukan Peminjaman')
+@section('page_subtitle', 'Isi formulir untuk mengajukan peminjaman ruangan')
 
 @section('content')
 <style>
@@ -75,6 +75,31 @@
         box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
     }
 
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: var(--space-3);
+    }
+    .room-option {
+        position: relative; border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm); padding: var(--space-3);
+        cursor: pointer; transition: all 0.2s;
+    }
+    .room-option:hover { border-color: var(--brand-orange); background: rgba(249,115,22,0.02); }
+    .room-option.selected { border-color: var(--brand-orange); background: rgba(249,115,22,0.05); }
+    .room-option input[type="radio"] { position: absolute; opacity: 0; }
+    .room-option .room-check {
+        position: absolute; top: 8px; right: 8px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: var(--brand-orange); color: white;
+        display: none; align-items: center; justify-content: center; font-size: 12px;
+    }
+    .room-option.selected .room-check { display: flex; }
+    .room-option .room-img { width: 100%; height: 90px; object-fit: cover; border-radius: var(--radius-xs); margin-bottom: 8px; }
+    .room-option .room-placeholder { width: 100%; height: 90px; background: var(--bg-body); border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 2rem; margin-bottom: 8px; }
+    .room-option .room-name { font-weight: 700; font-size: var(--font-size-sm); }
+    .room-option .room-cap { font-size: 11px; color: var(--text-muted); }
+
     .availability-status {
         display: none; padding: var(--space-3); border-radius: var(--radius-sm);
         margin-top: var(--space-2); font-size: var(--font-size-sm); font-weight: 600;
@@ -107,18 +132,6 @@
     .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,0.2); }
     .btn-cancel { height: 48px; padding: 0 var(--space-5); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: all 0.2s; }
     .btn-cancel:hover { border-color: var(--text-muted); }
-
-    .status-info {
-        background: rgba(59,130,246,0.05);
-        border: 1px solid rgba(59,130,246,0.2);
-        border-radius: var(--radius-sm);
-        padding: var(--space-3) var(--space-4);
-        margin-bottom: var(--space-4);
-        display: flex;
-        align-items: center;
-        gap: var(--space-3);
-    }
-    .status-info i { font-size: 1.5rem; color: var(--brand-blue); }
 
     /* MATERIAL TIME PICKER STYLES */
     .time-trigger {
@@ -200,43 +213,43 @@
 <div class="form-content">
     <div class="form-header">
         <div>
-            <h1>Edit Peminjaman</h1>
-            <p class="text-muted mb-0 mt-1">Perbarui detail peminjaman ruangan</p>
+            <h1>Ajukan Peminjaman</h1>
+            <p class="text-muted mb-0 mt-1">Lengkapi formulir di bawah untuk mengajukan peminjaman ruangan</p>
         </div>
-        <a href="{{ route('bookings.show', $booking->id) }}" class="btn-back">
+        <a href="{{ route('bookings.index') }}" class="btn-back">
             <i class="bi bi-arrow-left"></i> Kembali
         </a>
     </div>
 
-    @if($booking->status != 0 && Auth::user()->role != 1)
-    <div class="status-info">
-        <i class="bi bi-info-circle"></i>
-        <div>
-            <strong>Booking ini sudah diproses.</strong><br>
-            <small>Hubungi admin untuk melakukan perubahan.</small>
-        </div>
-    </div>
-    @endif
-
-    <form action="{{ route('bookings.update', $booking->id) }}" method="POST" id="bookingForm">
+    <form action="{{ route('bookings.store') }}" method="POST" id="bookingForm">
         @csrf
-        @method('PUT')
 
         <div class="form-card">
 
             <div class="form-section full-width">
                 <div class="section-title">
-                    <i class="bi bi-door-open"></i> Ruangan
+                    <i class="bi bi-door-open"></i> Pilih Ruangan
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Ruangan <span class="required">*</span></label>
-                    <select name="room_id" class="form-select" required onchange="checkAvailability()">
-                        @foreach($rooms as $room)
-                            <option value="{{ $room->id }}" {{ old('room_id', $booking->room_id) == $room->id ? 'selected' : '' }}>
-                                {{ $room->name }} (Kapasitas: {{ $room->capacity }})
-                            </option>
-                        @endforeach
-                    </select>
+                <div class="room-grid">
+                    @foreach($rooms as $room)
+                        @php
+                            $photos = $room->photos ?? collect();
+                            $hasPhoto = $photos->count() > 0;
+                            $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
+                            $isSelected = old('room_id') == $room->id || ($prefill['room_id'] ?? '') == $room->id;
+                        @endphp
+                        <label class="room-option {{ $isSelected ? 'selected' : '' }}">
+                            <input type="radio" name="room_id" value="{{ $room->id }}" {{ $isSelected ? 'checked' : '' }} required onchange="checkAvailability()">
+                            <div class="room-check"><i class="bi bi-check"></i></div>
+                            @if($hasPhoto)
+                                <img src="{{ $firstPhoto }}" class="room-img" alt="{{ $room->name }}" loading="lazy">
+                            @else
+                                <div class="room-placeholder"><i class="bi bi-building"></i></div>
+                            @endif
+                            <div class="room-name">{{ $room->name }}</div>
+                            <div class="room-cap"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }} orang</div>
+                        </label>
+                    @endforeach
                 </div>
             </div>
 
@@ -247,24 +260,28 @@
 
                 <div class="form-group">
                     <label class="form-label">Tanggal <span class="required">*</span></label>
-                    <input type="date" name="start_date" class="form-control" value="{{ old('start_date', \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d')) }}" required onchange="checkAvailability()">
+                    <input type="date" name="start_date" class="form-control" value="{{ old('start_date', $prefill['date'] ?? date('Y-m-d')) }}" required onchange="checkAvailability()">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Jam Mulai & Selesai <span class="required">*</span></label>
                     <button type="button" class="time-trigger" onclick="openBookingTimePicker()">
                         <i class="bi bi-clock"></i>
-                        <span id="bookingTimeLabel">{{ old('start_time', \Carbon\Carbon::parse($booking->start_time)->format('H:i')) }} – {{ old('end_time', \Carbon\Carbon::parse($booking->end_time)->format('H:i')) }}</span>
+                        <span id="bookingTimeLabel">{{ old('start_time', $prefill['start_time'] ?? '07:00') }} – {{ old('end_time', $prefill['end_time'] ?? '08:00') }}</span>
                         <i class="bi bi-chevron-down chevron"></i>
                     </button>
-                    <input type="hidden" name="start_time" id="bookingStartTime" value="{{ old('start_time', \Carbon\Carbon::parse($booking->start_time)->format('H:i')) }}">
-                    <input type="hidden" name="end_time" id="bookingEndTime" value="{{ old('end_time', \Carbon\Carbon::parse($booking->end_time)->format('H:i')) }}">
+                    <input type="hidden" name="start_time" id="bookingStartTime" value="{{ old('start_time', $prefill['start_time'] ?? '07:00') }}">
+                    <input type="hidden" name="end_time" id="bookingEndTime" value="{{ old('end_time', $prefill['end_time'] ?? '08:00') }}">
                 </div>
 
                 <div class="availability-status" id="availabilityStatus">
                     <i class="bi bi-info-circle"></i>
-                    <span id="availabilityMessage">Ubah waktu untuk cek ketersediaan</span>
+                    <span id="availabilityMessage">Pilih ruangan dan waktu untuk cek ketersediaan</span>
                 </div>
+
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-info-circle"></i> Jam operasional: 07:00 - 16:00 WIB, interval 30 menit, Senin-Jumat
+                </small>
             </div>
 
             <div class="form-section">
@@ -274,22 +291,22 @@
 
                 <div class="form-group">
                     <label class="form-label">Keperluan / Agenda <span class="required">*</span></label>
-                    <textarea name="purpose" class="form-control" rows="6" required>{{ old('purpose', $booking->purpose) }}</textarea>
+                    <textarea name="purpose" class="form-control" rows="6" placeholder="Jelaskan agenda rapat atau keperluan peminjaman..." required>{{ old('purpose') }}</textarea>
+                    <small class="text-muted">Minimal 10 karakter</small>
                 </div>
             </div>
 
             <div class="form-section full-width">
                 <div class="section-title">
-                    <i class="bi bi-box-seam"></i> Fasilitas Tambahan
+                    <i class="bi bi-box-seam"></i> Fasilitas Tambahan <small class="text-muted fw-normal">(Opsional)</small>
                 </div>
 
                 @if($facilities->count() > 0)
                     <div class="facility-list">
                         @foreach($facilities as $facility)
                             @php
-                                $existingFacility = $bookingFacilities->where('facility_id', $facility->id)->first();
-                                $isChecked = old('facilities') ? in_array($facility->id, old('facilities')) : ($existingFacility ? true : false);
-                                $qty = old('quantities.' . $facility->id, $existingFacility ? $existingFacility->quantity : 1);
+                                $isChecked = is_array(old('facilities')) && in_array($facility->id, old('facilities'));
+                                $qty = old('quantities.' . $facility->id, 1);
                             @endphp
                             <div class="facility-item {{ $isChecked ? 'selected' : '' }}">
                                 <div class="facility-info">
@@ -309,9 +326,9 @@
             </div>
 
             <div class="form-actions full-width">
-                <a href="{{ route('bookings.show', $booking->id) }}" class="btn-cancel">Batal</a>
+                <a href="{{ route('bookings.index') }}" class="btn-cancel">Batal</a>
                 <button type="submit" class="btn-submit" id="submitBtn">
-                    <i class="bi bi-save"></i> Simpan Perubahan
+                    <i class="bi bi-send"></i> Ajukan Peminjaman
                 </button>
             </div>
 
@@ -361,6 +378,7 @@
 </div>
 
 <script>
+    // Facility toggle
     function toggleFacility(checkbox) {
         const item = checkbox.closest('.facility-item');
         const qtyInput = item.querySelector('.facility-qty');
@@ -373,11 +391,12 @@
         }
     }
 
+    // Availability check
     let availabilityTimer;
     function checkAvailability() {
         clearTimeout(availabilityTimer);
 
-        const roomId = document.querySelector('select[name="room_id"]')?.value;
+        const roomId = document.querySelector('input[name="room_id"]:checked')?.value;
         const date = document.querySelector('input[name="start_date"]')?.value;
         const startTime = document.getElementById('bookingStartTime')?.value;
         const endTime = document.getElementById('bookingEndTime')?.value;
@@ -405,8 +424,7 @@
                 body: JSON.stringify({
                     room_id: roomId,
                     start_time: startDateTime,
-                    end_time: endDateTime,
-                    exclude_booking_id: {{ $booking->id }}
+                    end_time: endDateTime
                 })
             })
             .then(r => r.json())
@@ -550,7 +568,7 @@
             for (var h = MTP_WORK_START; h <= MTP_WORK_END; h++) hours.push(h);
             var totalHours = hours.length;
             var angleStep = 360 / totalHours;
-            var offset = hours.indexOf(12);
+            var offset = hours.indexOf(12); // 12 at top
 
             hours.forEach(function(h, i) {
                 var angle = ((i - offset) * angleStep - 90) * Math.PI / 180;
@@ -669,18 +687,19 @@
         document.getElementById('bookingTimeLabel').textContent = startLabel + ' – ' + endLabel;
         
         closeTimePicker(false);
-        checkAvailability();
+        checkAvailability(); // Trigger check after selecting time
     }
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && mtpState.open) closeTimePicker(true);
     });
 
+    // Form submit
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Menyimpan...';
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Mengirim...';
 
         fetch(this.action, {
             method: 'POST',
@@ -694,7 +713,7 @@
             } else {
                 alert(data.message);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-save"></i> Simpan Perubahan';
+                btn.innerHTML = '<i class="bi bi-send"></i> Ajukan Peminjaman';
             }
         })
         .catch(err => {

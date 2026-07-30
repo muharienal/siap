@@ -12,6 +12,7 @@ use App\Http\Requests\BookingRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -24,14 +25,14 @@ class BookingController extends Controller
     }
 
     /**
-     * Display a listing of the resource with filters & pagination.
+     * Display listing with advanced filters & stats.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Booking::with(['user', 'room', 'facilities']);
+        $query = Booking::with(['user', 'room', 'facilities', 'bookingFacilities.facility']);
 
-        // Admin can see all, user only their own
+        // Role-based access
         if ($user->role != 1) {
             $query->where('user_id', $user->id);
         }
@@ -54,20 +55,27 @@ class BookingController extends Controller
             $query->where('room_id', $request->room);
         }
 
-        // Filter by date
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('start_time', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('start_time', '<=', $request->date_to);
+        }
+
+        // Filter by specific date
         if ($request->filled('date')) {
             $query->whereDate('start_time', $request->date);
         }
 
-        // Filter by search (name, purpose, room name)
+        // Search
         if ($request->filled('search')) {
             $search = '%' . $request->search . '%';
             $query->where(function ($q) use ($search) {
                 $q->where('purpose', 'LIKE', $search)
                   ->orWhereHas('user', function ($q2) use ($search) {
-                      $q2->whereHas('employee', function ($q3) use ($search) {
-                          $q3->where('full_name', 'LIKE', $search);
-                      });
+                      $q2->where('full_name', 'LIKE', $search)
+                         ->orWhere('nip', 'LIKE', $search);
                   })
                   ->orWhereHas('room', function ($q2) use ($search) {
                       $q2->where('name', 'LIKE', $search);
@@ -75,40 +83,65 @@ class BookingController extends Controller
             });
         }
 
-        // Order by latest
-        $query->orderBy('created_at', 'desc');
+        // Sort
+        $sort = $request->get('sort', 'latest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'date_asc':
+                $query->orderBy('start_time', 'asc');
+                break;
+            case 'date_desc':
+                $query->orderBy('start_time', 'desc');
+                break;
+            default:
+                $query->orderBy('created_at', 'desc');
+        }
 
-        // Paginate (10 per page)
         $bookings = $query->paginate(10)->appends($request->query());
-
-        // Get all rooms for filter dropdown
         $rooms = Room::orderBy('name')->get();
 
-        return view('bookings.index', compact('bookings', 'rooms'));
+        // Stats for cards
+        $statsQuery = $user->role == 1 ? Booking::query() : Booking::where('user_id', $user->id);
+        $stats = [
+            'total' => $statsQuery->count(),
+            'pending' => (clone $statsQuery)->where('status', 0)->count(),
+            'approved' => (clone $statsQuery)->where('status', 1)->count(),
+            'rejected' => (clone $statsQuery)->where('status', 2)->count(),
+            'today' => (clone $statsQuery)->whereDate('start_time', Carbon::today())->count(),
+        ];
+
+        return view('bookings.index', compact('bookings', 'rooms', 'stats'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show create form with pre-filled data.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $facilities = Facility::all();
-        $rooms = Room::with('photos')->get();
-        return view('bookings.add', compact('facilities', 'rooms'));
+        $facilities = Facility::orderBy('name')->get();
+        $rooms = Room::with('photos')->where('status', 1)->orderBy('name')->get();
+
+        $prefill = [
+            'room_id' => $request->get('room'),
+            'date' => $request->get('date', date('Y-m-d')),
+            'start_time' => $request->get('start_time', '07:00'),
+            'end_time' => $request->get('end_time', '08:00'),
+        ];
+
+        return view('bookings.create', compact('facilities', 'rooms', 'prefill'));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store new booking with transaction.
      */
     public function store(BookingRequest $request)
     {
         try {
             DB::beginTransaction();
 
-            $booking_type = 'Regular';
-            if (Auth::user()->role == 1) {
-                $booking_type = 'Priority';
-            }
+            $bookingType = Auth::user()->role == 1 ? 'Priority' : 'Regular';
 
             $booking = Booking::create([
                 'user_id' => Auth::id(),
@@ -117,9 +150,10 @@ class BookingController extends Controller
                 'end_time' => $request->end_time,
                 'purpose' => $request->purpose,
                 'status' => 0,
-                'booking_type' => $booking_type,
+                'booking_type' => $bookingType,
             ]);
 
+            // Save facilities
             if ($request->has('facilities') && is_array($request->facilities)) {
                 foreach ($request->facilities as $index => $facilityId) {
                     BookingFacility::create([
@@ -135,116 +169,54 @@ class BookingController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bookings.index')
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking berhasil diajukan dan menunggu persetujuan.',
+                    'redirect' => route('bookings.show', $booking->id)
+                ]);
+            }
+
+            return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking berhasil diajukan dan menunggu persetujuan.');
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Booking store error: ' . $e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat menyimpan booking: ' . $e->getMessage()
+                ], 500);
+            }
+
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan booking.'])->withInput();
         }
     }
 
     /**
-     * Check room availability (dengan validasi jam kerja 07:00-16:00, interval 30 menit, weekend libur)
-     */
-    public function checkAvailability(Request $request)
-    {
-        try {
-            $request->validate([
-                'room_id' => 'required|integer|exists:rooms,id',
-                'start_time' => 'required|date|after_or_equal:today',
-                'end_time' => 'required|date|after:start_time',
-            ]);
-
-            $roomId = $request->room_id;
-            $startTime = Carbon::parse($request->start_time);
-            $endTime = Carbon::parse($request->end_time);
-
-            // 1. Weekend check
-            if ($startTime->isWeekend()) {
-                return response()->json([
-                    'available' => false,
-                    'message' => 'Peminjaman tidak dapat dilakukan pada hari Sabtu atau Minggu (hari libur).'
-                ]);
-            }
-
-            // 2. Past date check
-            if ($startTime->isPast() && !$startTime->isToday()) {
-                return response()->json([
-                    'available' => false,
-                    'message' => 'Tidak dapat melakukan peminjaman pada tanggal yang sudah lewat.'
-                ]);
-            }
-
-            // 3. Working hours 07:00-16:00 (compare time-of-day only, not the full date)
-            $workStart = $startTime->copy()->setTime(7, 0, 0);
-            $workEnd = $startTime->copy()->setTime(16, 0, 0);
-
-            if ($startTime->lt($workStart) || $endTime->gt($workEnd) || $startTime->gt($workEnd) || $endTime->lt($workStart)) {
-                return response()->json([
-                    'available' => false,
-                    'message' => 'Booking hanya dapat dilakukan pada jam kerja 07:00 – 16:00 WIB.'
-                ]);
-            }
-
-            $excludeBookingId = $request->exclude_booking_id;
-
-            // 5. Overlap check with approved or pending bookings
-            $query = Booking::where('room_id', $roomId)
-                ->whereIn('status', [0, 1])
-                ->where(function ($q) use ($startTime, $endTime) {
-                    $q->whereBetween('start_time', [$startTime, $endTime->copy()->subSecond()])
-                        ->orWhereBetween('end_time', [$startTime->copy()->addSecond(), $endTime])
-                        ->orWhere(function ($q2) use ($startTime, $endTime) {
-                            $q2->where('start_time', '<=', $startTime)
-                                ->where('end_time', '>=', $endTime);
-                        });
-                });
-
-            if ($excludeBookingId) {
-                $query->where('id', '!=', $excludeBookingId);
-            }
-
-            $conflicts = $query->get();
-
-            if ($conflicts->count() > 0) {
-                return response()->json([
-                    'available' => false,
-                    'message' => 'Ruangan sudah dipesan pada waktu tersebut.',
-                    'conflicts' => $conflicts->map(fn($b) => [
-                        'id' => $b->id,
-                        'start' => $b->start_time,
-                        'end' => $b->end_time,
-                        'user' => $b->user->email,
-                        'purpose' => $b->purpose,
-                    ])
-                ]);
-            }
-
-            return response()->json([
-                'available' => true,
-                'message' => 'Ruangan tersedia.'
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Availability check error: ' . $e->getMessage());
-            return response()->json([
-                'available' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Display the specified resource.
+     * Display booking detail with timeline.
      */
     public function show(Booking $booking)
     {
-        $booking->load('room', 'facilities', 'user', 'bookingFacilities.facility', 'attendances.user', 'processedBy');
-        return view('bookings.show', compact('booking'));
+        $booking->load([
+            'room.photos',
+            'facilities',
+            'user',
+            'bookingFacilities.facility',
+            'attendances.user',
+            'processedBy',
+            'complaints'
+        ]);
+
+        $timeline = $this->buildTimeline($booking);
+
+        return view('bookings.show', compact('booking', 'timeline'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show edit form.
      */
     public function edit(Booking $booking)
     {
@@ -252,20 +224,20 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if ($booking->status != 0) {
+        if ($booking->status != 0 && Auth::user()->role != 1) {
             return redirect()->route('bookings.index')
                 ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah.');
         }
 
-        $facilities = Facility::all();
-        $rooms = Room::with('photos')->get();
+        $facilities = Facility::orderBy('name')->get();
+        $rooms = Room::with('photos')->orderBy('name')->get();
         $bookingFacilities = $booking->bookingFacilities()->with('facility')->get();
 
         return view('bookings.edit', compact('booking', 'facilities', 'rooms', 'bookingFacilities'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update booking.
      */
     public function update(BookingRequest $request, Booking $booking)
     {
@@ -295,8 +267,8 @@ class BookingController extends Controller
                 'status' => $booking->status,
             ]);
 
+            // Sync facilities
             BookingFacility::where('booking_id', $booking->id)->delete();
-
             if ($request->has('facilities') && is_array($request->facilities)) {
                 foreach ($request->facilities as $index => $facilityId) {
                     BookingFacility::create([
@@ -309,6 +281,7 @@ class BookingController extends Controller
 
             $booking->load(['user', 'room']);
 
+            // Notify if admin changed room or time
             if ($isAdminEdit) {
                 if ($oldRoomId != $request->room_id) {
                     $this->notificationService->notifyRoomChange($booking, $oldRoomName, $booking->room->name);
@@ -320,17 +293,34 @@ class BookingController extends Controller
 
             DB::commit();
 
-            return redirect()->route('bookings.index')
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking berhasil diperbarui.',
+                    'redirect' => route('bookings.show', $booking->id)
+                ]);
+            }
+
+            return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking berhasil diperbarui.');
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Booking update error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat memperbarui booking.');
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat memperbarui booking.'
+                ], 500);
+            }
+
+            return back()->with('error', 'Terjadi kesalahan saat memperbarui booking.')->withInput();
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete booking.
      */
     public function destroy(Booking $booking)
     {
@@ -344,6 +334,7 @@ class BookingController extends Controller
 
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking berhasil dihapus.');
+
         } catch (\Exception $e) {
             Log::error('Booking delete error: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menghapus booking.');
@@ -351,7 +342,97 @@ class BookingController extends Controller
     }
 
     /**
-     * Approve booking (admin only)
+     * Check room availability (AJAX).
+     */
+    public function checkAvailability(Request $request)
+    {
+        try {
+            $request->validate([
+                'room_id' => 'required|integer|exists:rooms,id',
+                'start_time' => 'required|date',
+                'end_time' => 'required|date|after:start_time',
+            ]);
+
+            $roomId = $request->room_id;
+            $startTime = Carbon::parse($request->start_time);
+            $endTime = Carbon::parse($request->end_time);
+
+            // Weekend check
+            if ($startTime->isWeekend()) {
+                return response()->json([
+                    'available' => false,
+                    'message' => 'Peminjaman tidak dapat dilakukan pada hari Sabtu atau Minggu.'
+                ]);
+            }
+
+            // Past date check
+            if ($startTime->isPast() && !$startTime->isToday()) {
+                return response()->json([
+                    'available' => false,
+                    'message' => 'Tidak dapat melakukan peminjaman pada tanggal yang sudah lewat.'
+                ]);
+            }
+
+            // Working hours check (07:00 - 16:00)
+            $workStart = $startTime->copy()->setTime(7, 0, 0);
+            $workEnd = $startTime->copy()->setTime(16, 0, 0);
+            if ($startTime->lt($workStart) || $endTime->gt($workEnd)) {
+                return response()->json([
+                    'available' => false,
+                    'message' => 'Booking hanya dapat dilakukan pada jam kerja 07:00 – 16:00 WIB.'
+                ]);
+            }
+
+            // Overlap check
+            $excludeBookingId = $request->exclude_booking_id;
+            $query = Booking::where('room_id', $roomId)
+                ->whereIn('status', [0, 1])
+                ->where(function ($q) use ($startTime, $endTime) {
+                    $q->whereBetween('start_time', [$startTime, $endTime->copy()->subSecond()])
+                      ->orWhereBetween('end_time', [$startTime->copy()->addSecond(), $endTime])
+                      ->orWhere(function ($q2) use ($startTime, $endTime) {
+                          $q2->where('start_time', '<=', $startTime)
+                             ->where('end_time', '>=', $endTime);
+                      });
+                });
+
+            if ($excludeBookingId) {
+                $query->where('id', '!=', $excludeBookingId);
+            }
+
+            $conflicts = $query->get();
+
+            if ($conflicts->count() > 0) {
+                return response()->json([
+                    'available' => false,
+                    'message' => 'Ruangan sudah dipesan pada waktu tersebut.',
+                    'conflicts' => $conflicts->map(fn($b) => [
+                        'id' => $b->id,
+                        'start' => $b->start_time,
+                        'end' => $b->end_time,
+                        'user' => $b->user->full_name ?? 'Unknown',
+                        'purpose' => $b->purpose,
+                        'status' => $b->status == 0 ? 'Pending' : 'Disetujui',
+                    ])
+                ]);
+            }
+
+            return response()->json([
+                'available' => true,
+                'message' => 'Ruangan tersedia untuk waktu tersebut.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Availability check error: ' . $e->getMessage());
+            return response()->json([
+                'available' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve booking (admin only).
      */
     public function approve(Booking $booking)
     {
@@ -378,6 +459,7 @@ class BookingController extends Controller
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '1');
 
             return back()->with('success', 'Booking berhasil disetujui dan kode absensi telah dibuat.');
+
         } catch (\Exception $e) {
             Log::error('Booking approve error: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menyetujui booking.');
@@ -385,7 +467,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Reject booking (admin only)
+     * Reject booking (admin only).
      */
     public function reject(Request $request, Booking $booking)
     {
@@ -422,6 +504,7 @@ class BookingController extends Controller
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '2');
 
             return back()->with('success', $actionMessage);
+
         } catch (\Exception $e) {
             Log::error('Booking reject error: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menolak booking.');
@@ -429,7 +512,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Bulk action (admin only)
+     * Bulk action (admin only).
      */
     public function bulkAction(Request $request)
     {
@@ -452,163 +535,140 @@ class BookingController extends Controller
                 ->get();
 
             foreach ($bookings as $booking) {
-                $updateData = ['status' => $status];
+                $updateData = [
+                    'status' => $status,
+                    'processed_by' => Auth::id(),
+                    'processed_at' => now(),
+                ];
+
                 if ($request->action === 'approve') {
                     $updateData['absent_code'] = 'MTG-' . strtoupper(uniqid());
                 }
+
+                $oldStatus = (string) $booking->status;
                 $booking->update($updateData);
+                $booking->load(['user', 'room']);
+                $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, (string) $status);
             }
-
-            return back()->with('success', "Booking yang dipilih berhasil {$message}.");
-        } catch (\Exception $e) {
-            Log::error('Bulk action error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat memproses booking.');
-        }
-    }
-
-    /**
-     * Show QR Code
-     */
-    public function showQrCode(Booking $booking)
-    {
-        try {
-            if (Auth::user()->role != 0 && $booking->user_id != Auth::id()) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
-            }
-
-            if ($booking->status != 1 || !$booking->absent_code) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'QR Code hanya tersedia untuk booking yang sudah disetujui.'
-                ], 400);
-            }
-
-            $attendanceUrl = url('/booking/meet/' . $booking->absent_code);
-
-            $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(250)
-                ->format('svg')
-                ->generate($attendanceUrl);
 
             return response()->json([
                 'success' => true,
-                'qr_code' => (string) $qrCode,
-                'attendance_url' => $attendanceUrl,
-                'booking_info' => [
-                    'room' => $booking->room->name,
-                    'date' => Carbon::parse($booking->start_time)->format('d M Y'),
-                    'time' => Carbon::parse($booking->start_time)->format('H:i') . ' - ' . Carbon::parse($booking->end_time)->format('H:i'),
-                    'purpose' => $booking->purpose
-                ]
+                'message' => count($bookings) . " booking berhasil {$message}."
             ]);
+
         } catch (\Exception $e) {
-            Log::error('QR Code generation error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+            Log::error('Bulk action error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memproses booking.'
+            ], 500);
         }
     }
 
     /**
-     * Handle attendance via QR code
+     * Export bookings (CSV).
      */
-    public function attendMeeting($code)
+    public function export(Request $request)
     {
-        $booking = Booking::where('absent_code', $code)->where('status', 1)->first();
-
-        if (!$booking) {
-            return view('attendance.error', ['message' => 'Kode absensi tidak valid atau booking tidak ditemukan.']);
+        if (Auth::user()->role != 1) {
+            abort(403, 'Unauthorized action.');
         }
 
-        $now = now();
-        $startTime = Carbon::parse($booking->start_time);
-        $endTime = Carbon::parse($booking->end_time);
+        $query = Booking::with(['user', 'room']);
 
-        $attendanceStartTime = $startTime->copy()->subMinutes(30);
-        $attendanceEndTime = $endTime->copy()->addHour();
-
-        if ($now->lt($attendanceStartTime)) {
-            return view('attendance.error', [
-                'message' => 'Absensi belum dibuka. Anda dapat melakukan absensi 30 menit sebelum acara dimulai.',
-                'booking' => $booking
-            ]);
+        if ($request->filled('status')) {
+            $statusMap = ['pending' => 0, 'approved' => 1, 'rejected' => 2];
+            if (isset($statusMap[$request->status])) {
+                $query->where('status', $statusMap[$request->status]);
+            }
         }
 
-        if ($now->gt($attendanceEndTime)) {
-            return view('attendance.error', [
-                'message' => 'Waktu absensi telah berakhir.',
-                'booking' => $booking
-            ]);
+        if ($request->filled('date_from')) {
+            $query->whereDate('start_time', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('start_time', '<=', $request->date_to);
         }
 
-        if (Auth::check()) {
-            return $this->recordAttendance($booking, Auth::user());
-        }
+        $bookings = $query->orderBy('created_at', 'desc')->get();
 
-        return view('attendance.form', compact('booking'));
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="bookings_' . date('Y-m-d') . '.csv"',
+        ];
+
+        $callback = function() use ($bookings) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['ID', 'Peminjam', 'NIP', 'Ruangan', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Keperluan', 'Status', 'Tipe', 'Dibuat Pada']);
+
+            foreach ($bookings as $b) {
+                $status = $b->status == 0 ? 'Pending' : ($b->status == 1 ? 'Disetujui' : 'Ditolak');
+                fputcsv($file, [
+                    $b->id,
+                    $b->user->full_name ?? 'Unknown',
+                    $b->user->nip ?? '-',
+                    $b->room->name,
+                    Carbon::parse($b->start_time)->format('d/m/Y'),
+                    Carbon::parse($b->start_time)->format('H:i'),
+                    Carbon::parse($b->end_time)->format('H:i'),
+                    $b->purpose,
+                    $status,
+                    $b->booking_type,
+                    $b->created_at->format('d/m/Y H:i'),
+                ]);
+            }
+            fclose($file);
+        };
+
+        return Response::stream($callback, 200, $headers);
     }
 
     /**
-     * Record attendance
+     * Build timeline for booking detail.
      */
-    public function recordAttendance($booking, $user = null)
+    private function buildTimeline($booking)
     {
-        try {
-            $existing = \App\Models\Attendance::where('booking_id', $booking->id)
-                ->where('user_id', $user ? $user->id : Auth::id())
-                ->first();
+        $timeline = [];
 
-            if ($existing) {
-                if (Auth::check()) {
-                    return redirect()->route('bookings.index')->with('info', 'Anda sudah melakukan absensi untuk meeting ini.');
-                } else {
-                    return view('attendance.success', ['message' => 'Anda sudah melakukan absensi untuk meeting ini.', 'booking' => $booking]);
-                }
-            }
+        $timeline[] = [
+            'icon' => 'bi-plus-circle',
+            'color' => 'primary',
+            'title' => 'Booking Dibuat',
+            'description' => 'Pengajuan peminjaman dibuat oleh ' . ($booking->user->full_name ?? 'Unknown'),
+            'time' => $booking->created_at,
+        ];
 
-            \App\Models\Attendance::create([
-                'booking_id' => $booking->id,
-                'user_id' => $user ? $user->id : Auth::id(),
-                'guest_name' => $user ? $user->name : null,
-                'check_in_time' => now(),
-            ]);
-
-            if (Auth::check()) {
-                return redirect()->route('bookings.index')->with('success', 'Absensi berhasil dicatat.');
-            } else {
-                return view('attendance.success', ['message' => 'Absensi berhasil dicatat.', 'booking' => $booking]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Attendance record error: ' . $e->getMessage());
-            if (Auth::check()) {
-                return redirect()->route('bookings.index')->with('error', 'Terjadi kesalahan saat mencatat absensi.');
-            } else {
-                return view('attendance.error', ['message' => 'Terjadi kesalahan saat mencatat absensi.']);
-            }
-        }
-    }
-
-    /**
-     * Submit attendance for guest
-     */
-    public function submitAttendance(Request $request, $code)
-    {
-        $request->validate(['name' => 'required|string|max:255']);
-
-        $booking = Booking::where('absent_code', $code)->where('status', 1)->first();
-
-        if (!$booking) {
-            return back()->with('error', 'Kode absensi tidak valid.');
+        if ($booking->processed_at) {
+            $action = $booking->status == 1 ? 'Disetujui' : 'Ditolak';
+            $timeline[] = [
+                'icon' => $booking->status == 1 ? 'bi-check-circle' : 'bi-x-circle',
+                'color' => $booking->status == 1 ? 'success' : 'danger',
+                'title' => 'Booking ' . $action,
+                'description' => $booking->rejection_reason ? 'Alasan: ' . $booking->rejection_reason : 'Booking telah diproses oleh admin',
+                'time' => $booking->processed_at,
+            ];
         }
 
-        try {
-            \App\Models\Attendance::create([
-                'booking_id' => $booking->id,
-                'guest_name' => $request->name,
-                'check_in_time' => now(),
-            ]);
+        if ($booking->status == 1) {
+            $timeline[] = [
+                'icon' => 'bi-qr-code',
+                'color' => 'info',
+                'title' => 'Kode Absensi Dibuat',
+                'description' => 'Kode: ' . $booking->absent_code,
+                'time' => $booking->processed_at,
+            ];
 
-            return redirect()->route('attendance.success', $code)->with('success', 'Absensi berhasil dicatat.');
-        } catch (\Exception $e) {
-            Log::error('Guest attendance error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat mencatat absensi.');
+            if ($booking->attendances->count() > 0) {
+                $timeline[] = [
+                    'icon' => 'bi-people',
+                    'color' => 'success',
+                    'title' => 'Absensi Dimulai',
+                    'description' => $booking->attendances->count() . ' peserta telah melakukan absensi',
+                    'time' => $booking->attendances->first()->check_in_time ?? null,
+                ];
+            }
         }
+
+        return $timeline;
     }
 }

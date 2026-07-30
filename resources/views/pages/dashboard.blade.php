@@ -14,10 +14,11 @@
        ===================================================================== */
     .dashboard-content {
         padding: var(--space-6) var(--space-7);
-        max-width: 1680px;
+        max-width: 1800px; 
         margin: 0 auto;
         flex: 1;
         width: 100%;
+        padding-bottom: 100px;
     }
 
     /* Toolbar */
@@ -61,6 +62,28 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
+    }
+    .badge-live-time {
+        font-size: var(--font-size-xs);
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: var(--radius-pill);
+        background: rgba(59, 130, 246, 0.1);
+        color: #1d4ed8;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-variant-numeric: tabular-nums;
+    }
+    .pulse-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #1d4ed8;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(29, 78, 216, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0); }
     }
 
     .btn-primary-sm {
@@ -314,12 +337,13 @@
         padding: 16px;
     }
     .mtp-overlay.open { display: flex; }
+    /* DIPERBAIKI: Lebar modal dikembalikan ke 400px agar proporsional */
     .mtp-dialog {
         background: var(--bg-card);
         border-radius: 16px;
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-        width: 360px;
-        max-width: 100%;
+        width: 400px; 
+        max-width: 100%; 
         max-height: 92vh;
         overflow-y: auto;
         animation: mtpSlideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -345,7 +369,7 @@
         display: flex;
         justify-content: center;
         gap: 24px;
-        padding: 10px 24px 6px;
+        padding: 12px 24px 8px;
     }
     .mtp-field {
         display: flex;
@@ -367,8 +391,9 @@
         letter-spacing: 0.5px;
         color: var(--text-muted);
     }
+    /* DIPERBAIKI: Font digital dikembalikan ke 42px agar tidak kebesaran */
     .mtp-digital {
-        font-size: 46px;
+        font-size: 42px; 
         font-weight: 400;
         color: var(--text-primary);
         line-height: 1;
@@ -389,31 +414,6 @@
         background: rgba(249, 115, 22, 0.14);
         color: var(--brand-orange);
     }
-    .mtp-ampm {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        margin-top: 4px;
-    }
-    .mtp-ampm-btn {
-        border: 1px solid var(--border-color);
-        background: var(--bg-input);
-        color: var(--text-secondary);
-        border-radius: 8px;
-        padding: 2px 12px;
-        font-size: 11px;
-        font-weight: 700;
-        cursor: pointer;
-        line-height: 1.5;
-        transition: all var(--transition-fast);
-        min-width: 44px;
-    }
-    .mtp-ampm-btn:hover:not(.active) { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
-    .mtp-ampm-btn.active {
-        background: var(--brand-orange);
-        color: #fff;
-        border-color: var(--brand-orange);
-    }
 
     .mtp-error {
         display: none;
@@ -432,34 +432,41 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 14px 24px 6px;
+        padding: 16px 24px 8px;
     }
+    /* DIPERBAIKI: Ukuran jam dikembalikan ke 280px */
     .mtp-clock {
         position: relative;
-        width: 280px;
+        width: 280px; 
         height: 280px;
+        max-width: 80vw;
+        max-height: 80vw;
         border-radius: 50%;
         background: var(--bg-body);
         user-select: none;
         flex-shrink: 0;
+        margin: 0 auto;
     }
+    /* DIPERBAIKI: Ukuran angka dikembalikan ke proporsi semula */
     .mtp-num {
         position: absolute;
-        width: 44px;
-        height: 44px;
+        width: clamp(40px, 12vw, 44px);
+        height: clamp(40px, 12vw, 44px);
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        font-size: 16px;
+        font-size: clamp(14px, 4vw, 16px); 
         font-weight: 500;
         color: var(--text-primary);
         cursor: pointer;
         transform: translate(-50%, -50%);
-        transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+        transition: background 0.2s, color 0.2s, transform 0.2s;
         background: transparent;
+        z-index: 2;
     }
     .mtp-num:hover:not(.disabled) { background: rgba(249, 115, 22, 0.12); }
+    .mtp-num:active:not(.disabled) { transform: translate(-50%, -50%) scale(0.95); }
     .mtp-num.selected {
         background: var(--brand-orange);
         color: #fff;
@@ -468,8 +475,9 @@
     }
     .mtp-num.disabled {
         color: var(--text-muted);
-        opacity: 0.28;
+        opacity: 0.3;
         cursor: not-allowed;
+        pointer-events: none;
     }
     .mtp-hand-svg {
         position: absolute;
@@ -477,12 +485,14 @@
         width: 100%;
         height: 100%;
         pointer-events: none;
+        z-index: 1;
     }
     .mtp-hand {
         stroke: var(--brand-orange);
         stroke-width: 2;
         stroke-linecap: round;
         transition: x2 0.2s ease, y2 0.2s ease;
+        vector-effect: non-scaling-stroke;
     }
     .mtp-center-dot {
         position: absolute;
@@ -492,21 +502,25 @@
         border-radius: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        z-index: 2;
+        z-index: 3;
     }
     .mtp-mode-hint {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 8px;
-        height: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--brand-orange-dark);
+        margin-top: 12px;
+        height: 20px;
         text-align: center;
+        background: rgba(249, 115, 22, 0.08);
+        padding: 4px 12px;
+        border-radius: 20px;
     }
 
     .mtp-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 16px 16px;
+        padding: 12px 16px 16px;
     }
     .mtp-icon-btn {
         background: none;
@@ -620,6 +634,7 @@
         scroll-behavior: smooth;
         scrollbar-width: thin;
         scrollbar-color: var(--text-muted) transparent;
+        -webkit-overflow-scrolling: touch;
     }
     .schedule-card .card-body::-webkit-scrollbar { width: 6px; height: 6px; }
     .schedule-card .card-body::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: var(--radius-pill); }
@@ -820,12 +835,41 @@
     .db-ajax-loading .schedule-card,
     .db-ajax-loading .db-stats-grid { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
 
+    /* Mobile Bottom Action Bar */
+    .mobile-action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        padding: 10px 16px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        display: none;
+        z-index: 1020;
+        border-top: 1px solid var(--border-color-light);
+    }
+    .btn-book-mobile {
+        flex: 1;
+        height: 50px;
+        font-size: 16px;
+        border-radius: 12px;
+        font-weight: 600;
+        background: var(--brand-gradient);
+        color: white;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+
     /* Responsive */
     @media (max-width: 1199.98px) {
         .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 991.98px) {
-        .dashboard-content { padding: var(--space-4); }
+        .dashboard-content { padding: var(--space-4); padding-bottom: 90px; }
         .db-controls { flex-direction: column; align-items: stretch; padding: var(--space-4); }
         .db-controls .filter-spacer { display: none; }
         .db-divider { display: none; }
@@ -835,7 +879,7 @@
         .db-filter-group .db-select,
         .db-filter-group .time-trigger { width: 100%; }
         .db-toolbar { flex-direction: column; align-items: stretch; }
-        .db-toolbar .actions { width: 100%; }
+        .db-toolbar .actions { display: none; }
         .db-toolbar .actions .btn-primary-sm,
         .db-toolbar .actions .btn-outline-sm { flex: 1; justify-content: center; }
         .schedule-card .card-header .title .date-info { display: none; }
@@ -844,11 +888,10 @@
         .cal-room-photo, .cal-room-photo-placeholder { width: 48px; height: 48px; }
         .cal-room-name { font-size: var(--font-size-xs); }
         .schedule-card .card-body { max-height: 500px; }
-        .mtp-time-display { gap: 16px; }
-        .mtp-digital { font-size: 38px; }
+        .mobile-action-bar { display: flex; }
     }
     @media (max-width: 575.98px) {
-        .dashboard-content { padding: var(--space-3); }
+        .dashboard-content { padding: var(--space-3); padding-bottom: 90px; }
         .db-stats-grid { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
         .stat-card { padding: var(--space-4); gap: var(--space-3); }
         .stat-card .stat-icon { width: 42px; height: 42px; font-size: 1.1rem; }
@@ -859,11 +902,15 @@
         .schedule-legend { gap: var(--space-3); }
         .db-toolbar h1 { font-size: var(--font-size-xl); }
         .schedule-card .card-header { flex-direction: column; align-items: flex-start; }
-        .mtp-clock { width: 248px; height: 248px; }
-        .mtp-num { width: 40px; height: 40px; font-size: 15px; }
-        .mtp-digital { font-size: 34px; }
-        .mtp-time-display { gap: 12px; padding: 8px 12px 4px; }
-        .mtp-field { padding: 6px 8px; }
+        
+        /* Responsive Time Picker for Mobile */
+        .mtp-dialog { width: 95vw; }
+        .mtp-header { padding: 16px 20px 4px; }
+        .mtp-time-display { gap: 16px; padding: 8px 20px 4px; }
+        .mtp-digital { font-size: 36px; }
+        .mtp-field { padding: 8px 12px; }
+        .mtp-clock { width: 240px; height: 240px; }
+        .mtp-footer { padding: 12px 20px 20px; }
     }
 
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -871,9 +918,7 @@
     .schedule-card { animation: fadeUp 0.4s ease forwards; }
 </style>
 
-
 <div class="dashboard-content">
-
     @php
         $totalBookingsToday = 0;
         $totalPending = 0;
@@ -902,7 +947,8 @@
         <div>
             <h1>Dashboard</h1>
             <p class="db-meta">
-                <span id="dbMetaDate"><i class="bi bi-calendar3 me-1"></i>{{ Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
+                <span id="liveDateTime"><i class="bi bi-calendar3 me-1"></i> <span id="liveDate">Memuat...</span></span>
+                <span class="badge-live-time"><span class="pulse-dot"></span> <span id="liveTime">00:00:00</span></span>
                 @if($isWeekend)
                     <span class="badge-holiday"><i class="bi bi-moon-stars"></i> Libur akhir pekan</span>
                 @endif
@@ -973,7 +1019,6 @@
 
         <div class="db-divider"></div>
 
-        {{-- Material-style Jam Kerja Time Picker --}}
         <div class="db-filter-group" id="timePickerWrapper">
             <label>Jam Kerja</label>
             <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
@@ -1143,7 +1188,6 @@
             @endif
         </div>
 
-        {{-- Legenda --}}
         <div class="schedule-legend">
             <span class="legend-item"><span class="dot available"></span> Tersedia (klik untuk booking)</span>
             <span class="legend-item"><span class="dot approved"></span> Disetujui</span>
@@ -1154,10 +1198,14 @@
             @endif
         </div>
     </div>
-
 </div>
 
-{{-- Data ruangan untuk galeri (dapat di-update via AJAX) --}}
+<div class="mobile-action-bar">
+    <a href="{{ route('bookings.create') }}" class="btn-book-mobile">
+        <i class="bi bi-plus-lg"></i> Booking Baru
+    </a>
+</div>
+
 <script type="application/json" id="roomsDataJson">@json($roomsData)</script>
 
 {{-- ========== MATERIAL TIME PICKER DIALOG ========== --}}
@@ -1172,21 +1220,13 @@
             <div class="mtp-field active" data-field="start" onclick="setActiveField('start')">
                 <div class="mtp-field-label">Mulai</div>
                 <div class="mtp-digital">
-                    <span class="mtp-unit" id="mtpStartHour" onclick="event.stopPropagation();setMode('hour')">07</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpStartMin" onclick="event.stopPropagation();setMode('minute')">00</span>
-                </div>
-                <div class="mtp-ampm">
-                    <button type="button" class="mtp-ampm-btn" id="mtpStartAm" onclick="event.stopPropagation();setActiveField('start');setAmpmFor('start','AM')">AM</button>
-                    <button type="button" class="mtp-ampm-btn" id="mtpStartPm" onclick="event.stopPropagation();setActiveField('start');setAmpmFor('start','PM')">PM</button>
+                    <span class="mtp-unit" id="mtpStartHour" onclick="event.stopPropagation();selectUnit('start', 'hour')">07</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpStartMin" onclick="event.stopPropagation();selectUnit('start', 'minute')">00</span>
                 </div>
             </div>
             <div class="mtp-field" data-field="end" onclick="setActiveField('end')">
                 <div class="mtp-field-label">Selesai</div>
                 <div class="mtp-digital">
-                    <span class="mtp-unit" id="mtpEndHour" onclick="event.stopPropagation();setMode('hour')">16</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpEndMin" onclick="event.stopPropagation();setMode('minute')">00</span>
-                </div>
-                <div class="mtp-ampm">
-                    <button type="button" class="mtp-ampm-btn" id="mtpEndAm" onclick="event.stopPropagation();setActiveField('end');setAmpmFor('end','AM')">AM</button>
-                    <button type="button" class="mtp-ampm-btn" id="mtpEndPm" onclick="event.stopPropagation();setActiveField('end');setAmpmFor('end','PM')">PM</button>
+                    <span class="mtp-unit" id="mtpEndHour" onclick="event.stopPropagation();selectUnit('end', 'hour')">16</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpEndMin" onclick="event.stopPropagation();selectUnit('end', 'minute')">00</span>
                 </div>
             </div>
         </div>
@@ -1195,18 +1235,18 @@
 
         <div class="mtp-clock-wrap">
             <div class="mtp-clock" id="mtpClock">
-                <svg class="mtp-hand-svg" viewBox="0 0 280 280" aria-hidden="true">
-                    <line class="mtp-hand" id="mtpHand" x1="140" y1="140" x2="140" y2="40"/>
+                <svg class="mtp-hand-svg" viewBox="0 0 100 100" aria-hidden="true">
+                    <line class="mtp-hand" id="mtpHand" x1="50" y1="50" x2="50" y2="15" vector-effect="non-scaling-stroke" />
                 </svg>
                 <div class="mtp-center-dot"></div>
             </div>
-            <div class="mtp-mode-hint" id="mtpModeHint">Pilih jam</div>
+            <div class="mtp-mode-hint" id="mtpModeHint">Pilih jam mulai</div>
         </div>
 
         <div class="mtp-footer">
             <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode jam/menit" aria-label="Ganti mode"><i class="bi bi-grid-3x3-gap"></i></button>
             <div class="mtp-actions">
-                <button type="button" class="mtp-btn mtp-btn-cancel" onclick="closeTimePicker(true)">Cancel</button>
+                <button type="button" class="mtp-btn mtp-btn-cancel" onclick="closeTimePicker(true)">Batal</button>
                 <button type="button" class="mtp-btn mtp-btn-ok" onclick="applyTimePicker()">OK</button>
             </div>
         </div>
@@ -1229,6 +1269,23 @@
 <script>
     (function () {
         'use strict';
+
+        // ===================================================================
+        // REAL-TIME DATE & TIME
+        // ===================================================================
+        function updateLiveDateTime() {
+            var now = new Date();
+            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            var dateStr = now.toLocaleDateString('id-ID', options);
+            var timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            var dateEl = document.getElementById('liveDate');
+            var timeEl = document.getElementById('liveTime');
+            if (dateEl) dateEl.textContent = dateStr;
+            if (timeEl) timeEl.textContent = timeStr;
+        }
+        setInterval(updateLiveDateTime, 1000);
+        updateLiveDateTime();
 
         // ===================================================================
         // DATA GALERI
@@ -1341,11 +1398,9 @@
                         if (cur && neu) cur.replaceWith(neu);
                     }
 
-                    replaceBy('.db-meta');
                     replaceBy('.db-stats-grid');
                     replaceBy('.schedule-card');
 
-                    // Update roomsData JSON
                     var newRdj = doc.querySelector('#roomsDataJson');
                     var curRdj = document.getElementById('roomsDataJson');
                     if (newRdj && curRdj) {
@@ -1353,22 +1408,18 @@
                         try { roomsData = JSON.parse(newRdj.textContent); } catch (e) {}
                     }
 
-                    // Update date input
                     var newDate = doc.querySelector('#dateSelector');
                     if (newDate) document.getElementById('dateSelector').value = newDate.value;
 
-                    // Update time trigger label
                     var newLabel = doc.querySelector('#timeTriggerLabel');
                     var curLabel = document.getElementById('timeTriggerLabel');
                     if (newLabel && curLabel) curLabel.textContent = newLabel.textContent;
 
-                    // Update selects
                     var newRoom = doc.querySelector('#roomFilter');
                     if (newRoom) document.getElementById('roomFilter').value = newRoom.value;
                     var newStatus = doc.querySelector('#statusFilterSelect');
                     if (newStatus) document.getElementById('statusFilterSelect').value = newStatus.value;
 
-                    // Re-init tooltips & now-line scroll
                     initTooltips();
                     var nowLine = document.getElementById('nowLine');
                     if (nowLine) setTimeout(scrollToNow, 300);
@@ -1415,7 +1466,7 @@
             delete params.rooms;
             delete params.status;
             loadDashboard(params);
-        };
+        }
 
         window.filterByRoom = function (roomId) {
             var params = getCurrentParams();
@@ -1434,15 +1485,13 @@
             window.location.reload();
         };
 
-        // Handle back/forward
         window.addEventListener('popstate', function () { window.location.reload(); });
 
         // ===================================================================
-        // MATERIAL TIME PICKER — dialog analog clock
+        // MATERIAL TIME PICKER — dialog analog clock (24 Hour Format)
         // ===================================================================
-        var MTP_WORK_START = 7 * 60;   // 07:00 dalam menit
-        var MTP_WORK_END   = 16 * 60;  // 16:00 dalam menit
-        var MTP_STEP       = 30;
+        var MTP_WORK_START = 7;
+        var MTP_WORK_END = 16;
 
         var mtpState = {
             open: false,
@@ -1453,14 +1502,11 @@
         };
 
         function pad2(n) { return String(n).padStart(2, '0'); }
-        function to12h(h24) { var h = h24 % 12; return h === 0 ? 12 : h; }
-        function toAmpm(h24) { return h24 < 12 ? 'AM' : 'PM'; }
-        function ampmTo24(num12, ampm) {
-            if (ampm === 'PM') return num12 === 12 ? 12 : num12 + 12;
-            return num12 === 12 ? 0 : num12;
-        }
         function minsOf(t) { return t.h * 60 + t.m; }
-        function isValidOperational(t) { var m = minsOf(t); return m >= MTP_WORK_START && m <= MTP_WORK_END; }
+        function isValidOperational(t) {
+            var m = minsOf(t);
+            return m >= MTP_WORK_START * 60 && m <= MTP_WORK_END * 60;
+        }
 
         function parseLabel(str) {
             var p = String(str).trim().split(':');
@@ -1472,9 +1518,10 @@
             var parts = labelEl.textContent.split('–');
             mtpState.start = parseLabel(parts[0] || '07:00');
             mtpState.end   = parseLabel(parts[1] || '16:00');
-            // clamp
-            if (!isValidOperational(mtpState.start)) mtpState.start = { h: 7, m: 0 };
-            if (!isValidOperational(mtpState.end))   mtpState.end   = { h: 16, m: 0 };
+            
+            if (!isValidOperational(mtpState.start)) mtpState.start = { h: MTP_WORK_START, m: 0 };
+            if (!isValidOperational(mtpState.end))   mtpState.end   = { h: MTP_WORK_END, m: 0 };
+            
             mtpState.activeField = 'start';
             mtpState.mode = 'hour';
             mtpState.open = true;
@@ -1502,45 +1549,33 @@
             hideMtpError();
         };
 
+        // FUNGSI BARU: Klik angka Jam/Menit langsung
+        window.selectUnit = function(field, mode) {
+            mtpState.activeField = field;
+            mtpState.mode = mode;
+            renderClock();
+            updateDigitalDisplay();
+            hideMtpError();
+        };
+
         window.toggleTimeMode = function () {
             mtpState.mode = mtpState.mode === 'hour' ? 'minute' : 'hour';
             renderClock();
             updateDigitalDisplay();
         };
 
-        window.setMode = function (mode) {
-            mtpState.mode = mode;
-            renderClock();
-            updateDigitalDisplay();
-        };
-
-        window.setAmpmFor = function (field, ampm) {
-            var t = mtpState[field];
-            var cur12 = to12h(t.h);
-            var curAmpm = toAmpm(t.h);
-            if (curAmpm === ampm) { renderClock(); updateDigitalDisplay(); return; }
-            var h24 = ampmTo24(cur12, ampm);
-            var candidate = { h: h24, m: t.m };
-            if (!isValidOperational(candidate)) {
-                showMtpError('Jam ' + pad2(h24) + ':' + pad2(t.m) + ' di luar jam operasional (07:00–16:00).');
-                updateDigitalDisplay();
-                return;
+        function isDisabled(h, m) {
+            if (mtpState.activeField === 'end') {
+                var startMins = minsOf(mtpState.start);
+                var currentMins = h * 60 + m;
+                return currentMins <= startMins;
             }
-            t.h = h24;
-            hideMtpError();
-            renderClock();
-            updateDigitalDisplay();
-        };
+            return false;
+        }
 
-        window.selectHour = function (num12) {
+        window.selectHour = function (h24) {
+            if (isDisabled(h24, 0) && isDisabled(h24, 30)) return;
             var t = mtpState[mtpState.activeField];
-            var ampm = toAmpm(t.h);
-            var h24 = ampmTo24(num12, ampm);
-            var candidate = { h: h24, m: t.m };
-            if (!isValidOperational(candidate)) {
-                showMtpError('Jam ' + pad2(h24) + ':' + pad2(t.m) + ' di luar jam operasional (07:00–16:00).');
-                return;
-            }
             t.h = h24;
             hideMtpError();
             mtpState.mode = 'minute';
@@ -1549,72 +1584,106 @@
         };
 
         window.selectMinute = function (m) {
+            if (isDisabled(mtpState[mtpState.activeField].h, m)) return;
             var t = mtpState[mtpState.activeField];
             t.m = m;
             hideMtpError();
+            updateDigitalDisplay();
+
+            // AUTO-SWITCH LOGIC
+            if (mtpState.activeField === 'start') {
+                mtpState.activeField = 'end';
+                mtpState.mode = 'hour';
+                
+                if (minsOf(mtpState.end) <= minsOf(mtpState.start)) {
+                    var newEndMins = minsOf(mtpState.start) + 30;
+                    if (newEndMins > MTP_WORK_END * 60) newEndMins = MTP_WORK_END * 60;
+                    mtpState.end = { h: Math.floor(newEndMins / 60), m: newEndMins % 60 };
+                }
+            }
+            
             renderClock();
             updateDigitalDisplay();
         };
 
         function renderClock() {
             var clock = document.getElementById('mtpClock');
-            // hapus angka lama (pertahankan svg & center dot)
             clock.querySelectorAll('.mtp-num').forEach(function (n) { n.remove(); });
 
             var t = mtpState[mtpState.activeField];
-            var R = 108, C = 140;
+            var R = 38.5; // percentage radius
+            var C = 50;   // percentage center
 
             if (mtpState.mode === 'hour') {
-                for (var n = 1; n <= 12; n++) {
-                    (function (num) {
-                        var angle = (num * 30) * Math.PI / 180;
-                        var x = C + R * Math.sin(angle);
-                        var y = C - R * Math.cos(angle);
-                        var el = document.createElement('div');
-                        el.className = 'mtp-num';
-                        el.textContent = num;
-                        el.style.left = x + 'px';
-                        el.style.top = y + 'px';
-                        var ampm = toAmpm(t.h);
-                        var h24 = ampmTo24(num, ampm);
-                        if (h24 < 7 || h24 > 16) {
-                            el.classList.add('disabled');
-                        } else {
-                            el.addEventListener('click', function () { selectHour(num); });
-                        }
-                        if (to12h(t.h) === num) el.classList.add('selected');
-                        clock.appendChild(el);
-                    })(n);
+                var hours = [];
+                for (var h = MTP_WORK_START; h <= MTP_WORK_END; h++) hours.push(h);
+                var totalHours = hours.length;
+                var angleStep = 360 / totalHours;
+                var offset = hours.indexOf(12); // Put 12 at the top
+
+                hours.forEach(function(h, i) {
+                    var angle = ((i - offset) * angleStep - 90) * Math.PI / 180;
+                    var x = C + R * Math.cos(angle);
+                    var y = C + R * Math.sin(angle);
+                    var el = document.createElement('div');
+                    el.className = 'mtp-num';
+                    el.textContent = pad2(h);
+                    el.style.left = x + '%';
+                    el.style.top = y + '%';
+                    
+                    var h00Disabled = isDisabled(h, 0);
+                    var h30Disabled = isDisabled(h, 30);
+                    
+                    if (h00Disabled && h30Disabled) {
+                        el.classList.add('disabled');
+                    } else {
+                        el.addEventListener('click', function() { selectHour(h); });
+                        if (t.h === h) el.classList.add('selected');
+                    }
+                    clock.appendChild(el);
+                });
+
+                var selIdx = hours.indexOf(t.h);
+                if (selIdx !== -1) {
+                    var handAngle = ((selIdx - offset) * angleStep - 90) * Math.PI / 180;
+                    var handX = C + 35 * Math.cos(handAngle);
+                    var handY = C + 35 * Math.sin(handAngle);
+                    setHand(handX, handY);
                 }
-                var selH = to12h(t.h);
-                var angH = (selH * 30) * Math.PI / 180;
-                setHand(C + 92 * Math.sin(angH), C - 92 * Math.cos(angH));
-                document.getElementById('mtpModeHint').textContent = 'Pilih jam — AM/PM menyesuaikan';
+                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
+                    ? 'Pilih Jam Mulai (07 - 16)' 
+                    : 'Pilih Jam Selesai (07 - 16)';
             } else {
-                for (var i = 0; i < 12; i++) {
-                    (function (idx) {
-                        var m = idx * 5;
-                        var angle = (idx * 30) * Math.PI / 180;
-                        var x = C + R * Math.sin(angle);
-                        var y = C - R * Math.cos(angle);
-                        var el = document.createElement('div');
-                        el.className = 'mtp-num';
-                        el.textContent = pad2(m);
-                        el.style.left = x + 'px';
-                        el.style.top = y + 'px';
-                        if (m % MTP_STEP !== 0) {
-                            el.classList.add('disabled');
-                        } else {
-                            el.addEventListener('click', function () { selectMinute(m); });
-                        }
+                var minutes = [0, 30];
+                minutes.forEach(function(m, i) {
+                    var angle = (i * 180 - 90) * Math.PI / 180;
+                    var x = C + R * Math.cos(angle);
+                    var y = C + R * Math.sin(angle);
+                    var el = document.createElement('div');
+                    el.className = 'mtp-num';
+                    el.textContent = pad2(m);
+                    el.style.left = x + '%';
+                    el.style.top = y + '%';
+                    
+                    if (isDisabled(t.h, m)) {
+                        el.classList.add('disabled');
+                    } else {
+                        el.addEventListener('click', function() { selectMinute(m); });
                         if (t.m === m) el.classList.add('selected');
-                        clock.appendChild(el);
-                    })(i);
+                    }
+                    clock.appendChild(el);
+                });
+
+                var selIdxM = minutes.indexOf(t.m);
+                if (selIdxM !== -1) {
+                    var handAngleM = (selIdxM * 180 - 90) * Math.PI / 180;
+                    var handXM = C + 35 * Math.cos(handAngleM);
+                    var handYM = C + 35 * Math.sin(handAngleM);
+                    setHand(handXM, handYM);
                 }
-                var idxM = t.m / 5;
-                var angM = (idxM * 30) * Math.PI / 180;
-                setHand(C + 92 * Math.sin(angM), C - 92 * Math.cos(angM));
-                document.getElementById('mtpModeHint').textContent = 'Pilih menit (hanya :00 dan :30)';
+                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
+                    ? 'Pilih Menit Mulai (00 / 30)' 
+                    : 'Pilih Menit Selesai (00 / 30)';
             }
         }
 
@@ -1631,16 +1700,10 @@
             document.getElementById('mtpEndHour').textContent = pad2(e.h);
             document.getElementById('mtpEndMin').textContent = pad2(e.m);
 
-            document.getElementById('mtpStartAm').classList.toggle('active', toAmpm(s.h) === 'AM');
-            document.getElementById('mtpStartPm').classList.toggle('active', toAmpm(s.h) === 'PM');
-            document.getElementById('mtpEndAm').classList.toggle('active', toAmpm(e.h) === 'AM');
-            document.getElementById('mtpEndPm').classList.toggle('active', toAmpm(e.h) === 'PM');
-
             document.querySelectorAll('.mtp-field').forEach(function (f) {
                 f.classList.toggle('active', f.dataset.field === mtpState.activeField);
             });
 
-            // highlight unit aktif (jam/menit) pada field aktif
             var prefix = mtpState.activeField === 'start' ? 'mtpStart' : 'mtpEnd';
             var hourEl = document.getElementById(prefix + 'Hour');
             var minEl = document.getElementById(prefix + 'Min');
@@ -1657,15 +1720,6 @@
         function hideMtpError() {
             document.getElementById('mtpError').classList.remove('show');
         }
-
-        window.resetTimePicker = function () {
-            mtpState.start = { h: 7, m: 0 };
-            mtpState.end = { h: 16, m: 0 };
-            mtpState.mode = 'hour';
-            hideMtpError();
-            renderClock();
-            updateDigitalDisplay();
-        };
 
         window.applyTimePicker = function () {
             if (!isValidOperational(mtpState.start) || !isValidOperational(mtpState.end)) {
@@ -1687,7 +1741,6 @@
             loadDashboard(params);
         };
 
-        // Escape untuk menutup time picker
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && mtpState.open) closeTimePicker(true);
         });
@@ -1715,7 +1768,6 @@
             }
         };
 
-        // Auto-scroll ke waktu sekarang saat halaman dimuat
         var nowLine = document.getElementById('nowLine');
         if (nowLine) {
             setTimeout(function () { window.scrollToNow(); }, 300);
@@ -1734,14 +1786,6 @@
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initTooltips);
         } else { initTooltips(); }
-
-        // Navigasi tanggal via keyboard (Ctrl + panah)
-        document.addEventListener('keydown', function (e) {
-            var input = document.getElementById('dateSelector');
-            if (!input || !e.ctrlKey) return;
-            if (e.key === 'ArrowLeft') { e.preventDefault(); shiftDate(-1); }
-            else if (e.key === 'ArrowRight') { e.preventDefault(); shiftDate(1); }
-        });
 
     })();
 </script>
