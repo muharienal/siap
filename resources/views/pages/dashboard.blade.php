@@ -9,9 +9,9 @@
 
 @section('content')
 <style>
-    /* ============================================================
+    /* =====================================================================
        DASHBOARD — layout dasar
-       ============================================================ */
+       ===================================================================== */
     .dashboard-content {
         padding: var(--space-6) var(--space-7);
         max-width: 1680px;
@@ -20,7 +20,7 @@
         width: 100%;
     }
 
-    /* ---------- Toolbar (judul halaman + aksi utama) ---------- */
+    /* Toolbar */
     .db-toolbar {
         display: flex;
         justify-content: space-between;
@@ -39,7 +39,7 @@
     .db-toolbar .db-meta {
         font-size: var(--font-size-sm);
         color: var(--text-secondary);
-        margin: var(--space-2) 0 0 0;
+        margin: var(--space-2) 0 0;
         display: flex;
         align-items: center;
         gap: var(--space-3);
@@ -120,9 +120,7 @@
         outline-offset: 2px;
     }
 
-    /* ============================================================
-       STAT CARDS
-       ============================================================ */
+    /* Stat cards */
     .db-stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -143,19 +141,16 @@
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
     .stat-card .stat-icon {
-        width: 52px;
-        height: 52px;
+        width: 52px; height: 52px;
         border-radius: var(--radius-sm);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         font-size: 1.35rem;
         flex-shrink: 0;
     }
     .stat-card .stat-icon.blue   { background: rgba(59,130,246,0.1);  color: var(--brand-blue); }
-    .stat-card .stat-icon.green  { background: rgba(16,185,129,0.1); color: var(--brand-green-dark); }
+    .stat-card .stat-icon.green  { background: rgba(16,185,129,0.1);  color: var(--brand-green-dark); }
     .stat-card .stat-icon.amber  { background: rgba(245,158,11,0.12); color: #b45309; }
-    .stat-card .stat-icon.red    { background: rgba(239,68,68,0.1);  color: #b91c1c; }
+    .stat-card .stat-icon.red    { background: rgba(239,68,68,0.1);   color: #b91c1c; }
     .stat-card .stat-body { min-width: 0; }
     .stat-card .stat-value {
         font-size: var(--font-size-2xl);
@@ -177,9 +172,7 @@
         text-overflow: ellipsis;
     }
 
-    /* ============================================================
-       CONTROL BAR (navigasi tanggal + filter)
-       ============================================================ */
+    /* Control bar */
     .db-controls {
         display: flex;
         flex-wrap: wrap;
@@ -192,8 +185,6 @@
         border-radius: var(--radius-card);
         box-shadow: var(--shadow-card);
     }
-
-    /* Grup navigasi tanggal — satu unit visual (today | ‹ tanggal › | date-picker) */
     .date-navigator {
         display: flex;
         align-items: stretch;
@@ -260,7 +251,6 @@
         background: var(--border-color-light);
     }
 
-    /* Filter sekunder: label kecil supaya jelas beda prioritas dari navigasi tanggal */
     .db-filter-group {
         display: flex;
         flex-direction: column;
@@ -288,7 +278,7 @@
 
     .db-controls .filter-spacer { flex: 1; }
 
-    /* ---------- Material-style Time Range Picker ---------- */
+    /* Time trigger button */
     .time-trigger {
         height: 42px;
         padding: 0 var(--space-4);
@@ -309,130 +299,245 @@
     .time-trigger i.bi-clock { color: var(--brand-orange); }
     .time-trigger .chevron { color: var(--text-muted); font-size: 0.65rem; margin-left: 2px; }
 
-    .time-picker-popover {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        z-index: 200;
-        width: 320px;
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-dropdown);
-        border: 1px solid var(--border-color-light);
-        padding: var(--space-5);
+    /* =====================================================================
+       MATERIAL TIME PICKER — dialog modal (z-index sangat tinggi)
+       ===================================================================== */
+    .mtp-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
         display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.32);
+        animation: mtpFadeIn 0.18s ease;
+        padding: 16px;
     }
-    .time-picker-popover.open { display: block; animation: fadeUp 0.15s ease forwards; }
-    .time-picker-popover .tp-title {
-        font-size: var(--font-size-xs);
+    .mtp-overlay.open { display: flex; }
+    .mtp-dialog {
+        background: var(--bg-card);
+        border-radius: 16px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+        width: 360px;
+        max-width: 100%;
+        max-height: 92vh;
+        overflow-y: auto;
+        animation: mtpSlideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes mtpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes mtpSlideUp { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+    .mtp-header { padding: 20px 24px 6px; }
+    .mtp-title {
+        font-size: 13px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.6px;
         color: var(--text-muted);
-        margin-bottom: 2px;
     }
-    .time-picker-popover .tp-subtitle {
-        font-size: var(--font-size-xs);
+    .mtp-subtitle {
+        font-size: 12px;
         color: var(--text-muted);
-        margin-bottom: var(--space-4);
+        margin-top: 2px;
     }
-    .tp-columns {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-3);
-        margin-bottom: var(--space-4);
-    }
-    .tp-col-label {
-        font-size: var(--font-size-xs);
-        font-weight: 700;
-        color: var(--text-secondary);
-        margin-bottom: var(--space-2);
+
+    .mtp-time-display {
         display: flex;
+        justify-content: center;
+        gap: 24px;
+        padding: 10px 24px 6px;
+    }
+    .mtp-field {
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 6px;
-    }
-    .tp-col-label i { color: var(--brand-orange); }
-    .tp-list {
-        max-height: 220px;
-        overflow-y: auto;
-        border: 1px solid var(--border-color-light);
-        border-radius: var(--radius-sm);
-        background: var(--bg-body);
-    }
-    .tp-option {
-        padding: var(--space-2) var(--space-3);
-        font-size: var(--font-size-sm);
-        font-weight: 500;
-        color: var(--text-primary);
+        gap: 4px;
         cursor: pointer;
-        text-align: center;
-        transition: background var(--transition-fast), color var(--transition-fast);
-        border-bottom: 1px solid var(--border-color-light);
+        padding: 8px 14px;
+        border-radius: 12px;
+        transition: background var(--transition-fast);
     }
-    .tp-option:last-child { border-bottom: none; }
-    .tp-option:hover:not(.disabled) { background: rgba(249,115,22,0.08); }
-    .tp-option.selected {
-        background: var(--brand-gradient);
-        color: var(--text-inverse);
+    .mtp-field:hover { background: var(--bg-hover); }
+    .mtp-field.active .mtp-digital { color: var(--brand-orange); }
+    .mtp-field.active .mtp-field-label { color: var(--brand-orange-dark); }
+    .mtp-field-label {
+        font-size: 11px;
         font-weight: 700;
-    }
-    .tp-option.disabled {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         color: var(--text-muted);
-        opacity: 0.4;
-        cursor: not-allowed;
-        text-decoration: line-through;
     }
-    .tp-error {
-        font-size: var(--font-size-xs);
-        color: #b91c1c;
-        background: rgba(239,68,68,0.08);
-        border-radius: var(--radius-xs);
-        padding: var(--space-2) var(--space-3);
-        margin-bottom: var(--space-3);
+    .mtp-digital {
+        font-size: 46px;
+        font-weight: 400;
+        color: var(--text-primary);
+        line-height: 1;
+        display: flex;
+        align-items: baseline;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+    }
+    .mtp-digital .mtp-colon { opacity: 0.45; padding: 0 2px; }
+    .mtp-digital .mtp-unit {
+        cursor: pointer;
+        padding: 0 3px;
+        border-radius: 8px;
+        transition: background var(--transition-fast);
+    }
+    .mtp-digital .mtp-unit:hover { background: rgba(249, 115, 22, 0.08); }
+    .mtp-digital .mtp-unit.mode-active {
+        background: rgba(249, 115, 22, 0.14);
+        color: var(--brand-orange);
+    }
+    .mtp-ampm {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-top: 4px;
+    }
+    .mtp-ampm-btn {
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
+        color: var(--text-secondary);
+        border-radius: 8px;
+        padding: 2px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        line-height: 1.5;
+        transition: all var(--transition-fast);
+        min-width: 44px;
+    }
+    .mtp-ampm-btn:hover:not(.active) { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
+    .mtp-ampm-btn.active {
+        background: var(--brand-orange);
+        color: #fff;
+        border-color: var(--brand-orange);
+    }
+
+    .mtp-error {
         display: none;
         align-items: center;
         gap: 6px;
+        font-size: 12px;
+        color: #b91c1c;
+        background: rgba(239, 68, 68, 0.08);
+        border-radius: var(--radius-xs);
+        padding: 7px 12px;
+        margin: 4px 24px 0;
     }
-    .tp-error.show { display: flex; }
-    .tp-footer {
+    .mtp-error.show { display: flex; }
+
+    .mtp-clock-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 14px 24px 6px;
+    }
+    .mtp-clock {
+        position: relative;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: var(--bg-body);
+        user-select: none;
+        flex-shrink: 0;
+    }
+    .mtp-num {
+        position: absolute;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+        transform: translate(-50%, -50%);
+        transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+        background: transparent;
+    }
+    .mtp-num:hover:not(.disabled) { background: rgba(249, 115, 22, 0.12); }
+    .mtp-num.selected {
+        background: var(--brand-orange);
+        color: #fff;
+        font-weight: 700;
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+    .mtp-num.disabled {
+        color: var(--text-muted);
+        opacity: 0.28;
+        cursor: not-allowed;
+    }
+    .mtp-hand-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+    .mtp-hand {
+        stroke: var(--brand-orange);
+        stroke-width: 2;
+        stroke-linecap: round;
+        transition: x2 0.2s ease, y2 0.2s ease;
+    }
+    .mtp-center-dot {
+        position: absolute;
+        left: 50%; top: 50%;
+        width: 12px; height: 12px;
+        background: var(--brand-orange);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 2;
+    }
+    .mtp-mode-hint {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 8px;
+        height: 16px;
+        text-align: center;
+    }
+
+    .mtp-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: var(--space-2);
-        border-top: 1px solid var(--border-color-light);
-        padding-top: var(--space-4);
+        padding: 10px 16px 16px;
     }
-    .tp-reset {
+    .mtp-icon-btn {
         background: none;
         border: none;
-        font-size: var(--font-size-xs);
-        font-weight: 600;
-        color: var(--text-secondary);
+        color: var(--text-muted);
+        font-size: 18px;
         cursor: pointer;
-        padding: var(--space-2) var(--space-2);
+        padding: 8px;
+        border-radius: 8px;
+        transition: all var(--transition-fast);
     }
-    .tp-reset:hover { color: var(--brand-orange-dark); }
-    .tp-actions { display: flex; gap: var(--space-2); }
-    .tp-btn {
-        height: 38px;
-        padding: 0 var(--space-4);
+    .mtp-icon-btn:hover { background: var(--bg-hover); color: var(--brand-orange); }
+    .mtp-actions { display: flex; gap: 8px; }
+    .mtp-btn {
+        height: 36px;
+        padding: 0 18px;
         border-radius: var(--radius-sm);
-        font-size: var(--font-size-sm);
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         border: none;
+        transition: all var(--transition-fast);
     }
-    .tp-btn-cancel { background: transparent; color: var(--text-secondary); }
-    .tp-btn-cancel:hover { background: var(--bg-hover); }
-    .tp-btn-apply { background: var(--brand-gradient); color: var(--text-inverse); }
-    .tp-btn-apply:hover { filter: brightness(1.05); }
-    .tp-overlay { position: fixed; inset: 0; z-index: 199; display: none; }
-    .tp-overlay.open { display: block; }
+    .mtp-btn-cancel { background: transparent; color: var(--text-secondary); }
+    .mtp-btn-cancel:hover { background: var(--bg-hover); }
+    .mtp-btn-ok { background: var(--brand-orange); color: #fff; }
+    .mtp-btn-ok:hover { background: var(--brand-orange-dark); }
 
-    /* ---------- Quick stats: memberi fungsi pada data yang sudah dihitung ---------- */
-    .db-quickstats { display: none; }
-
-    /* ---------- Kartu jadwal ---------- */
+    /* =====================================================================
+       Kartu jadwal
+       ===================================================================== */
     .schedule-card {
         background: var(--bg-card);
         border: 1px solid var(--border-color-light);
@@ -487,7 +592,6 @@
     }
     .current-badge:hover { filter: brightness(0.95); }
 
-    /* Legenda terintegrasi di footer kartu */
     .schedule-legend {
         display: flex;
         flex-wrap: wrap;
@@ -503,10 +607,10 @@
     .schedule-legend .legend-item { display: flex; align-items: center; gap: 6px; }
     .schedule-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .schedule-legend .dot.available { background: var(--brand-green); }
-    .schedule-legend .dot.pending { background: #f59e0b; }
-    .schedule-legend .dot.approved { background: #10b981; }
-    .schedule-legend .dot.rejected { background: #ef4444; }
-    .schedule-legend .dot.current { background: var(--brand-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
+    .schedule-legend .dot.pending   { background: #f59e0b; }
+    .schedule-legend .dot.approved  { background: #10b981; }
+    .schedule-legend .dot.rejected  { background: #ef4444; }
+    .schedule-legend .dot.current   { background: var(--brand-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
 
     .schedule-card .card-body {
         padding: 0;
@@ -520,7 +624,6 @@
     .schedule-card .card-body::-webkit-scrollbar { width: 6px; height: 6px; }
     .schedule-card .card-body::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: var(--radius-pill); }
 
-    /* ---------- Grid kalender ---------- */
     .cal-grid-header {
         display: grid;
         position: sticky;
@@ -546,8 +649,7 @@
         background: var(--bg-body);
     }
     .cal-room-photo {
-        width: 60px;
-        height: 60px;
+        width: 60px; height: 60px;
         border-radius: var(--radius-sm);
         object-fit: cover;
         cursor: pointer;
@@ -559,9 +661,7 @@
     .cal-room-photo:hover { transform: scale(1.06); border-color: var(--brand-orange); }
     .cal-room-photo:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
     .cal-room-photo-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         color: var(--text-muted);
         font-size: 1.5rem;
         background: var(--bg-card);
@@ -603,21 +703,22 @@
         box-sizing: border-box;
     }
     .cal-time-label.hour-mark { border-bottom-color: var(--border-color); }
+
     .cal-room-col {
         position: relative;
         border-right: 1px solid var(--border-color);
         background-image: repeating-linear-gradient(
             to bottom,
             var(--border-color) 0px, var(--border-color) 1px, transparent 1px, transparent 64px
-        ), repeating-linear-gradient(
+        ),
+        repeating-linear-gradient(
             to bottom,
             transparent 0px, transparent 63px, var(--border-color-light) 63px, var(--border-color-light) 64px, transparent 64px, transparent 127px, var(--border-color-light) 127px, var(--border-color-light) 128px
         );
     }
     .cal-slot-hover {
         position: absolute;
-        left: 0;
-        right: 0;
+        left: 0; right: 0;
         cursor: pointer;
         z-index: 1;
     }
@@ -641,8 +742,7 @@
 
     .cal-event {
         position: absolute;
-        left: 6px;
-        right: 6px;
+        left: 6px; right: 6px;
         border-left: 4px solid;
         border-radius: var(--radius-sm);
         padding: 6px 10px;
@@ -689,7 +789,7 @@
     .no-results { padding: var(--space-9); text-align: center; color: var(--text-muted); font-size: var(--font-size-md); }
     .no-results i { font-size: 2.75rem; display: block; margin-bottom: var(--space-3); color: var(--border-color); }
 
-    /* ---------- Lightbox galeri foto ruangan ---------- */
+    /* Lightbox galeri foto ruangan */
     .gallery-lightbox {
         display: none;
         position: fixed;
@@ -716,7 +816,11 @@
     .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---------- Responsive ---------- */
+    /* Loading indicator untuk AJAX */
+    .db-ajax-loading .schedule-card,
+    .db-ajax-loading .db-stats-grid { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
+
+    /* Responsive */
     @media (max-width: 1199.98px) {
         .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -730,7 +834,6 @@
         .db-filter-group { width: 100%; }
         .db-filter-group .db-select,
         .db-filter-group .time-trigger { width: 100%; }
-        .time-picker-popover { left: 0; right: 0; width: auto; }
         .db-toolbar { flex-direction: column; align-items: stretch; }
         .db-toolbar .actions { width: 100%; }
         .db-toolbar .actions .btn-primary-sm,
@@ -741,10 +844,12 @@
         .cal-room-photo, .cal-room-photo-placeholder { width: 48px; height: 48px; }
         .cal-room-name { font-size: var(--font-size-xs); }
         .schedule-card .card-body { max-height: 500px; }
+        .mtp-time-display { gap: 16px; }
+        .mtp-digital { font-size: 38px; }
     }
     @media (max-width: 575.98px) {
         .dashboard-content { padding: var(--space-3); }
-        .db-stats-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
+        .db-stats-grid { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
         .stat-card { padding: var(--space-4); gap: var(--space-3); }
         .stat-card .stat-icon { width: 42px; height: 42px; font-size: 1.1rem; }
         .stat-card .stat-value { font-size: var(--font-size-lg); }
@@ -754,12 +859,18 @@
         .schedule-legend { gap: var(--space-3); }
         .db-toolbar h1 { font-size: var(--font-size-xl); }
         .schedule-card .card-header { flex-direction: column; align-items: flex-start; }
+        .mtp-clock { width: 248px; height: 248px; }
+        .mtp-num { width: 40px; height: 40px; font-size: 15px; }
+        .mtp-digital { font-size: 34px; }
+        .mtp-time-display { gap: 12px; padding: 8px 12px 4px; }
+        .mtp-field { padding: 6px 8px; }
     }
 
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .db-controls { animation: fadeUp 0.3s ease forwards; }
     .schedule-card { animation: fadeUp 0.4s ease forwards; }
 </style>
+
 
 <div class="dashboard-content">
 
@@ -791,9 +902,12 @@
         <div>
             <h1>Dashboard</h1>
             <p class="db-meta">
-                <span><i class="bi bi-calendar3 me-1"></i>{{ Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
+                <span id="dbMetaDate"><i class="bi bi-calendar3 me-1"></i>{{ Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
                 @if($isWeekend)
                     <span class="badge-holiday"><i class="bi bi-moon-stars"></i> Libur akhir pekan</span>
+                @endif
+                @if($isToday && !$isWeekend)
+                    <span class="badge-holiday" style="background: rgba(16,185,129,0.12); color: #047857;"><i class="bi bi-clock"></i> Hari ini</span>
                 @endif
             </p>
         </div>
@@ -812,34 +926,34 @@
         <div class="stat-card">
             <div class="stat-icon blue"><i class="bi bi-building"></i></div>
             <div class="stat-body">
-                <div class="stat-value">{{ $availableRoomsNow }}<small>/ {{ $totalRoomsToday }}</small></div>
+                <div class="stat-value" id="statAvailable">{{ $availableRoomsNow }}<small>/ {{ $totalRoomsToday }}</small></div>
                 <div class="stat-label">Ruangan tersedia sekarang</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
             <div class="stat-body">
-                <div class="stat-value">{{ $totalBookingsToday }}</div>
+                <div class="stat-value" id="statBookings">{{ $totalBookingsToday }}</div>
                 <div class="stat-label">Booking hari ini</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
             <div class="stat-body">
-                <div class="stat-value">{{ $totalPending }}</div>
+                <div class="stat-value" id="statPending">{{ $totalPending }}</div>
                 <div class="stat-label">Menunggu persetujuan</div>
             </div>
         </div>
         <div class="stat-card">
             <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
             <div class="stat-body">
-                <div class="stat-value">{{ $totalRejected }}</div>
+                <div class="stat-value" id="statRejected">{{ $totalRejected }}</div>
                 <div class="stat-label">Ditolak hari ini</div>
             </div>
         </div>
     </div>
 
-    {{-- ========== CONTROL BAR: navigasi tanggal + filter ========== --}}
+    {{-- ========== CONTROL BAR ========== --}}
     <div class="db-controls">
         <div class="date-navigator">
             <button type="button" class="btn-today" onclick="resetToToday()">
@@ -848,51 +962,25 @@
             <button type="button" class="date-nav-btn" onclick="shiftDate(-1)" aria-label="Tanggal sebelumnya">
                 <i class="bi bi-chevron-left"></i>
             </button>
-            <button type="button" class="date-nav-btn" onclick="shiftDate(1)" aria-label="Tanggal berikutnya">
-                <i class="bi bi-chevron-right"></i>
-            </button>
             <label class="date-display">
                 <i class="bi bi-calendar3"></i>
                 <input type="date" id="dateSelector" name="date" value="{{ $selectedDate }}" onchange="filterByDate(this.value)" aria-label="Pilih tanggal">
             </label>
+            <button type="button" class="date-nav-btn" onclick="shiftDate(1)" aria-label="Tanggal berikutnya">
+                <i class="bi bi-chevron-right"></i>
+            </button>
         </div>
 
         <div class="db-divider"></div>
 
-        {{-- ===== Material-style Jam Kerja Time Range Picker ===== --}}
+        {{-- Material-style Jam Kerja Time Picker --}}
         <div class="db-filter-group" id="timePickerWrapper">
             <label>Jam Kerja</label>
-            <button type="button" class="time-trigger" id="timeTrigger" onclick="toggleTimePicker()" aria-haspopup="true" aria-expanded="false">
+            <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
                 <i class="bi bi-clock"></i>
                 <span id="timeTriggerLabel">{{ $startTime }} – {{ $endTime }}</span>
                 <i class="bi bi-chevron-down chevron"></i>
             </button>
-
-            <div class="time-picker-popover" id="timePickerPopover">
-                <div class="tp-title">Pilih Jam Operasional</div>
-                <div class="tp-subtitle">Rentang 07:00–16:00, interval 30 menit</div>
-
-                <div class="tp-error" id="tpError"><i class="bi bi-exclamation-triangle"></i> <span>Jam mulai harus lebih awal dari jam selesai.</span></div>
-
-                <div class="tp-columns">
-                    <div>
-                        <div class="tp-col-label"><i class="bi bi-play-fill"></i> Mulai</div>
-                        <div class="tp-list" id="tpStartList"></div>
-                    </div>
-                    <div>
-                        <div class="tp-col-label"><i class="bi bi-stop-fill"></i> Selesai</div>
-                        <div class="tp-list" id="tpEndList"></div>
-                    </div>
-                </div>
-
-                <div class="tp-footer">
-                    <button type="button" class="tp-reset" onclick="resetTimePicker()">Reset ke 07:00–16:00</button>
-                    <div class="tp-actions">
-                        <button type="button" class="tp-btn tp-btn-cancel" onclick="closeTimePicker(true)">Batal</button>
-                        <button type="button" class="tp-btn tp-btn-apply" onclick="applyTimePicker()">Terapkan</button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="db-divider"></div>
@@ -936,13 +1024,13 @@
                         <i class="bi bi-dot"></i> Sekarang {{ $currentSlot }}
                     </button>
                 @endif
-                <span>{{ count($timeSlots) }} slot &middot; {{ $rooms->count() }} ruangan</span>
+                <span>{{ count($timeSlots) }} slot · {{ $rooms->count() }} ruangan</span>
             </div>
         </div>
 
         <div class="card-body cal-body" id="scheduleBody">
             @php
-                $slotHeight = 64; // px per 30 menit
+                $slotHeight = 64;
                 $pxPerMin = $slotHeight / 30;
                 $slotCount = count($timeSlots);
                 $gridHeight = ($slotCount + 1) * $slotHeight;
@@ -1055,7 +1143,7 @@
             @endif
         </div>
 
-        {{-- ========== LEGENDA ========== --}}
+        {{-- Legenda --}}
         <div class="schedule-legend">
             <span class="legend-item"><span class="dot available"></span> Tersedia (klik untuk booking)</span>
             <span class="legend-item"><span class="dot approved"></span> Disetujui</span>
@@ -1069,7 +1157,63 @@
 
 </div>
 
-{{-- ========== LIGHTBOX GALERI FOTO ========== --}}
+{{-- Data ruangan untuk galeri (dapat di-update via AJAX) --}}
+<script type="application/json" id="roomsDataJson">@json($roomsData)</script>
+
+{{-- ========== MATERIAL TIME PICKER DIALOG ========== --}}
+<div class="mtp-overlay" id="mtpOverlay" onclick="if(event.target===this)closeTimePicker(true)">
+    <div class="mtp-dialog" role="dialog" aria-modal="true" aria-labelledby="mtpTitle">
+        <div class="mtp-header">
+            <div class="mtp-title" id="mtpTitle">Pilih Jam Operasional</div>
+            <div class="mtp-subtitle">Rentang 07:00–16:00, interval 30 menit</div>
+        </div>
+
+        <div class="mtp-time-display">
+            <div class="mtp-field active" data-field="start" onclick="setActiveField('start')">
+                <div class="mtp-field-label">Mulai</div>
+                <div class="mtp-digital">
+                    <span class="mtp-unit" id="mtpStartHour" onclick="event.stopPropagation();setMode('hour')">07</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpStartMin" onclick="event.stopPropagation();setMode('minute')">00</span>
+                </div>
+                <div class="mtp-ampm">
+                    <button type="button" class="mtp-ampm-btn" id="mtpStartAm" onclick="event.stopPropagation();setActiveField('start');setAmpmFor('start','AM')">AM</button>
+                    <button type="button" class="mtp-ampm-btn" id="mtpStartPm" onclick="event.stopPropagation();setActiveField('start');setAmpmFor('start','PM')">PM</button>
+                </div>
+            </div>
+            <div class="mtp-field" data-field="end" onclick="setActiveField('end')">
+                <div class="mtp-field-label">Selesai</div>
+                <div class="mtp-digital">
+                    <span class="mtp-unit" id="mtpEndHour" onclick="event.stopPropagation();setMode('hour')">16</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpEndMin" onclick="event.stopPropagation();setMode('minute')">00</span>
+                </div>
+                <div class="mtp-ampm">
+                    <button type="button" class="mtp-ampm-btn" id="mtpEndAm" onclick="event.stopPropagation();setActiveField('end');setAmpmFor('end','AM')">AM</button>
+                    <button type="button" class="mtp-ampm-btn" id="mtpEndPm" onclick="event.stopPropagation();setActiveField('end');setAmpmFor('end','PM')">PM</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mtp-error" id="mtpError"><i class="bi bi-exclamation-triangle"></i> <span></span></div>
+
+        <div class="mtp-clock-wrap">
+            <div class="mtp-clock" id="mtpClock">
+                <svg class="mtp-hand-svg" viewBox="0 0 280 280" aria-hidden="true">
+                    <line class="mtp-hand" id="mtpHand" x1="140" y1="140" x2="140" y2="40"/>
+                </svg>
+                <div class="mtp-center-dot"></div>
+            </div>
+            <div class="mtp-mode-hint" id="mtpModeHint">Pilih jam</div>
+        </div>
+
+        <div class="mtp-footer">
+            <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode jam/menit" aria-label="Ganti mode"><i class="bi bi-grid-3x3-gap"></i></button>
+            <div class="mtp-actions">
+                <button type="button" class="mtp-btn mtp-btn-cancel" onclick="closeTimePicker(true)">Cancel</button>
+                <button type="button" class="mtp-btn mtp-btn-ok" onclick="applyTimePicker()">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ========== LIGHTBOX ========== --}}
 <div class="gallery-lightbox" id="lightbox">
     <div class="lightbox-content">
         <button class="close-lightbox" onclick="closeLightbox()" aria-label="Tutup">&times;</button>
@@ -1083,18 +1227,22 @@
 </div>
 
 <script>
-    (function() {
+    (function () {
         'use strict';
 
-        // ========== GALERI FOTO ==========
-        var roomsData = @json($roomsData);
+        // ===================================================================
+        // DATA GALERI
+        // ===================================================================
+        var roomsData = [];
+        try {
+            roomsData = JSON.parse(document.getElementById('roomsDataJson').textContent);
+        } catch (e) { roomsData = []; }
         var currentPhotoIndex = 0;
         var currentPhotos = [];
 
-        window.openGallery = function(roomId) {
-            var room = roomsData.find(function(r) { return r.id == roomId; });
+        window.openGallery = function (roomId) {
+            var room = roomsData.find(function (r) { return r.id == roomId; });
             if (!room || !room.photos || room.photos.length === 0) return;
-
             currentPhotos = room.photos;
             currentPhotoIndex = 0;
             updateLightbox(room.name);
@@ -1107,43 +1255,35 @@
             var caption = document.getElementById('lightboxCaption');
             var counter = document.getElementById('lightboxCounter');
             var thumbs = document.getElementById('lightboxThumbnails');
-
             var photo = currentPhotos[currentPhotoIndex];
-            if (photo) {
-                img.src = photo;
-                img.alt = roomName || 'Foto Ruangan';
-            }
-
+            if (photo) { img.src = photo; img.alt = roomName || 'Foto Ruangan'; }
             caption.textContent = (roomName || '') + ' - ' + (currentPhotoIndex + 1) + '/' + currentPhotos.length;
             counter.textContent = (currentPhotoIndex + 1) + ' dari ' + currentPhotos.length;
-
             thumbs.innerHTML = '';
-            currentPhotos.forEach(function(p, idx) {
+            currentPhotos.forEach(function (p, idx) {
                 var thumb = document.createElement('img');
-                thumb.src = p;
-                thumb.alt = 'Thumbnail ' + (idx + 1);
+                thumb.src = p; thumb.alt = 'Thumbnail ' + (idx + 1);
                 thumb.className = idx === currentPhotoIndex ? 'active' : '';
-                thumb.onclick = function() { currentPhotoIndex = idx; updateLightbox(roomName); };
+                thumb.onclick = function () { currentPhotoIndex = idx; updateLightbox(roomName); };
                 thumbs.appendChild(thumb);
             });
-
             var activeThumb = thumbs.querySelector('.active');
             if (activeThumb) activeThumb.scrollIntoView({ block: 'nearest', inline: 'center' });
         }
 
-        window.closeLightbox = function() {
+        window.closeLightbox = function () {
             document.getElementById('lightbox').classList.remove('active');
             document.body.style.overflow = '';
         };
 
-        window.navigateLightbox = function(direction) {
+        window.navigateLightbox = function (direction) {
             var newIndex = currentPhotoIndex + direction;
             if (newIndex < 0 || newIndex >= currentPhotos.length) return;
             currentPhotoIndex = newIndex;
             updateLightbox();
         };
 
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             var lb = document.getElementById('lightbox');
             if (!lb || !lb.classList.contains('active')) return;
             if (e.key === 'Escape') closeLightbox();
@@ -1151,231 +1291,453 @@
             else if (e.key === 'ArrowRight') navigateLightbox(1);
         });
 
-        document.getElementById('lightbox').addEventListener('click', function(e) {
+        document.getElementById('lightbox').addEventListener('click', function (e) {
             if (e.target === this || e.target === document.querySelector('.lightbox-content')) closeLightbox();
         });
 
-        // ========== FILTER: TANGGAL ==========
-        window.filterByDate = function(selectedDate) {
-            const url = new URL(window.location);
-            url.searchParams.set('date', selectedDate);
-            window.location.href = url.toString();
-        };
+        // ===================================================================
+        // AJAX LOADER — sinkronisasi tanpa reload
+        // ===================================================================
+        var isLoading = false;
 
-        window.shiftDate = function(days) {
-            const input = document.getElementById('dateSelector');
-            let base;
-            if (input && input.value) {
-                const parts = input.value.split('-');
-                base = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            } else {
-                base = new Date();
-            }
-            base.setDate(base.getDate() + days);
-            const y = base.getFullYear();
-            const m = String(base.getMonth() + 1).padStart(2, '0');
-            const d = String(base.getDate()).padStart(2, '0');
-            filterByDate(`${y}-${m}-${d}`);
-        };
-
-        window.resetToToday = function() {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            const today = `${y}-${m}-${d}`;
-            const url = new URL(window.location);
-            url.searchParams.set('date', today);
-            url.searchParams.delete('rooms');
-            url.searchParams.delete('status');
-            window.location.href = url.toString();
-        };
-
-        // ========== FILTER: JAM KERJA — Material-style Time Range Picker ==========
-        const WORK_START_MIN = 7 * 60;   // 07:00
-        const WORK_END_MIN   = 16 * 60;  // 16:00
-        const STEP_MIN       = 30;
-
-        function pad(n) { return String(n).padStart(2, '0'); }
-        function toLabel(mins) { return pad(Math.floor(mins / 60)) + ':' + pad(mins % 60); }
-        function toMinutes(label) {
-            const parts = label.split(':');
-            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        function getCurrentParams() {
+            var url = new URL(window.location.href);
+            var params = {};
+            ['date', 'rooms', 'status', 'start_time', 'end_time'].forEach(function (k) {
+                var v = url.searchParams.get(k);
+                if (v) params[k] = v;
+            });
+            var dateInput = document.getElementById('dateSelector');
+            if (dateInput && dateInput.value) params.date = dateInput.value;
+            return params;
         }
 
-        function buildSlots() {
-            const slots = [];
-            for (let m = WORK_START_MIN; m <= WORK_END_MIN; m += STEP_MIN) slots.push(m);
-            return slots;
-        }
-        const ALL_SLOTS = buildSlots();
+        function loadDashboard(params, opts) {
+            opts = opts || {};
+            if (isLoading) return;
+            isLoading = true;
 
-        let tpStart = toMinutes('{{ $startTime }}');
-        let tpEnd = toMinutes('{{ $endTime }}');
-        if (isNaN(tpStart) || tpStart < WORK_START_MIN || tpStart > WORK_END_MIN) tpStart = WORK_START_MIN;
-        if (isNaN(tpEnd) || tpEnd < WORK_START_MIN || tpEnd > WORK_END_MIN) tpEnd = WORK_END_MIN;
-        if (tpStart >= tpEnd) { tpStart = WORK_START_MIN; tpEnd = WORK_END_MIN; }
-
-        function renderTimeLists() {
-            const startList = document.getElementById('tpStartList');
-            const endList = document.getElementById('tpEndList');
-            startList.innerHTML = '';
-            endList.innerHTML = '';
-
-            ALL_SLOTS.forEach(function(m) {
-                // Mulai: harus lebih kecil dari waktu selesai saat ini
-                const startOpt = document.createElement('div');
-                startOpt.className = 'tp-option' + (m === tpStart ? ' selected' : '') + (m >= tpEnd ? ' disabled' : '');
-                startOpt.textContent = toLabel(m);
-                startOpt.setAttribute('role', 'option');
-                if (m < tpEnd) {
-                    startOpt.addEventListener('click', function() { tpStart = m; renderTimeLists(); });
-                }
-                startList.appendChild(startOpt);
-
-                // Selesai: harus lebih besar dari waktu mulai saat ini
-                const endOpt = document.createElement('div');
-                endOpt.className = 'tp-option' + (m === tpEnd ? ' selected' : '') + (m <= tpStart ? ' disabled' : '');
-                endOpt.textContent = toLabel(m);
-                endOpt.setAttribute('role', 'option');
-                if (m > tpStart) {
-                    endOpt.addEventListener('click', function() { tpEnd = m; renderTimeLists(); });
-                }
-                endList.appendChild(endOpt);
+            var url = new URL(window.location.origin + window.location.pathname);
+            Object.keys(params).forEach(function (k) {
+                var v = params[k];
+                if (v !== '' && v != null) url.searchParams.set(k, v);
             });
 
-            document.getElementById('tpError').classList.remove('show');
+            if (!opts.skipPushState) history.pushState({ params: params }, '', url.toString());
 
-            // Scroll ke item terpilih
-            const selStart = startList.querySelector('.selected');
-            const selEnd = endList.querySelector('.selected');
-            if (selStart) selStart.scrollIntoView({ block: 'center' });
-            if (selEnd) selEnd.scrollIntoView({ block: 'center' });
+            var refreshBtn = document.getElementById('refreshBtn');
+            if (refreshBtn) refreshBtn.classList.add('is-loading');
+            document.body.classList.add('db-ajax-loading');
+            document.body.style.cursor = 'wait';
+
+            fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+                .then(function (html) {
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    function replaceBy(sel) {
+                        var cur = document.querySelector(sel);
+                        var neu = doc.querySelector(sel);
+                        if (cur && neu) cur.replaceWith(neu);
+                    }
+
+                    replaceBy('.db-meta');
+                    replaceBy('.db-stats-grid');
+                    replaceBy('.schedule-card');
+
+                    // Update roomsData JSON
+                    var newRdj = doc.querySelector('#roomsDataJson');
+                    var curRdj = document.getElementById('roomsDataJson');
+                    if (newRdj && curRdj) {
+                        curRdj.textContent = newRdj.textContent;
+                        try { roomsData = JSON.parse(newRdj.textContent); } catch (e) {}
+                    }
+
+                    // Update date input
+                    var newDate = doc.querySelector('#dateSelector');
+                    if (newDate) document.getElementById('dateSelector').value = newDate.value;
+
+                    // Update time trigger label
+                    var newLabel = doc.querySelector('#timeTriggerLabel');
+                    var curLabel = document.getElementById('timeTriggerLabel');
+                    if (newLabel && curLabel) curLabel.textContent = newLabel.textContent;
+
+                    // Update selects
+                    var newRoom = doc.querySelector('#roomFilter');
+                    if (newRoom) document.getElementById('roomFilter').value = newRoom.value;
+                    var newStatus = doc.querySelector('#statusFilterSelect');
+                    if (newStatus) document.getElementById('statusFilterSelect').value = newStatus.value;
+
+                    // Re-init tooltips & now-line scroll
+                    initTooltips();
+                    var nowLine = document.getElementById('nowLine');
+                    if (nowLine) setTimeout(scrollToNow, 300);
+                })
+                .catch(function (err) {
+                    console.error('Dashboard load error:', err);
+                    window.location.href = url.toString();
+                })
+                .finally(function () {
+                    isLoading = false;
+                    if (refreshBtn) refreshBtn.classList.remove('is-loading');
+                    document.body.classList.remove('db-ajax-loading');
+                    document.body.style.cursor = '';
+                });
         }
 
-        window.toggleTimePicker = function() {
-            const popover = document.getElementById('timePickerPopover');
-            const trigger = document.getElementById('timeTrigger');
-            const isOpen = popover.classList.contains('open');
-            if (isOpen) {
-                closeTimePicker(true);
-            } else {
-                renderTimeLists();
-                popover.classList.add('open');
-                trigger.setAttribute('aria-expanded', 'true');
-            }
+        window.filterByDate = function (selectedDate) {
+            var params = getCurrentParams();
+            params.date = selectedDate;
+            loadDashboard(params);
         };
 
-        window.closeTimePicker = function(revert) {
-            const popover = document.getElementById('timePickerPopover');
-            popover.classList.remove('open');
-            document.getElementById('timeTrigger').setAttribute('aria-expanded', 'false');
-            if (revert) {
-                // Kembalikan pilihan ke nilai aktif (dari server) jika dibatalkan
-                tpStart = toMinutes(document.getElementById('timeTriggerLabel').textContent.split(' – ')[0]);
-                tpEnd = toMinutes(document.getElementById('timeTriggerLabel').textContent.split(' – ')[1]);
-            }
+        window.shiftDate = function (days) {
+            var input = document.getElementById('dateSelector');
+            var base;
+            if (input && input.value) {
+                var parts = input.value.split('-');
+                base = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            } else { base = new Date(); }
+            base.setDate(base.getDate() + days);
+            var y = base.getFullYear();
+            var m = String(base.getMonth() + 1).padStart(2, '0');
+            var d = String(base.getDate()).padStart(2, '0');
+            filterByDate(y + '-' + m + '-' + d);
         };
 
-        window.resetTimePicker = function() {
-            tpStart = WORK_START_MIN;
-            tpEnd = WORK_END_MIN;
-            renderTimeLists();
+        window.resetToToday = function () {
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = String(now.getMonth() + 1).padStart(2, '0');
+            var d = String(now.getDate()).padStart(2, '0');
+            var params = getCurrentParams();
+            params.date = y + '-' + m + '-' + d;
+            delete params.rooms;
+            delete params.status;
+            loadDashboard(params);
         };
 
-        window.applyTimePicker = function() {
-            if (tpStart >= tpEnd) {
-                const err = document.getElementById('tpError');
-                err.classList.add('show');
-                return;
-            }
-            const startLabel = toLabel(tpStart);
-            const endLabel = toLabel(tpEnd);
-            document.getElementById('timeTriggerLabel').textContent = startLabel + ' – ' + endLabel;
-            document.getElementById('timePickerPopover').classList.remove('open');
-
-            const url = new URL(window.location);
-            url.searchParams.set('start_time', startLabel);
-            url.searchParams.set('end_time', endLabel);
-            window.location.href = url.toString();
+        window.filterByRoom = function (roomId) {
+            var params = getCurrentParams();
+            if (roomId) params.rooms = roomId; else delete params.rooms;
+            loadDashboard(params);
         };
 
-        // Tutup popover saat klik di luar area, atau tekan Escape
-        document.addEventListener('click', function(e) {
-            const wrapper = document.getElementById('timePickerWrapper');
-            const popover = document.getElementById('timePickerPopover');
-            if (popover.classList.contains('open') && wrapper && !wrapper.contains(e.target)) {
-                closeTimePicker(true);
-            }
-        });
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                const popover = document.getElementById('timePickerPopover');
-                if (popover.classList.contains('open')) closeTimePicker(true);
-            }
-        });
-
-        // ========== FILTER: RUANGAN & STATUS ==========
-        window.filterByRoom = function(roomId) {
-            const url = new URL(window.location);
-            if (roomId) url.searchParams.set('rooms', roomId);
-            else url.searchParams.delete('rooms');
-            window.location.href = url.toString();
+        window.filterByStatus = function (status) {
+            var params = getCurrentParams();
+            if (status && status !== 'all') params.status = status; else delete params.status;
+            loadDashboard(params);
         };
 
-        window.filterByStatus = function(status) {
-            const url = new URL(window.location);
-            if (status && status !== 'all') url.searchParams.set('status', status);
-            else url.searchParams.delete('status');
-            window.location.href = url.toString();
-        };
-
-        // ========== REFRESH (mempertahankan filter aktif) ==========
-        window.doRefresh = function(btn) {
+        window.doRefresh = function (btn) {
             if (btn) btn.classList.add('is-loading');
             window.location.reload();
         };
 
-        // ========== AKSI GRID ==========
-        window.showBookingDetails = function(bookingId) {
+        // Handle back/forward
+        window.addEventListener('popstate', function () { window.location.reload(); });
+
+        // ===================================================================
+        // MATERIAL TIME PICKER — dialog analog clock
+        // ===================================================================
+        var MTP_WORK_START = 7 * 60;   // 07:00 dalam menit
+        var MTP_WORK_END   = 16 * 60;  // 16:00 dalam menit
+        var MTP_STEP       = 30;
+
+        var mtpState = {
+            open: false,
+            activeField: 'start',
+            mode: 'hour',
+            start: { h: 7, m: 0 },
+            end: { h: 16, m: 0 }
+        };
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function to12h(h24) { var h = h24 % 12; return h === 0 ? 12 : h; }
+        function toAmpm(h24) { return h24 < 12 ? 'AM' : 'PM'; }
+        function ampmTo24(num12, ampm) {
+            if (ampm === 'PM') return num12 === 12 ? 12 : num12 + 12;
+            return num12 === 12 ? 0 : num12;
+        }
+        function minsOf(t) { return t.h * 60 + t.m; }
+        function isValidOperational(t) { var m = minsOf(t); return m >= MTP_WORK_START && m <= MTP_WORK_END; }
+
+        function parseLabel(str) {
+            var p = String(str).trim().split(':');
+            return { h: parseInt(p[0], 10) || 7, m: parseInt((p[1] || '0').split(/\s/)[0], 10) || 0 };
+        }
+
+        window.openTimePicker = function () {
+            var labelEl = document.getElementById('timeTriggerLabel');
+            var parts = labelEl.textContent.split('–');
+            mtpState.start = parseLabel(parts[0] || '07:00');
+            mtpState.end   = parseLabel(parts[1] || '16:00');
+            // clamp
+            if (!isValidOperational(mtpState.start)) mtpState.start = { h: 7, m: 0 };
+            if (!isValidOperational(mtpState.end))   mtpState.end   = { h: 16, m: 0 };
+            mtpState.activeField = 'start';
+            mtpState.mode = 'hour';
+            mtpState.open = true;
+            document.getElementById('mtpOverlay').classList.add('open');
+            document.getElementById('timeTrigger').setAttribute('aria-expanded', 'true');
+            document.body.style.overflow = 'hidden';
+            renderClock();
+            updateDigitalDisplay();
+            hideMtpError();
+        };
+
+        window.closeTimePicker = function (revert) {
+            mtpState.open = false;
+            document.getElementById('mtpOverlay').classList.remove('open');
+            document.getElementById('timeTrigger').setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+            hideMtpError();
+        };
+
+        window.setActiveField = function (field) {
+            mtpState.activeField = field;
+            mtpState.mode = 'hour';
+            renderClock();
+            updateDigitalDisplay();
+            hideMtpError();
+        };
+
+        window.toggleTimeMode = function () {
+            mtpState.mode = mtpState.mode === 'hour' ? 'minute' : 'hour';
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        window.setMode = function (mode) {
+            mtpState.mode = mode;
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        window.setAmpmFor = function (field, ampm) {
+            var t = mtpState[field];
+            var cur12 = to12h(t.h);
+            var curAmpm = toAmpm(t.h);
+            if (curAmpm === ampm) { renderClock(); updateDigitalDisplay(); return; }
+            var h24 = ampmTo24(cur12, ampm);
+            var candidate = { h: h24, m: t.m };
+            if (!isValidOperational(candidate)) {
+                showMtpError('Jam ' + pad2(h24) + ':' + pad2(t.m) + ' di luar jam operasional (07:00–16:00).');
+                updateDigitalDisplay();
+                return;
+            }
+            t.h = h24;
+            hideMtpError();
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        window.selectHour = function (num12) {
+            var t = mtpState[mtpState.activeField];
+            var ampm = toAmpm(t.h);
+            var h24 = ampmTo24(num12, ampm);
+            var candidate = { h: h24, m: t.m };
+            if (!isValidOperational(candidate)) {
+                showMtpError('Jam ' + pad2(h24) + ':' + pad2(t.m) + ' di luar jam operasional (07:00–16:00).');
+                return;
+            }
+            t.h = h24;
+            hideMtpError();
+            mtpState.mode = 'minute';
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        window.selectMinute = function (m) {
+            var t = mtpState[mtpState.activeField];
+            t.m = m;
+            hideMtpError();
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        function renderClock() {
+            var clock = document.getElementById('mtpClock');
+            // hapus angka lama (pertahankan svg & center dot)
+            clock.querySelectorAll('.mtp-num').forEach(function (n) { n.remove(); });
+
+            var t = mtpState[mtpState.activeField];
+            var R = 108, C = 140;
+
+            if (mtpState.mode === 'hour') {
+                for (var n = 1; n <= 12; n++) {
+                    (function (num) {
+                        var angle = (num * 30) * Math.PI / 180;
+                        var x = C + R * Math.sin(angle);
+                        var y = C - R * Math.cos(angle);
+                        var el = document.createElement('div');
+                        el.className = 'mtp-num';
+                        el.textContent = num;
+                        el.style.left = x + 'px';
+                        el.style.top = y + 'px';
+                        var ampm = toAmpm(t.h);
+                        var h24 = ampmTo24(num, ampm);
+                        if (h24 < 7 || h24 > 16) {
+                            el.classList.add('disabled');
+                        } else {
+                            el.addEventListener('click', function () { selectHour(num); });
+                        }
+                        if (to12h(t.h) === num) el.classList.add('selected');
+                        clock.appendChild(el);
+                    })(n);
+                }
+                var selH = to12h(t.h);
+                var angH = (selH * 30) * Math.PI / 180;
+                setHand(C + 92 * Math.sin(angH), C - 92 * Math.cos(angH));
+                document.getElementById('mtpModeHint').textContent = 'Pilih jam — AM/PM menyesuaikan';
+            } else {
+                for (var i = 0; i < 12; i++) {
+                    (function (idx) {
+                        var m = idx * 5;
+                        var angle = (idx * 30) * Math.PI / 180;
+                        var x = C + R * Math.sin(angle);
+                        var y = C - R * Math.cos(angle);
+                        var el = document.createElement('div');
+                        el.className = 'mtp-num';
+                        el.textContent = pad2(m);
+                        el.style.left = x + 'px';
+                        el.style.top = y + 'px';
+                        if (m % MTP_STEP !== 0) {
+                            el.classList.add('disabled');
+                        } else {
+                            el.addEventListener('click', function () { selectMinute(m); });
+                        }
+                        if (t.m === m) el.classList.add('selected');
+                        clock.appendChild(el);
+                    })(i);
+                }
+                var idxM = t.m / 5;
+                var angM = (idxM * 30) * Math.PI / 180;
+                setHand(C + 92 * Math.sin(angM), C - 92 * Math.cos(angM));
+                document.getElementById('mtpModeHint').textContent = 'Pilih menit (hanya :00 dan :30)';
+            }
+        }
+
+        function setHand(x, y) {
+            var hand = document.getElementById('mtpHand');
+            hand.setAttribute('x2', x);
+            hand.setAttribute('y2', y);
+        }
+
+        function updateDigitalDisplay() {
+            var s = mtpState.start, e = mtpState.end;
+            document.getElementById('mtpStartHour').textContent = pad2(s.h);
+            document.getElementById('mtpStartMin').textContent = pad2(s.m);
+            document.getElementById('mtpEndHour').textContent = pad2(e.h);
+            document.getElementById('mtpEndMin').textContent = pad2(e.m);
+
+            document.getElementById('mtpStartAm').classList.toggle('active', toAmpm(s.h) === 'AM');
+            document.getElementById('mtpStartPm').classList.toggle('active', toAmpm(s.h) === 'PM');
+            document.getElementById('mtpEndAm').classList.toggle('active', toAmpm(e.h) === 'AM');
+            document.getElementById('mtpEndPm').classList.toggle('active', toAmpm(e.h) === 'PM');
+
+            document.querySelectorAll('.mtp-field').forEach(function (f) {
+                f.classList.toggle('active', f.dataset.field === mtpState.activeField);
+            });
+
+            // highlight unit aktif (jam/menit) pada field aktif
+            var prefix = mtpState.activeField === 'start' ? 'mtpStart' : 'mtpEnd';
+            var hourEl = document.getElementById(prefix + 'Hour');
+            var minEl = document.getElementById(prefix + 'Min');
+            document.querySelectorAll('.mtp-digital .mtp-unit').forEach(function (u) { u.classList.remove('mode-active'); });
+            if (mtpState.mode === 'hour' && hourEl) hourEl.classList.add('mode-active');
+            if (mtpState.mode === 'minute' && minEl) minEl.classList.add('mode-active');
+        }
+
+        function showMtpError(msg) {
+            var err = document.getElementById('mtpError');
+            err.querySelector('span').textContent = msg;
+            err.classList.add('show');
+        }
+        function hideMtpError() {
+            document.getElementById('mtpError').classList.remove('show');
+        }
+
+        window.resetTimePicker = function () {
+            mtpState.start = { h: 7, m: 0 };
+            mtpState.end = { h: 16, m: 0 };
+            mtpState.mode = 'hour';
+            hideMtpError();
+            renderClock();
+            updateDigitalDisplay();
+        };
+
+        window.applyTimePicker = function () {
+            if (!isValidOperational(mtpState.start) || !isValidOperational(mtpState.end)) {
+                showMtpError('Waktu harus dalam rentang 07:00–16:00.');
+                return;
+            }
+            if (minsOf(mtpState.start) >= minsOf(mtpState.end)) {
+                showMtpError('Jam mulai harus lebih awal dari jam selesai.');
+                return;
+            }
+            var startLabel = pad2(mtpState.start.h) + ':' + pad2(mtpState.start.m);
+            var endLabel = pad2(mtpState.end.h) + ':' + pad2(mtpState.end.m);
+            document.getElementById('timeTriggerLabel').textContent = startLabel + ' – ' + endLabel;
+            closeTimePicker(false);
+
+            var params = getCurrentParams();
+            params.start_time = startLabel;
+            params.end_time = endLabel;
+            loadDashboard(params);
+        };
+
+        // Escape untuk menutup time picker
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && mtpState.open) closeTimePicker(true);
+        });
+
+        // ===================================================================
+        // AKSI GRID
+        // ===================================================================
+        window.showBookingDetails = function (bookingId) {
             window.location.href = '/bookings/' + bookingId;
         };
 
-        window.quickBook = function(roomId, date, time) {
-            const url = new URL('{{ route("bookings.create") }}');
+        window.quickBook = function (roomId, date, time) {
+            var url = new URL('{{ route("bookings.create") }}');
             url.searchParams.set('room', roomId);
             url.searchParams.set('date', date);
             url.searchParams.set('start_time', time);
             window.location.href = url.toString();
         };
 
-        window.scrollToNow = function() {
-            const line = document.getElementById('nowLine');
-            const container = document.getElementById('scheduleBody');
+        window.scrollToNow = function () {
+            var line = document.getElementById('nowLine');
+            var container = document.getElementById('scheduleBody');
             if (line && container) {
                 container.scrollTop = Math.max(0, line.offsetTop - 80);
             }
         };
 
         // Auto-scroll ke waktu sekarang saat halaman dimuat
-        const nowLine = document.getElementById('nowLine');
+        var nowLine = document.getElementById('nowLine');
         if (nowLine) {
-            setTimeout(function() { window.scrollToNow(); }, 300);
+            setTimeout(function () { window.scrollToNow(); }, 300);
         }
 
-        if (typeof bootstrap !== 'undefined') {
-            const initTooltips = function() {
-                document.querySelectorAll('[title]').forEach(el => new bootstrap.Tooltip(el, { placement: 'top', delay: { show: 300, hide: 100 } }));
-            };
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initTooltips);
-            } else {
-                initTooltips();
+        // ===================================================================
+        // TOOLTIPS
+        // ===================================================================
+        function initTooltips() {
+            if (typeof bootstrap !== 'undefined') {
+                document.querySelectorAll('[title]').forEach(function (el) {
+                    new bootstrap.Tooltip(el, { placement: 'top', delay: { show: 300, hide: 100 } });
+                });
             }
         }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTooltips);
+        } else { initTooltips(); }
 
-        document.addEventListener('keydown', function(e) {
-            const input = document.getElementById('dateSelector');
+        // Navigasi tanggal via keyboard (Ctrl + panah)
+        document.addEventListener('keydown', function (e) {
+            var input = document.getElementById('dateSelector');
             if (!input || !e.ctrlKey) return;
             if (e.key === 'ArrowLeft') { e.preventDefault(); shiftDate(-1); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); shiftDate(1); }
