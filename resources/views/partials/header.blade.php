@@ -1,5 +1,5 @@
 @php
-    $displayName = Auth::user()->employee->full_name ?? Auth::user()->name ?? 'User';
+    $displayName = Auth::user()->full_name ?? Auth::user()->name ?? 'User';
 @endphp
 
 <header class="app-header">
