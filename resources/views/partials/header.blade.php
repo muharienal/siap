@@ -7,7 +7,10 @@
         <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
             <i class="bi bi-list"></i>
         </button>
-        <div class="page-title" style="font-size: var(--font-size-lg); font-weight: 600;">Selamat datang kembali, {{ $displayName }}</div>
+        <div class="page-title" style="font-size: var(--font-size-lg);">
+            <span style="font-weight: 400;">Selamat datang,</span>
+            <span style="font-weight: 600;">{{ $displayName }}</span>
+        </div>
     </div>
 
     <div class="header-right">

@@ -949,12 +949,6 @@
             <p class="db-meta">
                 <span id="liveDateTime"><i class="bi bi-calendar3 me-1"></i> <span id="liveDate">Memuat...</span></span>
                 <span class="badge-live-time"><span class="pulse-dot"></span> <span id="liveTime">00:00:00</span></span>
-                @if($isWeekend)
-                    <span class="badge-holiday"><i class="bi bi-moon-stars"></i> Libur akhir pekan</span>
-                @endif
-                @if($isToday && !$isWeekend)
-                    <span class="badge-holiday" style="background: rgba(16,185,129,0.12); color: #047857;"><i class="bi bi-clock"></i> Hari ini</span>
-                @endif
             </p>
         </div>
         <div class="actions">
@@ -1017,22 +1011,16 @@
             </button>
         </div>
 
-        <div class="db-divider"></div>
-
         <div class="db-filter-group" id="timePickerWrapper">
-            <label>Jam Kerja</label>
-            <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
+           <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
                 <i class="bi bi-clock"></i>
                 <span id="timeTriggerLabel">{{ $startTime }} – {{ $endTime }}</span>
                 <i class="bi bi-chevron-down chevron"></i>
             </button>
         </div>
 
-        <div class="db-divider"></div>
-
         <div class="db-filter-group">
-            <label for="roomFilter">Ruangan</label>
-            <select id="roomFilter" class="db-select" onchange="filterByRoom(this.value)">
+           <select id="roomFilter" class="db-select" onchange="filterByRoom(this.value)">
                 <option value="">Semua Ruangan</option>
                 @foreach($allRooms as $room)
                     <option value="{{ $room->id }}" {{ (string)$selectedRoomValue === (string)$room->id ? 'selected' : '' }}>{{ $room->name }}</option>
@@ -1041,8 +1029,7 @@
         </div>
 
         <div class="db-filter-group">
-            <label for="statusFilterSelect">Status</label>
-            <select id="statusFilterSelect" class="db-select" onchange="filterByStatus(this.value)">
+           <select id="statusFilterSelect" class="db-select" onchange="filterByStatus(this.value)">
                 <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status</option>
                 <option value="pending" {{ $statusFilter === 'pending' ? 'selected' : '' }}>Pending</option>
                 <option value="approved" {{ $statusFilter === 'approved' ? 'selected' : '' }}>Disetujui</option>
@@ -1064,12 +1051,6 @@
                 @if($isWeekend)
                     <span><i class="bi bi-lock"></i> Libur</span>
                 @endif
-                @if($isToday && !$isWeekend && $currentSlot)
-                    <button type="button" class="current-badge" onclick="scrollToNow()" title="Klik untuk lompat ke waktu sekarang">
-                        <i class="bi bi-dot"></i> Sekarang {{ $currentSlot }}
-                    </button>
-                @endif
-                <span>{{ count($timeSlots) }} slot · {{ $rooms->count() }} ruangan</span>
             </div>
         </div>
 
@@ -1212,8 +1193,7 @@
 <div class="mtp-overlay" id="mtpOverlay" onclick="if(event.target===this)closeTimePicker(true)">
     <div class="mtp-dialog" role="dialog" aria-modal="true" aria-labelledby="mtpTitle">
         <div class="mtp-header">
-            <div class="mtp-title" id="mtpTitle">Pilih Jam Operasional</div>
-            <div class="mtp-subtitle">Rentang 07:00–16:00, interval 30 menit</div>
+            <div class="mtp-title" id="mtpTitle">Pilih Jam</div>
         </div>
 
         <div class="mtp-time-display">
@@ -1240,11 +1220,10 @@
                 </svg>
                 <div class="mtp-center-dot"></div>
             </div>
-            <div class="mtp-mode-hint" id="mtpModeHint">Pilih jam mulai</div>
         </div>
 
         <div class="mtp-footer">
-            <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode jam/menit" aria-label="Ganti mode"><i class="bi bi-grid-3x3-gap"></i></button>
+            <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode jam/menit" aria-label="Ganti mode"></button>
             <div class="mtp-actions">
                 <button type="button" class="mtp-btn mtp-btn-cancel" onclick="closeTimePicker(true)">Batal</button>
                 <button type="button" class="mtp-btn mtp-btn-ok" onclick="applyTimePicker()">OK</button>
@@ -1650,9 +1629,6 @@
                     var handY = C + 35 * Math.sin(handAngle);
                     setHand(handX, handY);
                 }
-                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
-                    ? 'Pilih Jam Mulai (07 - 16)' 
-                    : 'Pilih Jam Selesai (07 - 16)';
             } else {
                 var minutes = [0, 30];
                 minutes.forEach(function(m, i) {
@@ -1681,9 +1657,6 @@
                     var handYM = C + 35 * Math.sin(handAngleM);
                     setHand(handXM, handYM);
                 }
-                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
-                    ? 'Pilih Menit Mulai (00 / 30)' 
-                    : 'Pilih Menit Selesai (00 / 30)';
             }
         }
 
