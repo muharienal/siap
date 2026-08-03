@@ -1,0 +1,50 @@
+// Additional Bootstrap customizations
+// You can add custom Bootstrap component styles here
+
+// Custom button variations
+.btn-custom {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    border: none;
+    color: white;
+    
+    &:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        color: white;
+    }
+}
+
+// Custom card styles
+.card-custom {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    transition: all 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+}
+
+// Navbar customizations
+.navbar-custom {
+    background: linear-gradient(90deg, #ffffff, #f8f9fa) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+// Form enhancements
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+// Responsive utilities
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
