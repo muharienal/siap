@@ -179,13 +179,18 @@
                     <textarea name="description" class="form-control" rows="3">{{ old('description', $facility->description) }}</textarea>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Lokasi Penyimpanan <span class="text-danger">*</span></label>
-                    <input type="text" name="storage_location" class="form-control" value="{{ old('storage_location', $facility->storage_location) }}" required>
-                </div>
+                <input type="hidden" name="storage_location" value="{{ old('storage_location', $facility->storage_location) }}">
+
+                @if($roomId)
+                    <input type="hidden" name="room_id" value="{{ $roomId }}">
+                    <div class="form-group">
+                        <label class="form-label">Jumlah Unit di Ruangan Ini <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control" value="{{ old('quantity', $roomQuantity) }}" min="1" required>
+                    </div>
+                @endif
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a href="{{ route('settings.facilities.index') }}" class="btn-cancel">
+                    <a href="{{ $roomId ? route('settings.facilities.room', $roomId) : route('settings.facilities.master') }}" class="btn-cancel">
                         <i class="bi bi-x-lg"></i> Batal
                     </a>
                     <button type="submit" class="btn-submit">

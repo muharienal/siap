@@ -1,215 +1,235 @@
 @extends('templates.template')
 
-@section('page_title', 'Manajemen Fasilitas')
-@section('page_subtitle', 'Kelola semua fasilitas ruangan')
+@section('page_title', 'Fasilitas Ruangan')
+@section('page_subtitle', 'Kelola fasilitas tiap ruangan dengan mudah')
 
 @section('content')
 <style>
-    .settings-content {
+    .facilities-content {
         padding: var(--space-5) var(--space-6);
         max-width: 1680px;
         margin: 0 auto;
         flex: 1;
         width: 100%;
     }
-    .table-card {
+    .facilities-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-bottom: var(--space-5);
+    }
+    .facilities-search {
+        position: relative;
+        width: 260px;
+        max-width: 100%;
+    }
+    .facilities-search i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+    .facilities-search input {
+        width: 100%;
+        height: 40px;
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--border-color-light);
+        background: var(--bg-card);
+        padding: 0 var(--space-3) 0 36px;
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+        outline: none;
+        transition: border-color var(--transition-fast);
+    }
+    .facilities-search input:focus {
+        border-color: var(--brand-orange);
+    }
+    .facilities-filter {
+        height: 40px;
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--border-color-light);
+        background: var(--bg-card);
+        padding: 0 var(--space-4);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    .facility-room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: var(--space-4);
+    }
+    .facility-room-card {
         background: var(--bg-card);
         border-radius: var(--radius-card);
-        border: none;
+        border: 1px solid var(--border-color-light);
         box-shadow: var(--shadow-card);
         overflow: hidden;
-    }
-    .table-card .card-header {
-        padding: var(--space-3) var(--space-5);
-        background: transparent;
-        border-bottom: 1px solid var(--border-color-light);
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: var(--space-2);
-        min-height: 48px;
+        flex-direction: column;
+        transition: all var(--transition-fast);
     }
-    .table-card .card-header .title {
+    .facility-room-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+        border-color: var(--brand-orange);
+    }
+    .facility-room-thumb {
+        width: 100%;
+        height: 150px;
+        background: var(--bg-input);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .facility-room-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .facility-room-thumb i { font-size: 2.2rem; color: var(--text-muted); }
+    .facility-room-body {
+        padding: var(--space-4);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        flex: 1;
+    }
+    .facility-room-name {
         font-weight: 700;
         font-size: var(--font-size-md);
         color: var(--text-primary);
+        margin: 0;
+    }
+    .facility-room-meta {
+        font-size: var(--font-size-sm);
+        color: var(--text-secondary);
         display: flex;
         align-items: center;
-        gap: var(--space-2);
+        gap: 6px;
+        margin: 0;
     }
-    .table-card .card-header .title i {
-        color: var(--brand-orange);
-        font-size: 1.2rem;
+    .facility-room-meta i { color: var(--text-muted); }
+    .facility-room-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 2px;
     }
-    .table-card .card-body {
-        padding: 0;
-        overflow-x: auto;
-    }
-    .table-booking {
-        width: 100%;
-        border-collapse: collapse;
+    .facility-count-badge {
         font-size: var(--font-size-sm);
-        min-width: 600px;
-    }
-    .table-booking thead th {
-        background: var(--bg-card);
         color: var(--text-secondary);
-        font-weight: 600;
-        font-size: var(--font-size-xs);
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        padding: var(--space-2) var(--space-3);
-        border-bottom: 1px solid var(--border-color-light);
-        text-align: left;
-        height: 38px;
-    }
-    .table-booking tbody td {
-        padding: var(--space-2) var(--space-3);
-        border-bottom: 1px solid var(--border-color-light);
-        height: 44px;
-        background: var(--bg-card);
-        transition: background var(--transition-fast);
-    }
-    .table-booking tbody tr:nth-child(even) td { background: #fafbfc; }
-    .table-booking tbody tr:hover td { background: rgba(249,115,22,0.03); }
-    .btn-action-group { display:flex; gap:4px; flex-wrap:wrap; }
-    .btn-action {
-        padding: 4px 10px;
-        border-radius: var(--radius-sm);
-        font-size: var(--font-size-xs);
-        border: none;
-        transition: all var(--transition-fast);
-        cursor: pointer;
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        gap: 4px;
-        text-decoration: none;
-        font-weight: 500;
+        gap: 6px;
     }
-    .btn-action.edit {
-        background: rgba(245,158,11,0.08);
-        color: #d97706;
+    .facility-count-badge i { color: var(--text-muted); }
+    .facility-status-badge {
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: var(--radius-pill);
+        white-space: nowrap;
     }
-    .btn-action.edit:hover {
-        background: rgba(245,158,11,0.16);
+    .facility-status-badge.available {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--status-available);
     }
-    .btn-action.delete {
-        background: rgba(239,68,68,0.06);
-        color: #dc2626;
+    .facility-status-badge.inactive {
+        background: rgba(239, 68, 68, 0.12);
+        color: var(--status-rejected);
     }
-    .btn-action.delete:hover {
-        background: rgba(239,68,68,0.12);
-    }
-    .btn-today {
+    .btn-view-facilities {
+        margin-top: var(--space-2);
+        width: 100%;
         height: 38px;
-        padding: 0 var(--space-4);
-        background: var(--brand-gradient);
-        border: none;
         border-radius: var(--radius-sm);
+        border: 1px solid var(--brand-orange);
+        background: transparent;
+        color: var(--brand-orange);
         font-weight: 600;
         font-size: var(--font-size-sm);
-        color: var(--text-inverse);
-        transition: all var(--transition-fast);
-        cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: var(--space-1);
-        white-space: nowrap;
+        justify-content: center;
+        gap: 6px;
         text-decoration: none;
-        box-shadow: 0 2px 8px rgba(249,115,22,0.15);
+        transition: all var(--transition-fast);
     }
-    .btn-today:hover {
-        background: var(--brand-gradient-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(16,185,129,0.20);
-        color: var(--text-inverse);
+    .btn-view-facilities:hover {
+        background: var(--brand-orange);
+        color: #fff;
     }
-    .no-results {
-        padding: var(--space-6);
+    .empty-rooms {
         text-align: center;
+        padding: var(--space-9) 0;
         color: var(--text-muted);
     }
-    .no-results i {
-        font-size: 2rem;
-        display: block;
-        margin-bottom: var(--space-3);
-        color: var(--border-color);
-    }
+    .empty-rooms i { font-size: 2.5rem; display: block; margin-bottom: var(--space-3); }
     @media (max-width:991.98px) {
-        .settings-content { padding: var(--space-3); }
-    }
-    @media (max-width:575.98px) {
-        .settings-content { padding: var(--space-2); }
-        .table-booking { font-size: var(--font-size-xs); min-width: 480px; }
+        .facilities-content { padding: var(--space-3); }
     }
 </style>
 
-<div class="settings-content">
+<div class="facilities-content">
 
-    <div class="greeting-section" style="margin-bottom: var(--space-5);">
-        <h1 class="greeting-title">Manajemen Fasilitas</h1>
+    <div class="greeting-section" style="margin-bottom: var(--space-4);">
+        <h1 class="greeting-title">Fasilitas Ruangan</h1>
         <div class="greeting-sub">
-            <span><i class="bi bi-tools me-1"></i> Kelola semua fasilitas ruangan</span>
+            <span>Pilih ruangan untuk melihat dan mengelola fasilitas yang tersedia.</span>
         </div>
     </div>
 
-    <div class="table-card">
-        <div class="card-header">
-            <div class="title">
-                <i class="bi bi-table"></i> Daftar Fasilitas
-                <span style="font-weight:400; font-size:var(--font-size-sm); color:var(--text-muted); margin-left:var(--space-1);">
-                    {{ $facilities->count() }} total
-                </span>
-            </div>
-            <a href="{{ route('settings.facilities.create') }}" class="btn-today">
-                <i class="bi bi-plus-lg"></i> Tambah Fasilitas
+    <form method="GET" action="{{ route('settings.facilities.index') }}" class="facilities-toolbar">
+        <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
+            <a href="{{ route('settings.facilities.master') }}" style="font-size:var(--font-size-sm); color:var(--text-muted); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                <i class="bi bi-box-seam"></i> Kelola Data Master Fasilitas
             </a>
         </div>
-        <div class="card-body">
-            @if($facilities->count() > 0)
-                <table class="table-booking">
-                    <thead>
-                        <tr>
-                            <th style="width:50px;">No</th>
-                            <th>Nama Fasilitas</th>
-                            <th>Deskripsi</th>
-                            <th>Lokasi</th>
-                            <th style="min-width:150px;">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($facilities as $item)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td><strong>{{ $item->name }}</strong></td>
-                                <td>{{ $item->description }}</td>
-                                <td>{{ $item->storage_location }}</td>
-                                <td>
-                                    <div class="btn-action-group">
-                                        <a href="{{ route('settings.facilities.edit', $item->id) }}" class="btn-action edit">
-                                            <i class="bi bi-pencil"></i> Edit
-                                        </a>
-                                        <form action="{{ route('settings.facilities.destroy', $item->id) }}" method="POST" style="display:inline;">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn-action delete" onclick="return confirm('Yakin ingin menghapus fasilitas ini?')">
-                                                <i class="bi bi-trash"></i> Hapus
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @else
-                <div class="no-results">
-                    <i class="bi bi-tools"></i>
-                    <p>Belum ada fasilitas</p>
-                    <a href="{{ route('settings.facilities.create') }}" style="color:var(--brand-orange); text-decoration:none; font-weight:600;">Tambah fasilitas pertama</a>
-                </div>
-            @endif
+        <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap;">
+            <div class="facilities-search">
+                <i class="bi bi-search"></i>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari ruangan...">
+            </div>
         </div>
-    </div>
+    </form>
+
+    @if($rooms->count())
+        <div class="facility-room-grid">
+            @foreach($rooms as $room)
+                <div class="facility-room-card">
+                    <div class="facility-room-thumb">
+                        @if($room->photos->count())
+                            <img src="{{ $room->photos->first()->photo_url }}" alt="Foto {{ $room->name }}">
+                        @else
+                            <i class="bi bi-image"></i>
+                        @endif
+                    </div>
+                    <div class="facility-room-body">
+                        <h3 class="facility-room-name">{{ $room->name }}</h3>
+                        <p class="facility-room-meta"><i class="bi bi-geo-alt"></i> {{ $room->location }}</p>
+                        <p class="facility-room-meta"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }} orang</p>
+
+                        <div class="facility-room-footer">
+                            <span class="facility-count-badge">
+                                <i class="bi bi-tools"></i> {{ $room->facilities->count() }} fasilitas
+                            </span>
+                        </div>
+
+                        <a href="{{ route('settings.facilities.room', $room->id) }}" class="btn-view-facilities">
+                            Lihat Fasilitas <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <div class="empty-rooms">
+            <i class="bi bi-building"></i>
+            <p>Belum ada ruangan yang terdaftar.</p>
+        </div>
+    @endif
 </div>
 @endsection

@@ -184,7 +184,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-2 mt-4">
-                    <a href="{{ route('settings.facilities.index') }}" class="btn-cancel">
+                    <a href="{{ route('settings.facilities.master') }}" class="btn-cancel">
                         <i class="bi bi-x-lg"></i> Batal
                     </a>
                     <button type="submit" class="btn-submit">

@@ -26,4 +26,11 @@ class Facility extends Model
                     ->withPivot('quantity')
                     ->withTimestamps();
     }
+
+    public function rooms()
+    {
+        return $this->belongsToMany(Room::class, 'room_facilities')
+                    ->withPivot('id', 'quantity')
+                    ->withTimestamps();
+    }
 }

@@ -40,4 +40,11 @@ class Room extends Model
     {
         return $this->hasMany(RoomPhoto::class)->orderBy('order');
     }
+
+    public function facilities()
+    {
+        return $this->belongsToMany(Facility::class, 'room_facilities')
+                    ->withPivot('id', 'quantity')
+                    ->withTimestamps();
+    }
 }

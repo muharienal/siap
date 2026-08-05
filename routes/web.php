@@ -49,8 +49,17 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
 
-        // Fasilitas
+        // Fasilitas (grid ruangan)
         Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
+
+        // Fasilitas per ruangan
+        Route::get('/facilities/room/{room}', [FacilityController::class, 'room'])->name('facilities.room');
+        Route::post('/facilities/room/{room}', [FacilityController::class, 'attach'])->name('facilities.room.attach');
+        Route::put('/facilities/room/{room}/{facility}', [FacilityController::class, 'updateQuantity'])->name('facilities.room.update');
+        Route::delete('/facilities/room/{room}/{facility}', [FacilityController::class, 'detach'])->name('facilities.room.detach');
+
+        // Data master fasilitas
+        Route::get('/facilities/master', [FacilityController::class, 'master'])->name('facilities.master');
         Route::get('/facilities/create', [FacilityController::class, 'create'])->name('facilities.create');
         Route::post('/facilities', [FacilityController::class, 'store'])->name('facilities.store');
         Route::get('/facilities/{facility}/edit', [FacilityController::class, 'edit'])->name('facilities.edit');
