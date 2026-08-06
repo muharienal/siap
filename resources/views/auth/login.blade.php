@@ -5,7 +5,7 @@
 @section('content')
 <style>
     /* ============================================================
-       ROOT VARIABLES
+       DESIGN TOKENS
        ============================================================ */
     :root {
         --brand-orange: #f97316;
@@ -22,6 +22,7 @@
         --ui-text-secondary: #475569;
         --ui-text-muted: #94a3b8;
         --ui-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15);
+        --ui-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
         --ui-radius: 28px;
         --ui-radius-sm: 14px;
 
@@ -29,6 +30,8 @@
         --input-border: #e2e8f0;
         --input-focus-border: var(--brand-orange);
         --input-focus-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12);
+        --input-height: 54px;
+        --input-height-mobile: 52px;
 
         --wa-green: #25D366;
         --wa-green-dark: #128C7E;
@@ -37,28 +40,55 @@
     }
 
     /* ============================================================
-       GLOBAL RESET / BASE – CENTERING SEMPURNA
+       BASE RESET & CENTERING
        ============================================================ */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+        height: 100%;
+    }
+
     body.auth-page {
         background: var(--ui-bg);
         font-family: var(--font-family);
-        min-height: 100vh;
-        min-height: 100dvh;
+        min-height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1.5rem;
+        padding: 2rem;
         margin: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
     }
 
+    /* ============================================================
+       WRAPPER & ZOOM DESKTOP
+       ============================================================ */
     .auth-wrapper {
         width: 100%;
-        max-width: 1000px;
+        max-width: 960px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+    }
+
+    @media (min-width: 992px) {
+        .auth-wrapper {
+            zoom: 0.9;
+        }
+        /* Fallback untuk Firefox */
+        @-moz-document url-prefix() {
+            .auth-wrapper {
+                zoom: 1;
+                -moz-transform: scale(0.9);
+                -moz-transform-origin: center center;
+            }
+        }
     }
 
     /* ============================================================
@@ -72,16 +102,18 @@
         box-shadow: var(--ui-shadow);
         width: 100%;
         transition: transform 0.3s ease;
+        position: relative;
+        z-index: 1;
     }
 
     /* ============================================================
-       SISI KIRI – BRANDING
+       BRAND PANEL
        ============================================================ */
     .auth-brand-panel {
         background: var(--brand-gradient);
-        padding: 3.5rem 2.5rem;
+        padding: 4rem 3rem;
         height: 100%;
-        min-height: 480px;
+        min-height: 520px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -113,6 +145,7 @@
         object-fit: contain;
         background: rgba(255,255,255,0.15);
         backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         padding: 20px;
         border-radius: 30px;
         box-shadow: 0 12px 30px rgba(0,0,0,0.12);
@@ -149,37 +182,15 @@
     }
 
     /* ============================================================
-       SISI KANAN – FORM
+       FORM PANEL
        ============================================================ */
     .auth-form-panel {
-        padding: 3rem 2.8rem;
+        padding: 3.5rem 3rem;
         display: flex;
         flex-direction: column;
         justify-content: center;
         background: var(--ui-card-bg);
-    }
-
-    .auth-mobile-logo {
-        display: none;
-        text-align: center;
-        margin-bottom: 1.75rem;
-    }
-    .auth-mobile-logo img {
-        width: 72px;
-        height: 72px;
-        object-fit: contain;
-        margin-bottom: 0.5rem;
-    }
-    .auth-mobile-logo .app-name-mobile {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--brand-orange-dark);
-        letter-spacing: -0.3px;
-    }
-    .auth-mobile-logo .app-sub-mobile {
-        font-size: 0.8rem;
-        color: var(--ui-text-muted);
-        display: block;
+        position: relative;
     }
 
     .form-heading {
@@ -219,7 +230,7 @@
     }
 
     .input-group-icon .form-control {
-        height: 54px;
+        height: var(--input-height);
         padding: 0 48px 0 48px;
         font-size: 0.95rem;
         border: 2px solid var(--input-border);
@@ -227,6 +238,7 @@
         background-color: var(--input-bg);
         color: var(--ui-text-primary);
         transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        width: 100%;
     }
 
     .input-group-icon .form-control:focus {
@@ -244,6 +256,10 @@
         box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12);
     }
 
+    .input-group-icon .form-control:active {
+        transform: scale(0.998);
+    }
+
     .password-toggle-btn {
         position: absolute;
         right: 16px;
@@ -253,8 +269,8 @@
         border: none;
         color: var(--ui-text-muted);
         padding: 0;
-        width: 32px;
-        height: 32px;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -266,6 +282,9 @@
     .password-toggle-btn:hover {
         color: var(--brand-orange-dark);
         background: rgba(249, 115, 22, 0.06);
+    }
+    .password-toggle-btn:active {
+        transform: translateY(-50%) scale(0.92);
     }
 
     .invalid-feedback-custom {
@@ -282,7 +301,7 @@
     }
 
     /* ============================================================
-       REMEMBER & FORGOT
+       FORM OPTIONS
        ============================================================ */
     .form-options {
         display: flex;
@@ -331,11 +350,11 @@
     }
 
     /* ============================================================
-       TOMBOL LOGIN
+       BUTTON LOGIN
        ============================================================ */
     .btn-login {
         width: 100%;
-        height: 54px;
+        height: var(--input-height);
         background: var(--brand-gradient);
         border: none;
         border-radius: var(--ui-radius-sm);
@@ -349,6 +368,9 @@
         justify-content: center;
         gap: 10px;
         letter-spacing: 0.3px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
     }
     .btn-login:hover {
         background: var(--brand-gradient-hover);
@@ -361,8 +383,25 @@
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
     }
 
+    .btn-login::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.5s ease, height 0.5s ease;
+    }
+    .btn-login:active::after {
+        width: 300px;
+        height: 300px;
+    }
+
     /* ============================================================
-       FOOTER COPYRIGHT DI DALAM CARD
+       FOOTER
        ============================================================ */
     .login-footer {
         margin-top: 1.75rem;
@@ -385,13 +424,6 @@
     }
     .login-footer a:hover {
         color: var(--brand-orange-dark);
-    }
-    .login-footer .dot-sep {
-        display: inline-block;
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: var(--ui-text-muted);
     }
 
     /* ============================================================
@@ -453,18 +485,6 @@
         margin: 0 auto 1.25rem auto;
         line-height: 1.6;
     }
-    .modal-wa-number {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--ui-text-primary);
-        letter-spacing: 0.5px;
-        margin-bottom: 1.75rem;
-        background: var(--input-bg);
-        padding: 0.5rem 1.5rem;
-        border-radius: 50px;
-        display: inline-block;
-        border: 1px solid var(--ui-border);
-    }
     .btn-wa-chat {
         background: var(--wa-green);
         color: #fff;
@@ -487,74 +507,173 @@
     }
 
     /* ============================================================
-       RESPONSIVE
+       ANIMASI
+       ============================================================ */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .auth-card {
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    .auth-brand-panel > * {
+        animation: slideInDown 0.6s ease-out;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* ============================================================
+       RESPONSIVE: TABLET
        ============================================================ */
     @media (max-width: 991.98px) {
+        body.auth-page {
+            padding: 1.5rem;
+            align-items: center;
+        }
+        .auth-card {
+            min-height: auto;
+        }
+        .auth-card > .row {
+            min-height: auto;
+        }
         .auth-brand-panel {
-            min-height: 260px;
+            min-height: 280px;
             padding: 2.5rem 1.5rem;
         }
         .auth-logo {
-            width: 80px;
-            height: 80px;
-            padding: 14px;
+            width: 90px;
+            height: 90px;
+            padding: 16px;
             margin-bottom: 1rem;
         }
         .auth-app-name {
-            font-size: 2.2rem;
+            font-size: 2.4rem;
         }
         .auth-app-sub {
-            font-size: 0.95rem;
+            font-size: 1rem;
         }
         .auth-tagline {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             max-width: 100%;
         }
         .auth-form-panel {
             padding: 2.5rem 2rem;
         }
-        .login-footer {
-            font-size: 0.75rem;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-        }
     }
 
+    /* ============================================================
+       MOBILE NATIVE APP LAYOUT (< 768px)
+       ============================================================ */
     @media (max-width: 767.98px) {
         body.auth-page {
-            padding: 1rem;
-            align-items: flex-start;
-            padding-top: 1.5rem;
+            padding: 0;
+            background: #fff;
+            align-items: stretch;
         }
+
+        .auth-wrapper {
+            min-height: 100vh;
+            min-height: 100dvh;
+            width: 100%;
+            max-width: 100%;
+        }
+
         .auth-card {
-            border-radius: 20px;
+            border-radius: 0;
+            box-shadow: none;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
         }
+
+        .auth-card > .row {
+            flex: 1;
+            min-height: 100vh;
+            min-height: 100dvh;
+            margin: 0;
+            flex-direction: column;
+        }
+
+        .auth-card > .row > [class*="col-"] {
+            padding: 0;
+            flex: none;
+        }
+
+        .auth-card > .row > .col-lg-6:nth-child(2) {
+            flex: 1;
+            display: flex;
+        }
+
+        /* Header kompak dengan rounded bottom */
         .auth-brand-panel {
-            min-height: 180px;
-            padding: 1.75rem 1rem;
+            min-height: auto;
+            padding: 3rem 1.5rem 3.5rem 1.5rem;
+            border-radius: 0 0 32px 32px;
+            flex-shrink: 0;
         }
         .auth-logo {
-            width: 64px;
-            height: 64px;
-            padding: 10px;
-            border-radius: 20px;
+            width: 72px;
+            height: 72px;
+            padding: 12px;
+            border-radius: 22px;
             margin-bottom: 0.75rem;
         }
         .auth-app-name {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
         }
         .auth-app-sub {
-            font-size: 0.8rem;
-            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+            margin-bottom: 0;
         }
         .auth-tagline {
             display: none;
         }
+
+        /* Form panel "naik" menutupi header */
         .auth-form-panel {
-            padding: 1.75rem 1.25rem;
+            padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+            margin-top: -1.5rem;
+            z-index: 2;
+            position: relative;
+            background: #fff;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -8px 16px rgba(0,0,0,0.05);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
         }
-        .auth-mobile-logo {
-            display: block;
+
+        .form-heading {
+            margin-bottom: 1.5rem;
         }
         .form-heading h1 {
             font-size: 1.5rem;
@@ -562,69 +681,165 @@
         .form-heading p {
             font-size: 0.85rem;
         }
-        .input-group-icon .form-control {
-            height: 48px;
-            font-size: 0.9rem;
-            padding: 0 44px 0 44px;
+
+        /* Input anti-zoom iOS */
+        .input-group-icon {
+            margin-bottom: 1rem;
         }
+        .input-group-icon .form-control {
+            height: var(--input-height-mobile);
+            font-size: 16px;
+            padding: 0 44px 0 44px;
+            border-radius: 12px;
+        }
+        .input-group-icon .input-icon {
+            left: 16px;
+            font-size: 1rem;
+        }
+
+        .form-options {
+            margin: 0.25rem 0 1.25rem 0;
+        }
+
         .btn-login {
-            height: 48px;
+            height: var(--input-height-mobile);
             font-size: 0.95rem;
+            border-radius: 12px;
+        }
+
+        /* Footer di dorong ke bawah */
+        .login-footer {
+            margin-top: auto;
+            padding-top: 2rem;
+            border-top: none;
+            padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
+
+        /* Modal responsive */
+        .forgot-modal .modal-dialog {
+            margin: 1rem;
+        }
+        .forgot-modal .modal-content {
+            border-radius: 20px;
         }
         .forgot-modal .modal-body {
             padding: 2rem 1.25rem;
         }
-        .modal-wa-number {
-            font-size: 1.1rem;
-        }
-        .login-footer {
-            font-size: 0.7rem;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
-        .login-footer .dot-sep {
-            display: none;
-        }
     }
 
+    /* ============================================================
+       SMALL MOBILE (< 576px)
+       ============================================================ */
     @media (max-width: 575.98px) {
-        .auth-form-panel {
-            padding: 1.5rem 1rem;
+        .auth-brand-panel {
+            padding: 2.5rem 1.5rem 3rem 1.5rem;
         }
+        .auth-logo {
+            width: 64px;
+            height: 64px;
+            padding: 10px;
+            border-radius: 18px;
+        }
+        .auth-app-name {
+            font-size: 1.6rem;
+        }
+
+        .auth-form-panel {
+            padding: 2rem 1.25rem 1.25rem 1.25rem;
+        }
+
+        .form-heading h1 {
+            font-size: 1.4rem;
+        }
+
+        .input-group-icon .form-control {
+            height: 50px;
+            font-size: 16px;
+        }
+
         .form-options {
             flex-direction: column;
             align-items: flex-start;
             gap: 0.75rem;
         }
-        .forgot-link {
-            font-size: 0.85rem;
-        }
+
         .btn-login {
             font-size: 0.9rem;
         }
-        .auth-brand-panel {
-            min-height: 140px;
-            padding: 1.25rem 0.75rem;
-        }
-        .auth-app-name {
-            font-size: 1.3rem;
-        }
-        .auth-logo {
-            width: 54px;
-            height: 54px;
-            padding: 8px;
-            margin-bottom: 0.5rem;
-        }
+
         .login-footer {
-            font-size: 0.65rem;
+            font-size: 0.7rem;
         }
     }
 
-    .text-brand-orange {
-        color: var(--brand-orange-dark);
-    }
-    .gap-2 {
-        gap: 0.5rem;
+    /* ============================================================
+       LANDSCAPE MOBILE
+       ============================================================ */
+    @media (max-width: 991.98px) and (orientation: landscape) and (max-height: 500px) {
+        body.auth-page {
+            padding: 1rem;
+            align-items: center;
+            background: var(--ui-bg);
+        }
+        .auth-wrapper {
+            min-height: auto;
+        }
+        .auth-card {
+            min-height: auto;
+            border-radius: var(--ui-radius);
+            box-shadow: var(--ui-shadow);
+        }
+        .auth-card > .row {
+            min-height: auto;
+            flex-direction: row;
+        }
+        .auth-brand-panel {
+            min-height: 100%;
+            padding: 1.5rem;
+            border-radius: 0;
+        }
+        .auth-logo {
+            width: 56px;
+            height: 56px;
+            padding: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .auth-app-name {
+            font-size: 1.4rem;
+        }
+        .auth-app-sub {
+            font-size: 0.75rem;
+        }
+        .auth-tagline {
+            display: none;
+        }
+        .auth-form-panel {
+            padding: 1.5rem;
+            justify-content: center;
+            margin-top: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .form-heading {
+            margin-bottom: 1rem;
+        }
+        .form-heading h1 {
+            font-size: 1.2rem;
+        }
+        .input-group-icon {
+            margin-bottom: 0.75rem;
+        }
+        .input-group-icon .form-control {
+            height: 44px;
+            font-size: 16px;
+        }
+        .btn-login {
+            height: 44px;
+        }
+        .login-footer {
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
     }
 </style>
 
@@ -632,8 +847,11 @@
 
     <div class="auth-card">
         <div class="row g-0">
-            <!-- SISI KIRI -->
-            <div class="col-lg-6 d-none d-lg-flex">
+
+            <!-- ====================================================
+                 SISI KIRI – BRANDING
+                 ==================================================== -->
+            <div class="col-lg-6">
                 <div class="auth-brand-panel w-100">
                     <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" class="auth-logo" />
                     <div class="auth-app-name">SIAP</div>
@@ -644,16 +862,11 @@
                 </div>
             </div>
 
-            <!-- SISI KANAN - FORM LOGIN -->
+            <!-- ====================================================
+                 SISI KANAN – FORM LOGIN
+                 ==================================================== -->
             <div class="col-lg-6">
                 <div class="auth-form-panel">
-
-                    <!-- Mobile Logo -->
-                    <div class="auth-mobile-logo">
-                        <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" />
-                        <div class="app-name-mobile">SIAP</div>
-                        <span class="app-sub-mobile">Sistem Informasi Administrasi Rapat</span>
-                    </div>
 
                     <!-- Heading -->
                     <div class="form-heading">
@@ -720,7 +933,7 @@
                         </button>
                     </form>
 
-                    <!-- FOOTER COPYRIGHT DI DALAM CARD (posisi seperti "Login menggunakan NIK..." sebelumnya) -->
+                    <!-- FOOTER COPYRIGHT -->
                     <div class="login-footer">
                         <span>&copy; 2026</span>
                         <a href="#">IT PT Petrokopindo Cipta Selaras</a>
@@ -783,12 +996,39 @@
             });
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initPasswordToggle);
-        } else {
-            initPasswordToggle();
+        function preventDoubleSubmit() {
+            const form = document.querySelector('form');
+            const submitBtn = document.querySelector('.btn-login');
+            if (!form || !submitBtn) return;
+
+            let isSubmitting = false;
+            form.addEventListener('submit', function(e) {
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return;
+                }
+                isSubmitting = true;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Memproses...';
+
+                setTimeout(function() {
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Masuk ke SIAP';
+                }, 5000);
+            });
         }
 
+        function init() {
+            initPasswordToggle();
+            preventDoubleSubmit();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     })();
 </script>
 @endpush

@@ -1,27 +1,57 @@
 @php
     use Carbon\Carbon;
+    use Illuminate\Support\Str;
 @endphp
 
 @extends('templates.template')
 
+@section('title', 'Dashboard')
 @section('page_title', 'Dashboard')
-@section('page_subtitle', 'Jadwal peminjaman ruangan hari ini')
 
 @section('content')
-<style>
-    /* =====================================================================
-       DASHBOARD — layout dasar
-       ===================================================================== */
-    .dashboard-content {
-        padding: var(--space-6) var(--space-7);
-        max-width: 1800px; 
-        margin: 0 auto;
-        flex: 1;
-        width: 100%;
-        padding-bottom: 100px;
+{{-- BLOK INISIALISASI VARIABEL --}}
+@php
+    $totalBookingsToday = 0;
+    $totalPending = 0;
+    $totalApproved = 0;
+    $totalRejected = 0;
+    
+    if (isset($bookingSchedule) && is_array($bookingSchedule)) {
+        foreach ($bookingSchedule as $roomId => $slots) {
+            foreach ($slots as $time => $booking) {
+                if ($booking) {
+                    $totalBookingsToday++;
+                    if ($booking->status == 0) $totalPending++;
+                    elseif ($booking->status == 1) $totalApproved++;
+                    elseif ($booking->status == 2) $totalRejected++;
+                }
+            }
+        }
     }
+    
+    $totalRoomsToday = isset($allRooms) ? $allRooms->count() : 0;
+    $busyRoomIds = isset($dayBookings) ? $dayBookings->where('status', '!=', 2)->pluck('room_id')->unique() : collect([]);
+    $availableRoomsNow = max(0, $totalRoomsToday - $busyRoomIds->count());
 
-    /* Toolbar */
+    $userName = Auth::user()->full_name ?? Auth::user()->name ?? 'User';
+    $selectedRoomValue = (!empty($selectedRoomIds) && !in_array('all', $selectedRoomIds)) ? $selectedRoomIds[0] : '';
+    
+    $roomsData = [];
+    if (isset($rooms)) {
+        $roomsData = $rooms->map(function($r) {
+            return [
+                'id' => $r->id,
+                'name' => $r->name,
+                'photos' => $r->photos ? $r->photos->map(function($p) { return $p->photo_url; })->toArray() : []
+            ];
+        })->values()->toArray();
+    }
+@endphp
+
+<style>
+    /* ============================================================
+       DASHBOARD SPECIFIC STYLES
+       ============================================================ */
     .db-toolbar {
         display: flex;
         justify-content: space-between;
@@ -37,7 +67,7 @@
         margin: 0;
         letter-spacing: -0.02em;
     }
-    .db-toolbar .db-meta {
+    .db-meta {
         font-size: var(--font-size-sm);
         color: var(--text-secondary);
         margin: var(--space-2) 0 0;
@@ -46,7 +76,7 @@
         gap: var(--space-3);
         flex-wrap: wrap;
     }
-    .db-toolbar .actions {
+    .actions {
         display: flex;
         gap: var(--space-3);
         flex-wrap: wrap;
@@ -55,7 +85,7 @@
     .badge-holiday {
         font-size: var(--font-size-xs);
         font-weight: 600;
-        padding: 3px 12px;
+        padding: 4px 12px;
         border-radius: var(--radius-pill);
         background: rgba(245, 158, 11, 0.12);
         color: #b45309;
@@ -66,7 +96,7 @@
     .badge-live-time {
         font-size: var(--font-size-xs);
         font-weight: 700;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: var(--radius-pill);
         background: rgba(59, 130, 246, 0.1);
         color: #1d4ed8;
@@ -87,7 +117,7 @@
     }
 
     .btn-primary-sm {
-        height: 42px;
+        height: 44px;
         padding: 0 var(--space-5);
         background: var(--brand-gradient);
         border: none;
@@ -101,52 +131,19 @@
         align-items: center;
         gap: var(--space-2);
         text-decoration: none;
-        box-shadow: 0 2px 10px rgba(249, 115, 22, 0.16);
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
     .btn-primary-sm:hover {
         background: var(--brand-gradient-hover);
         transform: translateY(-1px);
-        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
         color: var(--text-inverse);
     }
-    .btn-outline-sm {
-        height: 42px;
-        padding: 0 var(--space-5);
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        font-weight: 600;
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        transition: all var(--transition-fast);
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-2);
-        text-decoration: none;
-    }
-    .btn-outline-sm:hover {
-        border-color: var(--brand-orange);
-        color: var(--brand-orange-dark);
-        background: rgba(249, 115, 22, 0.04);
-    }
-    .btn-outline-sm.is-loading i { animation: spin 0.7s linear infinite; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    .btn-primary-sm:focus-visible,
-    .btn-outline-sm:focus-visible,
-    .date-nav-btn:focus-visible,
-    .btn-today:focus-visible,
-    .db-select:focus-visible,
-    .time-trigger:focus-visible {
-        outline: 2px solid var(--brand-orange);
-        outline-offset: 2px;
-    }
-
-    /* Stat cards */
+    /* Stat Cards */
     .db-stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: var(--space-4);
         margin-bottom: var(--space-6);
     }
@@ -163,19 +160,18 @@
         min-width: 0;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-    .stat-card .stat-icon {
-        width: 52px; height: 52px;
+    .stat-icon {
+        width: 56px; height: 56px;
         border-radius: var(--radius-sm);
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.35rem;
+        font-size: 1.5rem;
         flex-shrink: 0;
     }
-    .stat-card .stat-icon.blue   { background: rgba(59,130,246,0.1);  color: var(--brand-blue); }
-    .stat-card .stat-icon.green  { background: rgba(16,185,129,0.1);  color: var(--brand-green-dark); }
-    .stat-card .stat-icon.amber  { background: rgba(245,158,11,0.12); color: #b45309; }
-    .stat-card .stat-icon.red    { background: rgba(239,68,68,0.1);   color: #b91c1c; }
-    .stat-card .stat-body { min-width: 0; }
-    .stat-card .stat-value {
+    .stat-icon.blue   { background: rgba(59,130,246,0.1);  color: var(--brand-blue); }
+    .stat-icon.green  { background: rgba(16,185,129,0.1);  color: var(--brand-green-dark); }
+    .stat-icon.amber  { background: rgba(245,158,11,0.12); color: #b45309; }
+    .stat-body { min-width: 0; }
+    .stat-value {
         font-size: var(--font-size-2xl);
         font-weight: 800;
         color: var(--text-primary);
@@ -184,8 +180,8 @@
         align-items: baseline;
         gap: 4px;
     }
-    .stat-card .stat-value small { font-size: var(--font-size-sm); font-weight: 500; color: var(--text-muted); }
-    .stat-card .stat-label {
+    .stat-value small { font-size: var(--font-size-sm); font-weight: 500; color: var(--text-muted); }
+    .stat-label {
         font-size: var(--font-size-xs);
         color: var(--text-secondary);
         font-weight: 600;
@@ -195,11 +191,11 @@
         text-overflow: ellipsis;
     }
 
-    /* Control bar */
+    /* Control Bar */
     .db-controls {
         display: flex;
         flex-wrap: wrap;
-        align-items: center;
+        align-items: flex-end;
         gap: var(--space-4);
         margin-bottom: var(--space-6);
         background: var(--bg-card);
@@ -214,11 +210,11 @@
         border: 1px solid var(--border-color);
         border-radius: var(--radius-sm);
         overflow: hidden;
-        height: 42px;
+        height: 44px;
     }
     .date-navigator > * { border: none; border-radius: 0; }
-    .date-navigator .btn-today {
-        height: 42px;
+    .btn-today {
+        height: 44px;
         padding: 0 var(--space-4);
         background: var(--brand-gradient);
         color: var(--text-inverse);
@@ -231,9 +227,9 @@
         white-space: nowrap;
         box-shadow: none;
     }
-    .date-navigator .btn-today:hover { filter: brightness(1.05); }
+    .btn-today:hover { filter: brightness(1.05); }
     .date-nav-btn {
-        width: 42px;
+        width: 44px;
         background: transparent;
         color: var(--text-secondary);
         cursor: pointer;
@@ -266,6 +262,7 @@
         font-size: var(--font-size-sm);
         color: var(--text-primary);
         cursor: pointer;
+        min-width: 120px;
     }
 
     .db-divider {
@@ -288,22 +285,38 @@
         color: var(--text-muted);
     }
     .db-select {
-        height: 42px;
-        padding: 0 var(--space-3);
+        height: 44px;
+        min-width: 170px;
+        padding: 0 42px 0 var(--space-3);
         font-size: var(--font-size-sm);
+        font-weight: 500;
+        font-family: inherit;
+        color: var(--text-primary);
         background: var(--bg-input);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        min-width: 170px;
         cursor: pointer;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 16px;
+    }
+    .db-select:hover {
+        border-color: #cbd5e1;
+    }
+    .db-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, .12);
     }
 
     .db-controls .filter-spacer { flex: 1; }
 
-    /* Time trigger button */
     .time-trigger {
-        height: 42px;
+        height: 44px;
         padding: 0 var(--space-4);
         display: inline-flex;
         align-items: center;
@@ -322,9 +335,31 @@
     .time-trigger i.bi-clock { color: var(--brand-orange); }
     .time-trigger .chevron { color: var(--text-muted); font-size: 0.65rem; margin-left: 2px; }
 
-    /* =====================================================================
-       MATERIAL TIME PICKER — dialog modal (z-index sangat tinggi)
-       ===================================================================== */
+    /* Reset Filter Button */
+    .btn-reset-filter {
+        height: 44px;
+        padding: 0 var(--space-4);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        transition: all var(--transition-fast);
+    }
+    .btn-reset-filter:hover {
+        border-color: var(--brand-orange);
+        color: var(--brand-orange-dark);
+        background: rgba(249, 115, 22, 0.04);
+    }
+
+    /* ============================================================
+       MATERIAL TIME PICKER
+       ============================================================ */
     .mtp-overlay {
         position: fixed;
         inset: 0;
@@ -332,17 +367,16 @@
         display: none;
         align-items: center;
         justify-content: center;
-        background: rgba(0, 0, 0, 0.32);
+        background: rgba(0, 0, 0, 0.4);
         animation: mtpFadeIn 0.18s ease;
         padding: 16px;
     }
     .mtp-overlay.open { display: flex; }
-    /* DIPERBAIKI: Lebar modal dikembalikan ke 400px agar proporsional */
     .mtp-dialog {
         background: var(--bg-card);
-        border-radius: 16px;
+        border-radius: 20px;
         box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-        width: 400px; 
+        width: 420px; 
         max-width: 100%; 
         max-height: 92vh;
         overflow-y: auto;
@@ -351,9 +385,9 @@
     @keyframes mtpFadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes mtpSlideUp { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-    .mtp-header { padding: 20px 24px 6px; }
+    .mtp-header { padding: 24px 28px 8px; }
     .mtp-title {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.6px;
@@ -368,8 +402,8 @@
     .mtp-time-display {
         display: flex;
         justify-content: center;
-        gap: 24px;
-        padding: 12px 24px 8px;
+        gap: 28px;
+        padding: 16px 28px 12px;
     }
     .mtp-field {
         display: flex;
@@ -377,8 +411,8 @@
         align-items: center;
         gap: 4px;
         cursor: pointer;
-        padding: 8px 14px;
-        border-radius: 12px;
+        padding: 10px 16px;
+        border-radius: 14px;
         transition: background var(--transition-fast);
     }
     .mtp-field:hover { background: var(--bg-hover); }
@@ -391,9 +425,8 @@
         letter-spacing: 0.5px;
         color: var(--text-muted);
     }
-    /* DIPERBAIKI: Font digital dikembalikan ke 42px agar tidak kebesaran */
     .mtp-digital {
-        font-size: 42px; 
+        font-size: 44px;
         font-weight: 400;
         color: var(--text-primary);
         line-height: 1;
@@ -405,7 +438,7 @@
     .mtp-digital .mtp-colon { opacity: 0.45; padding: 0 2px; }
     .mtp-digital .mtp-unit {
         cursor: pointer;
-        padding: 0 3px;
+        padding: 0 4px;
         border-radius: 8px;
         transition: background var(--transition-fast);
     }
@@ -423,8 +456,8 @@
         color: #b91c1c;
         background: rgba(239, 68, 68, 0.08);
         border-radius: var(--radius-xs);
-        padding: 7px 12px;
-        margin: 4px 24px 0;
+        padding: 8px 14px;
+        margin: 4px 28px 0;
     }
     .mtp-error.show { display: flex; }
 
@@ -432,9 +465,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 16px 24px 8px;
+        padding: 20px 28px 12px;
     }
-    /* DIPERBAIKI: Ukuran jam dikembalikan ke 280px */
     .mtp-clock {
         position: relative;
         width: 280px; 
@@ -447,16 +479,15 @@
         flex-shrink: 0;
         margin: 0 auto;
     }
-    /* DIPERBAIKI: Ukuran angka dikembalikan ke proporsi semula */
     .mtp-num {
         position: absolute;
-        width: clamp(40px, 12vw, 44px);
-        height: clamp(40px, 12vw, 44px);
+        width: 44px;
+        height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        font-size: clamp(14px, 4vw, 16px); 
+        font-size: 16px;
         font-weight: 500;
         color: var(--text-primary);
         cursor: pointer;
@@ -512,7 +543,7 @@
         height: 20px;
         text-align: center;
         background: rgba(249, 115, 22, 0.08);
-        padding: 4px 12px;
+        padding: 4px 14px;
         border-radius: 20px;
     }
 
@@ -520,23 +551,23 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 16px 16px;
+        padding: 16px 20px 20px;
     }
     .mtp-icon-btn {
         background: none;
         border: none;
         color: var(--text-muted);
-        font-size: 18px;
+        font-size: 20px;
         cursor: pointer;
-        padding: 8px;
+        padding: 10px;
         border-radius: 8px;
         transition: all var(--transition-fast);
     }
     .mtp-icon-btn:hover { background: var(--bg-hover); color: var(--brand-orange); }
     .mtp-actions { display: flex; gap: 8px; }
     .mtp-btn {
-        height: 36px;
-        padding: 0 18px;
+        height: 40px;
+        padding: 0 20px;
         border-radius: var(--radius-sm);
         font-size: 14px;
         font-weight: 600;
@@ -549,9 +580,9 @@
     .mtp-btn-ok { background: var(--brand-orange); color: #fff; }
     .mtp-btn-ok:hover { background: var(--brand-orange-dark); }
 
-    /* =====================================================================
-       Kartu jadwal
-       ===================================================================== */
+    /* ============================================================
+       SCHEDULE GRID
+       ============================================================ */
     .schedule-card {
         background: var(--bg-card);
         border: 1px solid var(--border-color-light);
@@ -567,6 +598,7 @@
         align-items: center;
         flex-wrap: wrap;
         gap: var(--space-3);
+        background: var(--bg-card);
     }
     .schedule-card .card-header .title {
         font-weight: 700;
@@ -595,7 +627,7 @@
         background: var(--brand-orange);
         color: #fff;
         border: none;
-        padding: 5px var(--space-3);
+        padding: 6px var(--space-3);
         border-radius: var(--radius-pill);
         font-size: var(--font-size-xs);
         font-weight: 700;
@@ -625,6 +657,7 @@
     .schedule-legend .dot.approved  { background: #10b981; }
     .schedule-legend .dot.rejected  { background: #ef4444; }
     .schedule-legend .dot.current   { background: var(--brand-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
+    .schedule-legend .dot.past      { background: #94a3b8; }
 
     .schedule-card .card-body {
         padding: 0;
@@ -633,11 +666,8 @@
         max-height: 640px;
         scroll-behavior: smooth;
         scrollbar-width: thin;
-        scrollbar-color: var(--text-muted) transparent;
         -webkit-overflow-scrolling: touch;
     }
-    .schedule-card .card-body::-webkit-scrollbar { width: 6px; height: 6px; }
-    .schedule-card .card-body::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: var(--radius-pill); }
 
     .cal-grid-header {
         display: grid;
@@ -664,7 +694,7 @@
         background: var(--bg-body);
     }
     .cal-room-photo {
-        width: 60px; height: 60px;
+        width: 56px; height: 56px;
         border-radius: var(--radius-sm);
         object-fit: cover;
         cursor: pointer;
@@ -674,7 +704,6 @@
         flex-shrink: 0;
     }
     .cal-room-photo:hover { transform: scale(1.06); border-color: var(--brand-orange); }
-    .cal-room-photo:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
     .cal-room-photo-placeholder {
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted);
@@ -683,6 +712,8 @@
         border: 1px dashed var(--border-color);
         cursor: default;
         flex-shrink: 0;
+        width: 56px; height: 56px;
+        border-radius: var(--radius-sm);
     }
     .cal-room-info { text-align: left; min-width: 0; }
     .cal-room-name {
@@ -699,12 +730,16 @@
 
     .cal-grid-body-wrapper { position: relative; min-width: fit-content; }
     .cal-grid-body { display: grid; }
+    
     .cal-time-col {
         position: sticky;
         left: 0;
         z-index: 10;
         background: var(--bg-card);
         border-right: 2px solid var(--border-color);
+        background-image: linear-gradient(to bottom, var(--border-color-light) 1px, transparent 1px);
+        background-size: 100% 64px;
+        background-position: 0 0;
     }
     .cal-time-label {
         display: flex;
@@ -714,28 +749,26 @@
         font-size: var(--font-size-xs);
         font-weight: 700;
         color: var(--brand-orange-dark);
-        border-bottom: 1px solid var(--border-color-light);
         box-sizing: border-box;
+        height: 64px; 
     }
-    .cal-time-label.hour-mark { border-bottom-color: var(--border-color); }
+    .cal-time-label.hour-mark { border-bottom: 1px solid var(--border-color); }
 
     .cal-room-col {
         position: relative;
         border-right: 1px solid var(--border-color);
-        background-image: repeating-linear-gradient(
-            to bottom,
-            var(--border-color) 0px, var(--border-color) 1px, transparent 1px, transparent 64px
-        ),
-        repeating-linear-gradient(
-            to bottom,
-            transparent 0px, transparent 63px, var(--border-color-light) 63px, var(--border-color-light) 64px, transparent 64px, transparent 127px, var(--border-color-light) 127px, var(--border-color-light) 128px
-        );
+        background-image: linear-gradient(to bottom, var(--border-color-light) 1px, transparent 1px);
+        background-size: 100% 64px;
+        background-position: 0 0;
     }
+
+    /* Slot yang masih bisa dipesan */
     .cal-slot-hover {
         position: absolute;
         left: 0; right: 0;
         cursor: pointer;
         z-index: 1;
+        height: 64px; 
     }
     .cal-slot-hover-inner {
         display: none;
@@ -751,9 +784,32 @@
         font-size: var(--font-size-xs);
         font-weight: 700;
     }
-    .cal-slot-hover:hover .cal-slot-hover-inner,
-    .cal-slot-hover:focus-visible .cal-slot-hover-inner { display: flex; }
-    .cal-slot-hover:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; border-radius: var(--radius-sm); }
+    .cal-slot-hover:hover .cal-slot-hover-inner { display: flex; }
+
+    /* Slot yang sudah lewat (TIDAK BISA DIPESAN) */
+    .cal-slot-past {
+        position: absolute;
+        left: 0; right: 0;
+        height: 64px;
+        z-index: 1;
+        background-color: rgba(243, 244, 246, 0.6);
+        background-image: repeating-linear-gradient(
+            135deg,
+            transparent,
+            transparent 10px,
+            rgba(226, 232, 240, 0.4) 10px,
+            rgba(226, 232, 240, 0.4) 20px
+        );
+        pointer-events: none; /* Nonaktifkan klik */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+    .cal-slot-past i {
+        opacity: 0.4;
+        font-size: 0.8rem;
+    }
 
     .cal-event {
         position: absolute;
@@ -768,7 +824,6 @@
         transition: box-shadow var(--transition-fast), transform var(--transition-fast);
     }
     .cal-event:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.14); transform: translateY(-1px); }
-    .cal-event:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
     .cal-event-title {
         font-weight: 700;
         font-size: var(--font-size-sm);
@@ -804,7 +859,7 @@
     .no-results { padding: var(--space-9); text-align: center; color: var(--text-muted); font-size: var(--font-size-md); }
     .no-results i { font-size: 2.75rem; display: block; margin-bottom: var(--space-3); color: var(--border-color); }
 
-    /* Lightbox galeri foto ruangan */
+    /* Lightbox */
     .gallery-lightbox {
         display: none;
         position: fixed;
@@ -829,324 +884,306 @@
     .gallery-lightbox .lightbox-thumbnails { display: flex; gap: 8px; margin-top: 12px; max-width: 80%; overflow-x: auto; padding: 4px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); }
     .gallery-lightbox .lightbox-thumbnails img { width: 50px; height: 50px; object-fit: cover; border-radius: var(--radius-xs); cursor: pointer; border: 2px solid transparent; }
     .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* Loading indicator untuk AJAX */
-    .db-ajax-loading .schedule-card,
-    .db-ajax-loading .db-stats-grid { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
-
-    /* Mobile Bottom Action Bar */
-    .mobile-action-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--bg-card);
-        padding: 10px 16px;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+    /* Mobile Floating Action Button */
+    .fab-book {
         display: none;
-        z-index: 1020;
-        border-top: 1px solid var(--border-color-light);
-    }
-    .btn-book-mobile {
-        flex: 1;
-        height: 50px;
-        font-size: 16px;
-        border-radius: 12px;
-        font-weight: 600;
+        position: fixed;
+        bottom: calc(80px + var(--safe-bottom));
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
         background: var(--brand-gradient);
         color: white;
         border: none;
-        display: flex;
+        font-size: 1.5rem;
+        box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        z-index: 1001;
+        cursor: pointer;
+        transition: transform var(--transition-fast);
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        text-decoration: none;
     }
+    .fab-book:hover { transform: scale(1.05); }
+    .fab-book:active { transform: scale(0.95); }
 
-    /* Responsive */
-    @media (max-width: 1199.98px) {
-        .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+    /* Loading */
+    .db-ajax-loading .schedule-card,
+    .db-ajax-loading .db-stats-grid { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
+
+    /* ============================================================
+       RESPONSIVE DASHBOARD
+       ============================================================ */
     @media (max-width: 991.98px) {
-        .dashboard-content { padding: var(--space-4); padding-bottom: 90px; }
+        .db-stats-grid { grid-template-columns: repeat(2, 1fr); }
         .db-controls { flex-direction: column; align-items: stretch; padding: var(--space-4); }
         .db-controls .filter-spacer { display: none; }
         .db-divider { display: none; }
         .date-navigator { width: 100%; }
         .date-navigator .date-display { flex: 1; }
+        .date-navigator .date-display input { min-width: 0; width: 100%; }
         .db-filter-group { width: 100%; }
         .db-filter-group .db-select,
         .db-filter-group .time-trigger { width: 100%; }
+        .btn-reset-filter { width: 100%; justify-content: center; }
         .db-toolbar { flex-direction: column; align-items: stretch; }
-        .db-toolbar .actions { display: none; }
-        .db-toolbar .actions .btn-primary-sm,
-        .db-toolbar .actions .btn-outline-sm { flex: 1; justify-content: center; }
+        .db-toolbar .actions { display: flex; }
+        .db-toolbar .actions .btn-primary-sm { flex: 1; justify-content: center; }
         .schedule-card .card-header .title .date-info { display: none; }
         .cal-time-col, .cal-time-header { min-width: 60px !important; }
         .cal-room-header, .cal-room-col { min-width: 180px !important; }
         .cal-room-photo, .cal-room-photo-placeholder { width: 48px; height: 48px; }
         .cal-room-name { font-size: var(--font-size-xs); }
         .schedule-card .card-body { max-height: 500px; }
-        .mobile-action-bar { display: flex; }
+        .fab-book { display: flex; }
     }
+
     @media (max-width: 575.98px) {
-        .dashboard-content { padding: var(--space-3); padding-bottom: 90px; }
-        .db-stats-grid { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+        .db-stats-grid { grid-template-columns: 1fr; gap: var(--space-3); }
         .stat-card { padding: var(--space-4); gap: var(--space-3); }
-        .stat-card .stat-icon { width: 42px; height: 42px; font-size: 1.1rem; }
-        .stat-card .stat-value { font-size: var(--font-size-lg); }
+        .stat-card .stat-icon { width: 44px; height: 44px; font-size: 1.2rem; }
+        .stat-card .stat-value { font-size: var(--font-size-xl); }
         .cal-room-header, .cal-room-col { min-width: 150px !important; }
         .cal-room-photo, .cal-room-photo-placeholder { width: 40px; height: 40px; }
         .cal-event-title, .cal-event-sub { font-size: 11px; }
-        .schedule-legend { gap: var(--space-3); }
+        .schedule-legend { gap: var(--space-3); padding: var(--space-3); }
         .db-toolbar h1 { font-size: var(--font-size-xl); }
         .schedule-card .card-header { flex-direction: column; align-items: flex-start; }
         
-        /* Responsive Time Picker for Mobile */
-        .mtp-dialog { width: 95vw; }
-        .mtp-header { padding: 16px 20px 4px; }
+        .mtp-dialog { width: calc(100vw - 32px); }
+        .mtp-header { padding: 20px 20px 4px; }
         .mtp-time-display { gap: 16px; padding: 8px 20px 4px; }
         .mtp-digital { font-size: 36px; }
         .mtp-field { padding: 8px 12px; }
         .mtp-clock { width: 240px; height: 240px; }
-        .mtp-footer { padding: 12px 20px 20px; }
+        .mtp-footer { padding: 12px 16px 16px; }
+        
+        .db-toolbar .db-meta { font-size: var(--font-size-xs); }
+        .badge-holiday, .badge-live-time { font-size: 10px; padding: 3px 8px; }
+        
+        .fab-book { bottom: calc(76px + var(--safe-bottom)); right: 16px; }
+    }
+
+    @media (max-width: 991.98px) and (orientation: landscape) and (max-height: 500px) {
+        .db-stats-grid { grid-template-columns: repeat(3, 1fr); }
+        .db-toolbar { flex-direction: row; align-items: center; }
+        .db-toolbar .actions { display: flex; }
+        .schedule-card .card-body { max-height: 320px; }
     }
 
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .db-controls { animation: fadeUp 0.3s ease forwards; }
     .schedule-card { animation: fadeUp 0.4s ease forwards; }
+    .stat-card { animation: fadeUp 0.2s ease forwards; }
+    .stat-card:nth-child(1) { animation-delay: 0.05s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.15s; }
 </style>
 
-<div class="dashboard-content">
-    @php
-        $totalBookingsToday = 0;
-        $totalPending = 0;
-        $totalApproved = 0;
-        $totalRejected = 0;
-        foreach ($bookingSchedule as $roomId => $slots) {
-            foreach ($slots as $time => $booking) {
-                if ($booking) {
-                    $totalBookingsToday++;
-                    if ($booking->status == 0) $totalPending++;
-                    elseif ($booking->status == 1) $totalApproved++;
-                    elseif ($booking->status == 2) $totalRejected++;
-                }
-            }
-        }
-        $totalRoomsToday = $allRooms->count();
-        $busyRoomIds = $dayBookings->where('status', '!=', 2)->pluck('room_id')->unique();
-        $availableRoomsNow = max(0, $totalRoomsToday - $busyRoomIds->count());
+<div class="db-toolbar">
+    <div>
+        <p class="db-meta">
+            <span id="liveDateTime"><i class="bi bi-calendar3 me-1"></i> <span id="liveDate">Memuat...</span></span>
+            <span class="badge-live-time"><span class="pulse-dot"></span> <span id="liveTime">00:00:00</span></span>
+        </p>
+    </div>
+    <div class="actions">
+        <a href="{{ route('bookings.create') }}" class="btn-primary-sm">
+            <i class="bi bi-plus-lg"></i> Booking Baru
+        </a>
+    </div>
+</div>
 
-        $userName = Auth::user()->full_name ?? Auth::user()->name ?? 'User';
-        $selectedRoomValue = (!empty($selectedRoomIds) && !in_array('all', $selectedRoomIds)) ? $selectedRoomIds[0] : '';
-    @endphp
-
-    {{-- ========== TOOLBAR ========== --}}
-    <div class="db-toolbar">
-        <div>
-            <h1>Dashboard</h1>
-            <p class="db-meta">
-                <span id="liveDateTime"><i class="bi bi-calendar3 me-1"></i> <span id="liveDate">Memuat...</span></span>
-                <span class="badge-live-time"><span class="pulse-dot"></span> <span id="liveTime">00:00:00</span></span>
-                @if($isWeekend)
-                    <span class="badge-holiday"><i class="bi bi-moon-stars"></i> Libur akhir pekan</span>
-                @endif
-                @if($isToday && !$isWeekend)
-                    <span class="badge-holiday" style="background: rgba(16,185,129,0.12); color: #047857;"><i class="bi bi-clock"></i> Hari ini</span>
-                @endif
-            </p>
-        </div>
-        <div class="actions">
-            <a href="{{ route('bookings.create') }}" class="btn-primary-sm">
-                <i class="bi bi-plus-lg"></i> Booking Baru
-            </a>
-            <button type="button" class="btn-outline-sm" id="refreshBtn" onclick="doRefresh(this)">
-                <i class="bi bi-arrow-repeat"></i> Refresh
-            </button>
+<div class="db-stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-building"></i></div>
+        <div class="stat-body">
+            <div class="stat-value" id="statAvailable">{{ $availableRoomsNow }}<small>/ {{ $totalRoomsToday }}</small></div>
+            <div class="stat-label">Ruangan tersedia sekarang</div>
         </div>
     </div>
-
-    {{-- ========== STAT CARDS ========== --}}
-    <div class="db-stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="bi bi-building"></i></div>
-            <div class="stat-body">
-                <div class="stat-value" id="statAvailable">{{ $availableRoomsNow }}<small>/ {{ $totalRoomsToday }}</small></div>
-                <div class="stat-label">Ruangan tersedia sekarang</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
-            <div class="stat-body">
-                <div class="stat-value" id="statBookings">{{ $totalBookingsToday }}</div>
-                <div class="stat-label">Booking hari ini</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
-            <div class="stat-body">
-                <div class="stat-value" id="statPending">{{ $totalPending }}</div>
-                <div class="stat-label">Menunggu persetujuan</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
-            <div class="stat-body">
-                <div class="stat-value" id="statRejected">{{ $totalRejected }}</div>
-                <div class="stat-label">Ditolak hari ini</div>
-            </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
+        <div class="stat-body">
+            <div class="stat-value" id="statBookings">{{ $totalBookingsToday }}</div>
+            <div class="stat-label">Booking hari ini</div>
         </div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+        <div class="stat-body">
+            <div class="stat-value" id="statPending">{{ $totalPending }}</div>
+            <div class="stat-label">Menunggu persetujuan</div>
+        </div>
+    </div>
+</div>
 
-    {{-- ========== CONTROL BAR ========== --}}
-    <div class="db-controls">
-        <div class="date-navigator">
-            <button type="button" class="btn-today" onclick="resetToToday()">
-                <i class="bi bi-arrow-clockwise"></i> Hari Ini
+<div class="db-controls">
+    <div class="db-filter-group">
+        <label for="dateSelector">Tanggal</label>
+        <div class="date-navigator" role="group" aria-label="Navigasi Tanggal">
+            <button type="button" class="btn-today" onclick="resetToToday()" title="Hari Ini">
+                <i class="bi bi-calendar-date"></i> Hari Ini
             </button>
             <button type="button" class="date-nav-btn" onclick="shiftDate(-1)" aria-label="Tanggal sebelumnya">
                 <i class="bi bi-chevron-left"></i>
             </button>
             <label class="date-display">
-                <i class="bi bi-calendar3"></i>
-                <input type="date" id="dateSelector" name="date" value="{{ $selectedDate }}" onchange="filterByDate(this.value)" aria-label="Pilih tanggal">
+                <input type="date" id="dateSelector" name="date" value="{{ $selectedDate ?? date('Y-m-d') }}" onchange="filterByDate(this.value)" autocomplete="off" aria-label="Pilih tanggal">
             </label>
             <button type="button" class="date-nav-btn" onclick="shiftDate(1)" aria-label="Tanggal berikutnya">
                 <i class="bi bi-chevron-right"></i>
             </button>
         </div>
+    </div>
 
-        <div class="db-divider"></div>
+    <div class="db-divider"></div>
 
-        <div class="db-filter-group" id="timePickerWrapper">
-            <label>Jam Kerja</label>
-            <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
-                <i class="bi bi-clock"></i>
-                <span id="timeTriggerLabel">{{ $startTime }} – {{ $endTime }}</span>
-                <i class="bi bi-chevron-down chevron"></i>
-            </button>
-        </div>
+    <div class="db-filter-group" id="timePickerWrapper">
+        <label for="timeTrigger">Jam Kerja</label>
+        <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
+            <i class="bi bi-clock"></i>
+            <span id="timeTriggerLabel">{{ $startTime ?? '07:00' }} - {{ $endTime ?? '16:00' }}</span>
+            <i class="bi bi-chevron-down chevron"></i>
+        </button>
+    </div>
 
-        <div class="db-divider"></div>
+    <div class="db-divider"></div>
 
-        <div class="db-filter-group">
-            <label for="roomFilter">Ruangan</label>
-            <select id="roomFilter" class="db-select" onchange="filterByRoom(this.value)">
-                <option value="">Semua Ruangan</option>
+    <div class="db-filter-group">
+        <label for="roomFilter">Ruangan</label>
+        <select id="roomFilter" class="db-select" onchange="filterByRoom(this.value)">
+            <option value="">Semua Ruangan</option>
+            @if(isset($allRooms))
                 @foreach($allRooms as $room)
                     <option value="{{ $room->id }}" {{ (string)$selectedRoomValue === (string)$room->id ? 'selected' : '' }}>{{ $room->name }}</option>
                 @endforeach
-            </select>
-        </div>
-
-        <div class="db-filter-group">
-            <label for="statusFilterSelect">Status</label>
-            <select id="statusFilterSelect" class="db-select" onchange="filterByStatus(this.value)">
-                <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>Semua Status</option>
-                <option value="pending" {{ $statusFilter === 'pending' ? 'selected' : '' }}>Pending</option>
-                <option value="approved" {{ $statusFilter === 'approved' ? 'selected' : '' }}>Disetujui</option>
-                <option value="rejected" {{ $statusFilter === 'rejected' ? 'selected' : '' }}>Ditolak</option>
-            </select>
-        </div>
-
-        <div class="filter-spacer"></div>
+            @endif
+        </select>
     </div>
 
-    {{-- ========== JADWAL RUANGAN ========== --}}
-    <div class="schedule-card">
-        <div class="card-header">
-            <div class="title">
-                <i class="bi bi-table"></i> Jadwal Peminjaman Ruangan
-                <span class="date-info">{{ Carbon::parse($selectedDate)->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
-            </div>
-            <div class="header-right">
-                @if($isWeekend)
-                    <span><i class="bi bi-lock"></i> Libur</span>
-                @endif
-                @if($isToday && !$isWeekend && $currentSlot)
-                    <button type="button" class="current-badge" onclick="scrollToNow()" title="Klik untuk lompat ke waktu sekarang">
-                        <i class="bi bi-dot"></i> Sekarang {{ $currentSlot }}
-                    </button>
-                @endif
-                <span>{{ count($timeSlots) }} slot · {{ $rooms->count() }} ruangan</span>
-            </div>
+    <div class="db-divider"></div>
+
+    <div class="db-filter-group">
+        <label for="statusFilterSelect">Status</label>
+        <select id="statusFilterSelect" class="db-select" onchange="filterByStatus(this.value)">
+            <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Status</option>
+            <option value="pending" {{ ($statusFilter ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
+            <option value="approved" {{ ($statusFilter ?? '') === 'approved' ? 'selected' : '' }}>Disetujui</option>
+            <option value="rejected" {{ ($statusFilter ?? '') === 'rejected' ? 'selected' : '' }}>Ditolak</option>
+        </select>
+    </div>
+
+    <div class="filter-spacer"></div>
+
+    <button type="button" class="btn-reset-filter" onclick="resetFilters()">
+        <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
+    </button>
+</div>
+
+<div class="schedule-card">
+    <div class="card-header">
+        <div class="title">
+            <i class="bi bi-table"></i> Jadwal Peminjaman Ruangan
+            <span class="date-info">{{ Carbon::parse($selectedDate ?? date('Y-m-d'))->locale('id')->isoFormat('dddd, D MMMM Y') }}</span>
         </div>
+        <div class="header-right">
+            @if($isWeekend ?? false)
+                <span><i class="bi bi-lock"></i> Libur</span>
+            @endif
+        </div>
+    </div>
 
-        <div class="card-body cal-body" id="scheduleBody">
-            @php
-                $slotHeight = 64;
-                $pxPerMin = $slotHeight / 30;
-                $slotCount = count($timeSlots);
-                $gridHeight = ($slotCount + 1) * $slotHeight;
+    <div class="card-body" id="scheduleBody">
+        @php
+            $slotHeight = 64;
+            $pxPerMin = $slotHeight / 30;
+            $slotCount = count($timeSlots ?? []);
+            $gridHeight = ($slotCount + 1) * $slotHeight;
 
-                $dayStartParts = explode(':', $timeSlots[0] ?? '07:00');
-                $dayStartMinutes = ((int) $dayStartParts[0]) * 60 + ((int) $dayStartParts[1]);
+            $dayStartParts = explode(':', $timeSlots[0] ?? '07:00');
+            $dayStartMinutes = ((int) $dayStartParts[0]) * 60 + ((int) $dayStartParts[1]);
 
-                $nowMinutes = Carbon::now()->hour * 60 + Carbon::now()->minute;
-                $nowTopPx = ($nowMinutes - $dayStartMinutes) * $pxPerMin;
-                $showNowLine = $isToday && !$isWeekend && $nowTopPx >= 0 && $nowTopPx <= $gridHeight;
+            $nowMinutes = Carbon::now()->hour * 60 + Carbon::now()->minute;
+            $nowTopPx = ($nowMinutes - $dayStartMinutes) * $pxPerMin;
+            $showNowLine = ($isToday ?? false) && !($isWeekend ?? false) && $nowTopPx >= 0 && $nowTopPx <= $gridHeight;
 
-                $statusColors = [
-                    0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'label' => 'Pending'],
-                    1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'label' => 'Disetujui'],
-                    2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'label' => 'Ditolak'],
-                ];
-            @endphp
+            $statusColors = [
+                0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'label' => 'Pending'],
+                1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'label' => 'Disetujui'],
+                2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'label' => 'Ditolak'],
+            ];
+        @endphp
 
-            @if($slotCount > 0 && $rooms->count() > 0)
-                @php $gridCols = "80px repeat({$rooms->count()}, minmax(200px, 1fr))"; @endphp
+        @if($slotCount > 0 && count($rooms ?? []) > 0)
+            @php $gridCols = "80px repeat({$rooms->count()}, minmax(200px, 1fr))"; @endphp
 
-                <div class="cal-grid-header" style="grid-template-columns: {{ $gridCols }};">
-                    <div class="cal-header-cell cal-time-header"></div>
+            <div class="cal-grid-header" style="grid-template-columns: {{ $gridCols }};">
+                <div class="cal-header-cell cal-time-header"></div>
+                @foreach($rooms as $room)
+                    @php
+                        $photos = $room->photos ?? collect();
+                        $hasPhoto = $photos->count() > 0;
+                        $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
+                    @endphp
+                    <div class="cal-header-cell cal-room-header">
+                        @if($hasPhoto)
+                            <img src="{{ $firstPhoto }}" class="cal-room-photo" tabindex="0"
+                                 onclick="openGallery({{ $room->id }})"
+                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGallery({{ $room->id }});}"
+                                 alt="Lihat foto {{ $room->name }}" title="Klik untuk lihat foto" loading="lazy">
+                        @else
+                            <div class="cal-room-photo-placeholder"><i class="bi bi-building"></i></div>
+                        @endif
+                        <div class="cal-room-info">
+                            <div class="cal-room-name">{{ $room->name }}</div>
+                            <div class="cal-room-capacity"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="cal-grid-body-wrapper">
+                <div class="cal-grid-body" style="grid-template-columns: {{ $gridCols }};">
+                    <div class="cal-time-col" style="height: {{ $gridHeight }}px;">
+                        @foreach($timeSlots as $timeSlot)
+                            @php $isHour = Str::endsWith($timeSlot, ':00'); @endphp
+                            <div class="cal-time-label {{ $isHour ? 'hour-mark' : '' }}" style="height: {{ $slotHeight }}px;">{{ $timeSlot }}</div>
+                        @endforeach
+                    </div>
+
                     @foreach($rooms as $room)
-                        @php
-                            $photos = $room->photos ?? collect();
-                            $hasPhoto = $photos->count() > 0;
-                            $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
-                        @endphp
-                        <div class="cal-header-cell cal-room-header">
-                            @if($hasPhoto)
-                                <img src="{{ $firstPhoto }}" class="cal-room-photo" tabindex="0"
-                                     onclick="openGallery({{ $room->id }})"
-                                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGallery({{ $room->id }});}"
-                                     alt="Lihat foto {{ $room->name }}" title="Klik untuk lihat foto" loading="lazy">
+                        <div class="cal-room-col {{ $isWeekend ? 'cal-weekend' : '' }}" style="height: {{ $gridHeight }}px;">
+                            @if($isWeekend)
+                                <div class="cal-weekend-overlay"><i class="bi bi-calendar-x"></i> Libur</div>
                             @else
-                                <div class="cal-room-photo cal-room-photo-placeholder"><i class="bi bi-building"></i></div>
-                            @endif
-                            <div class="cal-room-info">
-                                <div class="cal-room-name">{{ $room->name }}</div>
-                                <div class="cal-room-capacity"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }}</div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="cal-grid-body-wrapper">
-                    <div class="cal-grid-body" style="grid-template-columns: {{ $gridCols }};">
-                        <div class="cal-time-col" style="height: {{ $gridHeight }}px;">
-                            @foreach($timeSlots as $timeSlot)
-                                @php $isHour = Str::endsWith($timeSlot, ':00'); @endphp
-                                <div class="cal-time-label {{ $isHour ? 'hour-mark' : '' }}" style="height: {{ $slotHeight }}px;">{{ $timeSlot }}</div>
-                            @endforeach
-                        </div>
-
-                        @foreach($rooms as $room)
-                            <div class="cal-room-col {{ $isWeekend ? 'cal-weekend' : '' }}" style="height: {{ $gridHeight }}px;">
-                                @if($isWeekend)
-                                    <div class="cal-weekend-overlay"><i class="bi bi-calendar-x"></i> Libur</div>
-                                @else
-                                    @foreach($timeSlots as $index => $timeSlot)
+                                @foreach($timeSlots as $index => $timeSlot)
+                                    @php
+                                        // Cek apakah slot waktu sudah selesai (lewat dari waktu sekarang)
+                                        // Jika waktu sekarang masih di dalam rentang slot (start - end), maka masih bisa dipesan.
+                                        $slotStart = Carbon::parse(($selectedDate ?? date('Y-m-d')) . ' ' . $timeSlot);
+                                        $slotEnd = $slotStart->copy()->addMinutes(30); // Interval 30 menit
+                                        $isPastSlot = $slotEnd->lte(Carbon::now());
+                                    @endphp
+                                    
+                                    @if($isPastSlot)
+                                        <div class="cal-slot-past" style="top: {{ $index * $slotHeight }}px; height: {{ $slotHeight }}px;" title="Waktu telah berlalu">
+                                            <i class="bi bi-lock-fill"></i>
+                                        </div>
+                                    @else
                                         <div class="cal-slot-hover" role="button" tabindex="0"
                                              style="top: {{ $index * $slotHeight }}px; height: {{ $slotHeight }}px;"
                                              onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')"
                                              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}');}"
                                              aria-label="Booking {{ $room->name }} jam {{ $timeSlot }}"
                                              title="Klik untuk booking jam {{ $timeSlot }}">
-                                            <div class="cal-slot-hover-inner"><i class="bi bi-plus-lg"></i> Booking Ruangan</div>
+                                            <div class="cal-slot-hover-inner"><i class="bi bi-plus-lg"></i> Booking</div>
                                         </div>
-                                    @endforeach
+                                    @endif
+                                @endforeach
 
+                                @if(isset($dayBookings))
                                     @foreach($dayBookings->where('room_id', $room->id) as $booking)
                                         @php
                                             $bStart = Carbon::parse($booking->start_time);
@@ -1160,7 +1197,7 @@
                                         <div class="cal-event" role="button" tabindex="0"
                                              onclick="showBookingDetails({{ $booking->id }})"
                                              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $booking->id }});}"
-                                             aria-label="Detail booking {{ $booking->purpose }}, {{ $colors['label'] }}"
+                                             aria-label="Detail booking {{ $booking->purpose }}"
                                              title="Klik untuk lihat detail"
                                              style="top: {{ $topPx }}px; height: {{ $heightPx }}px; background: {{ $colors['bg'] }}; border-left-color: {{ $colors['border'] }};">
                                             <div class="cal-event-title" style="color: {{ $colors['text'] }};">
@@ -1172,67 +1209,63 @@
                                         </div>
                                     @endforeach
                                 @endif
-                            </div>
-                        @endforeach
-                    </div>
-
-                    @if($showNowLine)
-                        <div class="cal-now-line" id="nowLine" style="top: {{ $nowTopPx }}px;"><span class="cal-now-dot"></span></div>
-                    @endif
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
-            @else
-                <div class="no-results">
-                    <i class="bi bi-inbox"></i>
-                    <p>Tidak ada jadwal untuk tanggal yang dipilih.</p>
-                </div>
-            @endif
-        </div>
 
-        <div class="schedule-legend">
-            <span class="legend-item"><span class="dot available"></span> Tersedia (klik untuk booking)</span>
-            <span class="legend-item"><span class="dot approved"></span> Disetujui</span>
-            <span class="legend-item"><span class="dot pending"></span> Pending</span>
-            <span class="legend-item"><span class="dot rejected"></span> Ditolak</span>
-            @if($isToday && !$isWeekend)
-                <span class="legend-item"><span class="dot current"></span> Waktu sekarang</span>
-            @endif
-        </div>
+                @if($showNowLine)
+                    <div class="cal-now-line" id="nowLine" style="top: {{ $nowTopPx }}px;"><span class="cal-now-dot"></span></div>
+                @endif
+            </div>
+        @else
+            <div class="no-results">
+                <i class="bi bi-inbox"></i>
+                <p>Tidak ada jadwal untuk tanggal yang dipilih.</p>
+            </div>
+        @endif
+    </div>
+
+    <div class="schedule-legend">
+        <span class="legend-item"><span class="dot available"></span> Tersedia</span>
+        <span class="legend-item"><span class="dot approved"></span> Disetujui</span>
+        <span class="legend-item"><span class="dot pending"></span> Pending</span>
+        <span class="legend-item"><span class="dot rejected"></span> Ditolak</span>
+        <span class="legend-item"><span class="dot past"></span> Waktu Lewat</span>
+        @if($isToday && !$isWeekend)
+            <span class="legend-item"><span class="dot current"></span> Waktu sekarang</span>
+        @endif
     </div>
 </div>
 
-<div class="mobile-action-bar">
-    <a href="{{ route('bookings.create') }}" class="btn-book-mobile">
-        <i class="bi bi-plus-lg"></i> Booking Baru
-    </a>
-</div>
+<a href="{{ route('bookings.create') }}" class="fab-book" aria-label="Booking Baru">
+    <i class="bi bi-plus-lg"></i>
+</a>
 
 <script type="application/json" id="roomsDataJson">@json($roomsData)</script>
 
-{{-- ========== MATERIAL TIME PICKER DIALOG ========== --}}
+<!-- TIME PICKER -->
 <div class="mtp-overlay" id="mtpOverlay" onclick="if(event.target===this)closeTimePicker(true)">
     <div class="mtp-dialog" role="dialog" aria-modal="true" aria-labelledby="mtpTitle">
         <div class="mtp-header">
-            <div class="mtp-title" id="mtpTitle">Pilih Jam Operasional</div>
-            <div class="mtp-subtitle">Rentang 07:00–16:00, interval 30 menit</div>
+            <div class="mtp-title" id="mtpTitle">Pilih Jam Kerja</div>
+            <div class="mtp-subtitle">Rentang 07:00 - 16:00</div>
         </div>
-
         <div class="mtp-time-display">
             <div class="mtp-field active" data-field="start" onclick="setActiveField('start')">
                 <div class="mtp-field-label">Mulai</div>
                 <div class="mtp-digital">
-                    <span class="mtp-unit" id="mtpStartHour" onclick="event.stopPropagation();selectUnit('start', 'hour')">07</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpStartMin" onclick="event.stopPropagation();selectUnit('start', 'minute')">00</span>
+                    <span class="mtp-unit" id="mtpStartHour" onclick="event.stopPropagation();selectUnit('start','hour')">07</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpStartMin" onclick="event.stopPropagation();selectUnit('start','minute')">00</span>
                 </div>
             </div>
             <div class="mtp-field" data-field="end" onclick="setActiveField('end')">
                 <div class="mtp-field-label">Selesai</div>
                 <div class="mtp-digital">
-                    <span class="mtp-unit" id="mtpEndHour" onclick="event.stopPropagation();selectUnit('end', 'hour')">16</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpEndMin" onclick="event.stopPropagation();selectUnit('end', 'minute')">00</span>
+                    <span class="mtp-unit" id="mtpEndHour" onclick="event.stopPropagation();selectUnit('end','hour')">16</span><span class="mtp-colon">:</span><span class="mtp-unit" id="mtpEndMin" onclick="event.stopPropagation();selectUnit('end','minute')">00</span>
                 </div>
             </div>
         </div>
-
         <div class="mtp-error" id="mtpError"><i class="bi bi-exclamation-triangle"></i> <span></span></div>
-
         <div class="mtp-clock-wrap">
             <div class="mtp-clock" id="mtpClock">
                 <svg class="mtp-hand-svg" viewBox="0 0 100 100" aria-hidden="true">
@@ -1240,11 +1273,9 @@
                 </svg>
                 <div class="mtp-center-dot"></div>
             </div>
-            <div class="mtp-mode-hint" id="mtpModeHint">Pilih jam mulai</div>
         </div>
-
         <div class="mtp-footer">
-            <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode jam/menit" aria-label="Ganti mode"><i class="bi bi-grid-3x3-gap"></i></button>
+            <button type="button" class="mtp-icon-btn" onclick="toggleTimeMode()" title="Ganti mode" aria-label="Ganti mode"></button>
             <div class="mtp-actions">
                 <button type="button" class="mtp-btn mtp-btn-cancel" onclick="closeTimePicker(true)">Batal</button>
                 <button type="button" class="mtp-btn mtp-btn-ok" onclick="applyTimePicker()">OK</button>
@@ -1253,7 +1284,7 @@
     </div>
 </div>
 
-{{-- ========== LIGHTBOX ========== --}}
+<!-- LIGHTBOX -->
 <div class="gallery-lightbox" id="lightbox">
     <div class="lightbox-content">
         <button class="close-lightbox" onclick="closeLightbox()" aria-label="Tutup">&times;</button>
@@ -1266,527 +1297,324 @@
     </div>
 </div>
 
+@push('scripts')
 <script>
-    (function () {
-        'use strict';
+(function () {
+    'use strict';
 
-        // ===================================================================
-        // REAL-TIME DATE & TIME
-        // ===================================================================
-        function updateLiveDateTime() {
-            var now = new Date();
-            var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            var dateStr = now.toLocaleDateString('id-ID', options);
-            var timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            var dateEl = document.getElementById('liveDate');
-            var timeEl = document.getElementById('liveTime');
-            if (dateEl) dateEl.textContent = dateStr;
-            if (timeEl) timeEl.textContent = timeStr;
-        }
-        setInterval(updateLiveDateTime, 1000);
-        updateLiveDateTime();
+    // REAL-TIME DATE & TIME
+    function updateLiveDateTime() {
+        var now = new Date();
+        var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        var dateStr = now.toLocaleDateString('id-ID', options);
+        var timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        var dateEl = document.getElementById('liveDate');
+        var timeEl = document.getElementById('liveTime');
+        if (dateEl) dateEl.textContent = dateStr;
+        if (timeEl) timeEl.textContent = timeStr;
+    }
+    setInterval(updateLiveDateTime, 1000);
+    updateLiveDateTime();
 
-        // ===================================================================
-        // DATA GALERI
-        // ===================================================================
-        var roomsData = [];
-        try {
-            roomsData = JSON.parse(document.getElementById('roomsDataJson').textContent);
-        } catch (e) { roomsData = []; }
-        var currentPhotoIndex = 0;
-        var currentPhotos = [];
+    // GALERI LIGHTBOX
+    var roomsData = [];
+    try { roomsData = JSON.parse(document.getElementById('roomsDataJson').textContent); } catch (e) { roomsData = []; }
+    var currentPhotoIndex = 0;
+    var currentPhotos = [];
 
-        window.openGallery = function (roomId) {
-            var room = roomsData.find(function (r) { return r.id == roomId; });
-            if (!room || !room.photos || room.photos.length === 0) return;
-            currentPhotos = room.photos;
-            currentPhotoIndex = 0;
-            updateLightbox(room.name);
-            document.getElementById('lightbox').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        };
+    window.openGallery = function (roomId) {
+        var room = roomsData.find(function (r) { return r.id == roomId; });
+        if (!room || !room.photos || room.photos.length === 0) return;
+        currentPhotos = room.photos;
+        currentPhotoIndex = 0;
+        updateLightbox(room.name);
+        document.getElementById('lightbox').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    };
 
-        function updateLightbox(roomName) {
-            var img = document.getElementById('lightboxImage');
-            var caption = document.getElementById('lightboxCaption');
-            var counter = document.getElementById('lightboxCounter');
-            var thumbs = document.getElementById('lightboxThumbnails');
-            var photo = currentPhotos[currentPhotoIndex];
-            if (photo) { img.src = photo; img.alt = roomName || 'Foto Ruangan'; }
-            caption.textContent = (roomName || '') + ' - ' + (currentPhotoIndex + 1) + '/' + currentPhotos.length;
-            counter.textContent = (currentPhotoIndex + 1) + ' dari ' + currentPhotos.length;
-            thumbs.innerHTML = '';
-            currentPhotos.forEach(function (p, idx) {
-                var thumb = document.createElement('img');
-                thumb.src = p; thumb.alt = 'Thumbnail ' + (idx + 1);
-                thumb.className = idx === currentPhotoIndex ? 'active' : '';
-                thumb.onclick = function () { currentPhotoIndex = idx; updateLightbox(roomName); };
-                thumbs.appendChild(thumb);
-            });
-            var activeThumb = thumbs.querySelector('.active');
-            if (activeThumb) activeThumb.scrollIntoView({ block: 'nearest', inline: 'center' });
-        }
-
-        window.closeLightbox = function () {
-            document.getElementById('lightbox').classList.remove('active');
-            document.body.style.overflow = '';
-        };
-
-        window.navigateLightbox = function (direction) {
-            var newIndex = currentPhotoIndex + direction;
-            if (newIndex < 0 || newIndex >= currentPhotos.length) return;
-            currentPhotoIndex = newIndex;
-            updateLightbox();
-        };
-
-        document.addEventListener('keydown', function (e) {
-            var lb = document.getElementById('lightbox');
-            if (!lb || !lb.classList.contains('active')) return;
-            if (e.key === 'Escape') closeLightbox();
-            else if (e.key === 'ArrowLeft') navigateLightbox(-1);
-            else if (e.key === 'ArrowRight') navigateLightbox(1);
+    function updateLightbox(roomName) {
+        var img = document.getElementById('lightboxImage');
+        var caption = document.getElementById('lightboxCaption');
+        var counter = document.getElementById('lightboxCounter');
+        var thumbs = document.getElementById('lightboxThumbnails');
+        var photo = currentPhotos[currentPhotoIndex];
+        if (photo) { img.src = photo; img.alt = roomName || 'Foto Ruangan'; }
+        caption.textContent = (roomName || '') + ' - ' + (currentPhotoIndex + 1) + '/' + currentPhotos.length;
+        counter.textContent = (currentPhotoIndex + 1) + ' dari ' + currentPhotos.length;
+        thumbs.innerHTML = '';
+        currentPhotos.forEach(function (p, idx) {
+            var thumb = document.createElement('img');
+            thumb.src = p; thumb.alt = 'Thumbnail ' + (idx + 1);
+            thumb.className = idx === currentPhotoIndex ? 'active' : '';
+            thumb.onclick = function () { currentPhotoIndex = idx; updateLightbox(roomName); };
+            thumbs.appendChild(thumb);
         });
+    }
 
-        document.getElementById('lightbox').addEventListener('click', function (e) {
-            if (e.target === this || e.target === document.querySelector('.lightbox-content')) closeLightbox();
+    window.closeLightbox = function () {
+        document.getElementById('lightbox').classList.remove('active');
+        document.body.style.overflow = '';
+    };
+    window.navigateLightbox = function (dir) {
+        var i = currentPhotoIndex + dir;
+        if (i < 0 || i >= currentPhotos.length) return;
+        currentPhotoIndex = i;
+        updateLightbox();
+    };
+    document.addEventListener('keydown', function (e) {
+        var lb = document.getElementById('lightbox');
+        if (!lb || !lb.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        else if (e.key === 'ArrowLeft') navigateLightbox(-1);
+        else if (e.key === 'ArrowRight') navigateLightbox(1);
+    });
+
+    // AJAX LOADER
+    var isLoading = false;
+    function getCurrentParams() {
+        var url = new URL(window.location.href);
+        var params = {};
+        ['date', 'rooms', 'status', 'start_time', 'end_time'].forEach(function (k) {
+            var v = url.searchParams.get(k);
+            if (v) params[k] = v;
         });
+        var dateInput = document.getElementById('dateSelector');
+        if (dateInput && dateInput.value) params.date = dateInput.value;
+        return params;
+    }
 
-        // ===================================================================
-        // AJAX LOADER — sinkronisasi tanpa reload
-        // ===================================================================
-        var isLoading = false;
-
-        function getCurrentParams() {
-            var url = new URL(window.location.href);
-            var params = {};
-            ['date', 'rooms', 'status', 'start_time', 'end_time'].forEach(function (k) {
-                var v = url.searchParams.get(k);
-                if (v) params[k] = v;
-            });
-            var dateInput = document.getElementById('dateSelector');
-            if (dateInput && dateInput.value) params.date = dateInput.value;
-            return params;
-        }
-
-        function loadDashboard(params, opts) {
-            opts = opts || {};
-            if (isLoading) return;
-            isLoading = true;
-
-            var url = new URL(window.location.origin + window.location.pathname);
-            Object.keys(params).forEach(function (k) {
-                var v = params[k];
-                if (v !== '' && v != null) url.searchParams.set(k, v);
-            });
-
-            if (!opts.skipPushState) history.pushState({ params: params }, '', url.toString());
-
-            var refreshBtn = document.getElementById('refreshBtn');
-            if (refreshBtn) refreshBtn.classList.add('is-loading');
-            document.body.classList.add('db-ajax-loading');
-            document.body.style.cursor = 'wait';
-
-            fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-                .then(function (html) {
-                    var doc = new DOMParser().parseFromString(html, 'text/html');
-
-                    function replaceBy(sel) {
-                        var cur = document.querySelector(sel);
-                        var neu = doc.querySelector(sel);
-                        if (cur && neu) cur.replaceWith(neu);
-                    }
-
-                    replaceBy('.db-stats-grid');
-                    replaceBy('.schedule-card');
-
-                    var newRdj = doc.querySelector('#roomsDataJson');
-                    var curRdj = document.getElementById('roomsDataJson');
-                    if (newRdj && curRdj) {
-                        curRdj.textContent = newRdj.textContent;
-                        try { roomsData = JSON.parse(newRdj.textContent); } catch (e) {}
-                    }
-
-                    var newDate = doc.querySelector('#dateSelector');
-                    if (newDate) document.getElementById('dateSelector').value = newDate.value;
-
-                    var newLabel = doc.querySelector('#timeTriggerLabel');
-                    var curLabel = document.getElementById('timeTriggerLabel');
-                    if (newLabel && curLabel) curLabel.textContent = newLabel.textContent;
-
-                    var newRoom = doc.querySelector('#roomFilter');
-                    if (newRoom) document.getElementById('roomFilter').value = newRoom.value;
-                    var newStatus = doc.querySelector('#statusFilterSelect');
-                    if (newStatus) document.getElementById('statusFilterSelect').value = newStatus.value;
-
-                    initTooltips();
-                    var nowLine = document.getElementById('nowLine');
-                    if (nowLine) setTimeout(scrollToNow, 300);
-                })
-                .catch(function (err) {
-                    console.error('Dashboard load error:', err);
-                    window.location.href = url.toString();
-                })
-                .finally(function () {
-                    isLoading = false;
-                    if (refreshBtn) refreshBtn.classList.remove('is-loading');
-                    document.body.classList.remove('db-ajax-loading');
-                    document.body.style.cursor = '';
-                });
-        }
-
-        window.filterByDate = function (selectedDate) {
-            var params = getCurrentParams();
-            params.date = selectedDate;
-            loadDashboard(params);
-        };
-
-        window.shiftDate = function (days) {
-            var input = document.getElementById('dateSelector');
-            var base;
-            if (input && input.value) {
-                var parts = input.value.split('-');
-                base = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-            } else { base = new Date(); }
-            base.setDate(base.getDate() + days);
-            var y = base.getFullYear();
-            var m = String(base.getMonth() + 1).padStart(2, '0');
-            var d = String(base.getDate()).padStart(2, '0');
-            filterByDate(y + '-' + m + '-' + d);
-        };
-
-        window.resetToToday = function () {
-            var now = new Date();
-            var y = now.getFullYear();
-            var m = String(now.getMonth() + 1).padStart(2, '0');
-            var d = String(now.getDate()).padStart(2, '0');
-            var params = getCurrentParams();
-            params.date = y + '-' + m + '-' + d;
-            delete params.rooms;
-            delete params.status;
-            loadDashboard(params);
-        }
-
-        window.filterByRoom = function (roomId) {
-            var params = getCurrentParams();
-            if (roomId) params.rooms = roomId; else delete params.rooms;
-            loadDashboard(params);
-        };
-
-        window.filterByStatus = function (status) {
-            var params = getCurrentParams();
-            if (status && status !== 'all') params.status = status; else delete params.status;
-            loadDashboard(params);
-        };
-
-        window.doRefresh = function (btn) {
-            if (btn) btn.classList.add('is-loading');
-            window.location.reload();
-        };
-
-        window.addEventListener('popstate', function () { window.location.reload(); });
-
-        // ===================================================================
-        // MATERIAL TIME PICKER — dialog analog clock (24 Hour Format)
-        // ===================================================================
-        var MTP_WORK_START = 7;
-        var MTP_WORK_END = 16;
-
-        var mtpState = {
-            open: false,
-            activeField: 'start',
-            mode: 'hour',
-            start: { h: 7, m: 0 },
-            end: { h: 16, m: 0 }
-        };
-
-        function pad2(n) { return String(n).padStart(2, '0'); }
-        function minsOf(t) { return t.h * 60 + t.m; }
-        function isValidOperational(t) {
-            var m = minsOf(t);
-            return m >= MTP_WORK_START * 60 && m <= MTP_WORK_END * 60;
-        }
-
-        function parseLabel(str) {
-            var p = String(str).trim().split(':');
-            return { h: parseInt(p[0], 10) || 7, m: parseInt((p[1] || '0').split(/\s/)[0], 10) || 0 };
-        }
-
-        window.openTimePicker = function () {
-            var labelEl = document.getElementById('timeTriggerLabel');
-            var parts = labelEl.textContent.split('–');
-            mtpState.start = parseLabel(parts[0] || '07:00');
-            mtpState.end   = parseLabel(parts[1] || '16:00');
-            
-            if (!isValidOperational(mtpState.start)) mtpState.start = { h: MTP_WORK_START, m: 0 };
-            if (!isValidOperational(mtpState.end))   mtpState.end   = { h: MTP_WORK_END, m: 0 };
-            
-            mtpState.activeField = 'start';
-            mtpState.mode = 'hour';
-            mtpState.open = true;
-            document.getElementById('mtpOverlay').classList.add('open');
-            document.getElementById('timeTrigger').setAttribute('aria-expanded', 'true');
-            document.body.style.overflow = 'hidden';
-            renderClock();
-            updateDigitalDisplay();
-            hideMtpError();
-        };
-
-        window.closeTimePicker = function (revert) {
-            mtpState.open = false;
-            document.getElementById('mtpOverlay').classList.remove('open');
-            document.getElementById('timeTrigger').setAttribute('aria-expanded', 'false');
-            document.body.style.overflow = '';
-            hideMtpError();
-        };
-
-        window.setActiveField = function (field) {
-            mtpState.activeField = field;
-            mtpState.mode = 'hour';
-            renderClock();
-            updateDigitalDisplay();
-            hideMtpError();
-        };
-
-        // FUNGSI BARU: Klik angka Jam/Menit langsung
-        window.selectUnit = function(field, mode) {
-            mtpState.activeField = field;
-            mtpState.mode = mode;
-            renderClock();
-            updateDigitalDisplay();
-            hideMtpError();
-        };
-
-        window.toggleTimeMode = function () {
-            mtpState.mode = mtpState.mode === 'hour' ? 'minute' : 'hour';
-            renderClock();
-            updateDigitalDisplay();
-        };
-
-        function isDisabled(h, m) {
-            if (mtpState.activeField === 'end') {
-                var startMins = minsOf(mtpState.start);
-                var currentMins = h * 60 + m;
-                return currentMins <= startMins;
-            }
-            return false;
-        }
-
-        window.selectHour = function (h24) {
-            if (isDisabled(h24, 0) && isDisabled(h24, 30)) return;
-            var t = mtpState[mtpState.activeField];
-            t.h = h24;
-            hideMtpError();
-            mtpState.mode = 'minute';
-            renderClock();
-            updateDigitalDisplay();
-        };
-
-        window.selectMinute = function (m) {
-            if (isDisabled(mtpState[mtpState.activeField].h, m)) return;
-            var t = mtpState[mtpState.activeField];
-            t.m = m;
-            hideMtpError();
-            updateDigitalDisplay();
-
-            // AUTO-SWITCH LOGIC
-            if (mtpState.activeField === 'start') {
-                mtpState.activeField = 'end';
-                mtpState.mode = 'hour';
-                
-                if (minsOf(mtpState.end) <= minsOf(mtpState.start)) {
-                    var newEndMins = minsOf(mtpState.start) + 30;
-                    if (newEndMins > MTP_WORK_END * 60) newEndMins = MTP_WORK_END * 60;
-                    mtpState.end = { h: Math.floor(newEndMins / 60), m: newEndMins % 60 };
-                }
-            }
-            
-            renderClock();
-            updateDigitalDisplay();
-        };
-
-        function renderClock() {
-            var clock = document.getElementById('mtpClock');
-            clock.querySelectorAll('.mtp-num').forEach(function (n) { n.remove(); });
-
-            var t = mtpState[mtpState.activeField];
-            var R = 38.5; // percentage radius
-            var C = 50;   // percentage center
-
-            if (mtpState.mode === 'hour') {
-                var hours = [];
-                for (var h = MTP_WORK_START; h <= MTP_WORK_END; h++) hours.push(h);
-                var totalHours = hours.length;
-                var angleStep = 360 / totalHours;
-                var offset = hours.indexOf(12); // Put 12 at the top
-
-                hours.forEach(function(h, i) {
-                    var angle = ((i - offset) * angleStep - 90) * Math.PI / 180;
-                    var x = C + R * Math.cos(angle);
-                    var y = C + R * Math.sin(angle);
-                    var el = document.createElement('div');
-                    el.className = 'mtp-num';
-                    el.textContent = pad2(h);
-                    el.style.left = x + '%';
-                    el.style.top = y + '%';
-                    
-                    var h00Disabled = isDisabled(h, 0);
-                    var h30Disabled = isDisabled(h, 30);
-                    
-                    if (h00Disabled && h30Disabled) {
-                        el.classList.add('disabled');
-                    } else {
-                        el.addEventListener('click', function() { selectHour(h); });
-                        if (t.h === h) el.classList.add('selected');
-                    }
-                    clock.appendChild(el);
-                });
-
-                var selIdx = hours.indexOf(t.h);
-                if (selIdx !== -1) {
-                    var handAngle = ((selIdx - offset) * angleStep - 90) * Math.PI / 180;
-                    var handX = C + 35 * Math.cos(handAngle);
-                    var handY = C + 35 * Math.sin(handAngle);
-                    setHand(handX, handY);
-                }
-                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
-                    ? 'Pilih Jam Mulai (07 - 16)' 
-                    : 'Pilih Jam Selesai (07 - 16)';
-            } else {
-                var minutes = [0, 30];
-                minutes.forEach(function(m, i) {
-                    var angle = (i * 180 - 90) * Math.PI / 180;
-                    var x = C + R * Math.cos(angle);
-                    var y = C + R * Math.sin(angle);
-                    var el = document.createElement('div');
-                    el.className = 'mtp-num';
-                    el.textContent = pad2(m);
-                    el.style.left = x + '%';
-                    el.style.top = y + '%';
-                    
-                    if (isDisabled(t.h, m)) {
-                        el.classList.add('disabled');
-                    } else {
-                        el.addEventListener('click', function() { selectMinute(m); });
-                        if (t.m === m) el.classList.add('selected');
-                    }
-                    clock.appendChild(el);
-                });
-
-                var selIdxM = minutes.indexOf(t.m);
-                if (selIdxM !== -1) {
-                    var handAngleM = (selIdxM * 180 - 90) * Math.PI / 180;
-                    var handXM = C + 35 * Math.cos(handAngleM);
-                    var handYM = C + 35 * Math.sin(handAngleM);
-                    setHand(handXM, handYM);
-                }
-                document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' 
-                    ? 'Pilih Menit Mulai (00 / 30)' 
-                    : 'Pilih Menit Selesai (00 / 30)';
-            }
-        }
-
-        function setHand(x, y) {
-            var hand = document.getElementById('mtpHand');
-            hand.setAttribute('x2', x);
-            hand.setAttribute('y2', y);
-        }
-
-        function updateDigitalDisplay() {
-            var s = mtpState.start, e = mtpState.end;
-            document.getElementById('mtpStartHour').textContent = pad2(s.h);
-            document.getElementById('mtpStartMin').textContent = pad2(s.m);
-            document.getElementById('mtpEndHour').textContent = pad2(e.h);
-            document.getElementById('mtpEndMin').textContent = pad2(e.m);
-
-            document.querySelectorAll('.mtp-field').forEach(function (f) {
-                f.classList.toggle('active', f.dataset.field === mtpState.activeField);
-            });
-
-            var prefix = mtpState.activeField === 'start' ? 'mtpStart' : 'mtpEnd';
-            var hourEl = document.getElementById(prefix + 'Hour');
-            var minEl = document.getElementById(prefix + 'Min');
-            document.querySelectorAll('.mtp-digital .mtp-unit').forEach(function (u) { u.classList.remove('mode-active'); });
-            if (mtpState.mode === 'hour' && hourEl) hourEl.classList.add('mode-active');
-            if (mtpState.mode === 'minute' && minEl) minEl.classList.add('mode-active');
-        }
-
-        function showMtpError(msg) {
-            var err = document.getElementById('mtpError');
-            err.querySelector('span').textContent = msg;
-            err.classList.add('show');
-        }
-        function hideMtpError() {
-            document.getElementById('mtpError').classList.remove('show');
-        }
-
-        window.applyTimePicker = function () {
-            if (!isValidOperational(mtpState.start) || !isValidOperational(mtpState.end)) {
-                showMtpError('Waktu harus dalam rentang 07:00–16:00.');
-                return;
-            }
-            if (minsOf(mtpState.start) >= minsOf(mtpState.end)) {
-                showMtpError('Jam mulai harus lebih awal dari jam selesai.');
-                return;
-            }
-            var startLabel = pad2(mtpState.start.h) + ':' + pad2(mtpState.start.m);
-            var endLabel = pad2(mtpState.end.h) + ':' + pad2(mtpState.end.m);
-            document.getElementById('timeTriggerLabel').textContent = startLabel + ' – ' + endLabel;
-            closeTimePicker(false);
-
-            var params = getCurrentParams();
-            params.start_time = startLabel;
-            params.end_time = endLabel;
-            loadDashboard(params);
-        };
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && mtpState.open) closeTimePicker(true);
+    function loadDashboard(params, opts) {
+        opts = opts || {};
+        if (isLoading) return;
+        isLoading = true;
+        var url = new URL(window.location.origin + window.location.pathname);
+        Object.keys(params).forEach(function (k) {
+            var v = params[k];
+            if (v !== '' && v != null) url.searchParams.set(k, v);
         });
+        if (!opts.skipPushState) history.pushState({ params: params }, '', url.toString());
 
-        // ===================================================================
-        // AKSI GRID
-        // ===================================================================
-        window.showBookingDetails = function (bookingId) {
-            window.location.href = '/bookings/' + bookingId;
+        document.body.classList.add('db-ajax-loading');
+
+        fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                function replaceBy(sel) {
+                    var cur = document.querySelector(sel);
+                    var neu = doc.querySelector(sel);
+                    if (cur && neu) cur.replaceWith(neu);
+                }
+                replaceBy('.db-stats-grid');
+                replaceBy('.schedule-card');
+                var newRdj = doc.querySelector('#roomsDataJson');
+                var curRdj = document.getElementById('roomsDataJson');
+                if (newRdj && curRdj) {
+                    curRdj.textContent = newRdj.textContent;
+                    try { roomsData = JSON.parse(newRdj.textContent); } catch (e) {}
+                }
+                var newDate = doc.querySelector('#dateSelector');
+                if (newDate) document.getElementById('dateSelector').value = newDate.value;
+                var newLabel = doc.querySelector('#timeTriggerLabel');
+                var curLabel = document.getElementById('timeTriggerLabel');
+                if (newLabel && curLabel) curLabel.textContent = newLabel.textContent;
+                var newRoom = doc.querySelector('#roomFilter');
+                if (newRoom) document.getElementById('roomFilter').value = newRoom.value;
+                var newStatus = doc.querySelector('#statusFilterSelect');
+                if (newStatus) document.getElementById('statusFilterSelect').value = newStatus.value;
+                var nowLine = document.getElementById('nowLine');
+                if (nowLine) setTimeout(scrollToNow, 300);
+            })
+            .catch(function () { window.location.href = url.toString(); })
+            .finally(function () {
+                isLoading = false;
+                document.body.classList.remove('db-ajax-loading');
+            });
+    }
+
+    window.filterByDate = function (d) { var p = getCurrentParams(); p.date = d; loadDashboard(p); };
+    window.shiftDate = function (days) {
+        var input = document.getElementById('dateSelector');
+        var base = input && input.value ? new Date(input.value) : new Date();
+        base.setDate(base.getDate() + days);
+        filterByDate(base.getFullYear() + '-' + String(base.getMonth()+1).padStart(2,'0') + '-' + String(base.getDate()).padStart(2,'0'));
+    };
+    window.resetToToday = function () {
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = String(now.getMonth() + 1).padStart(2, '0');
+        var d = String(now.getDate()).padStart(2, '0');
+        var p = getCurrentParams();
+        p.date = y + '-' + m + '-' + d;
+        loadDashboard(p);
+    };
+    window.filterByRoom = function (id) { var p = getCurrentParams(); if (id) p.rooms = id; else delete p.rooms; loadDashboard(p); };
+    window.filterByStatus = function (s) { var p = getCurrentParams(); if (s && s !== 'all') p.status = s; else delete p.status; loadDashboard(p); };
+    
+    // Reset All Filters
+    window.resetFilters = function() {
+        var now = new Date();
+        var y = now.getFullYear();
+        var m = String(now.getMonth() + 1).padStart(2, '0');
+        var d = String(now.getDate()).padStart(2, '0');
+        
+        var params = {
+            date: y + '-' + m + '-' + d,
+            start_time: '07:00',
+            end_time: '16:00'
         };
+        loadDashboard(params);
+        
+        // Reset manual UI elements
+        var dateInput = document.getElementById('dateSelector');
+        if (dateInput) dateInput.value = params.date;
+        
+        var timeLabel = document.getElementById('timeTriggerLabel');
+        if (timeLabel) timeLabel.textContent = '07:00 - 16:00';
+        
+        var roomFilter = document.getElementById('roomFilter');
+        if (roomFilter) roomFilter.value = '';
+        
+        var statusFilter = document.getElementById('statusFilterSelect');
+        if (statusFilter) statusFilter.value = 'all';
+    };
+    
+    window.addEventListener('popstate', function () { window.location.reload(); });
 
-        window.quickBook = function (roomId, date, time) {
-            var url = new URL('{{ route("bookings.create") }}');
-            url.searchParams.set('room', roomId);
-            url.searchParams.set('date', date);
-            url.searchParams.set('start_time', time);
-            window.location.href = url.toString();
-        };
+    // TIME PICKER
+    var MTP_WORK_START = 7, MTP_WORK_END = 16;
+    var mtpState = { open: false, activeField: 'start', mode: 'hour', start: { h: 7, m: 0 }, end: { h: 16, m: 0 } };
 
-        window.scrollToNow = function () {
-            var line = document.getElementById('nowLine');
-            var container = document.getElementById('scheduleBody');
-            if (line && container) {
-                container.scrollTop = Math.max(0, line.offsetTop - 80);
+    function pad2(n) { return String(n).padStart(2, '0'); }
+    function minsOf(t) { return t.h * 60 + t.m; }
+    function isValidOperational(t) { var m = minsOf(t); return m >= MTP_WORK_START * 60 && m <= MTP_WORK_END * 60; }
+    function parseLabel(str) { var p = String(str).trim().split(':'); return { h: parseInt(p[0], 10) || 7, m: parseInt((p[1] || '0').split(/\s/)[0], 10) || 0 }; }
+
+    window.openTimePicker = function () {
+        var labelEl = document.getElementById('timeTriggerLabel');
+        var parts = labelEl.textContent.split('-');
+        mtpState.start = parseLabel(parts[0] || '07:00');
+        mtpState.end = parseLabel(parts[1] || '16:00');
+        if (!isValidOperational(mtpState.start)) mtpState.start = { h: MTP_WORK_START, m: 0 };
+        if (!isValidOperational(mtpState.end)) mtpState.end = { h: MTP_WORK_END, m: 0 };
+        mtpState.activeField = 'start'; mtpState.mode = 'hour'; mtpState.open = true;
+        document.getElementById('mtpOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        renderClock(); updateDigitalDisplay(); hideMtpError();
+    };
+    window.closeTimePicker = function () { mtpState.open = false; document.getElementById('mtpOverlay').classList.remove('open'); document.body.style.overflow = ''; hideMtpError(); };
+    window.setActiveField = function (f) { mtpState.activeField = f; mtpState.mode = 'hour'; renderClock(); updateDigitalDisplay(); hideMtpError(); };
+    window.selectUnit = function (f, m) { mtpState.activeField = f; mtpState.mode = m; renderClock(); updateDigitalDisplay(); hideMtpError(); };
+    window.toggleTimeMode = function () { mtpState.mode = mtpState.mode === 'hour' ? 'minute' : 'hour'; renderClock(); updateDigitalDisplay(); };
+
+    function isDisabled(h, m) {
+        if (mtpState.activeField === 'end') { return (h * 60 + m) <= minsOf(mtpState.start); }
+        return false;
+    }
+    window.selectHour = function (h) {
+        if (isDisabled(h, 0) && isDisabled(h, 30)) return;
+        mtpState[mtpState.activeField].h = h; hideMtpError();
+        mtpState.mode = 'minute'; renderClock(); updateDigitalDisplay();
+    };
+    window.selectMinute = function (m) {
+        if (isDisabled(mtpState[mtpState.activeField].h, m)) return;
+        mtpState[mtpState.activeField].m = m; hideMtpError(); updateDigitalDisplay();
+        if (mtpState.activeField === 'start') {
+            mtpState.activeField = 'end'; mtpState.mode = 'hour';
+            if (minsOf(mtpState.end) <= minsOf(mtpState.start)) {
+                var n = minsOf(mtpState.start) + 30;
+                if (n > MTP_WORK_END * 60) n = MTP_WORK_END * 60;
+                mtpState.end = { h: Math.floor(n / 60), m: n % 60 };
             }
-        };
-
-        var nowLine = document.getElementById('nowLine');
-        if (nowLine) {
-            setTimeout(function () { window.scrollToNow(); }, 300);
         }
+        renderClock(); updateDigitalDisplay();
+    };
 
-        // ===================================================================
-        // TOOLTIPS
-        // ===================================================================
-        function initTooltips() {
-            if (typeof bootstrap !== 'undefined') {
-                document.querySelectorAll('[title]').forEach(function (el) {
-                    new bootstrap.Tooltip(el, { placement: 'top', delay: { show: 300, hide: 100 } });
-                });
-            }
+    function renderClock() {
+        var clock = document.getElementById('mtpClock');
+        clock.querySelectorAll('.mtp-num').forEach(function (n) { n.remove(); });
+        var t = mtpState[mtpState.activeField];
+        var R = 38.5, C = 50;
+        if (mtpState.mode === 'hour') {
+            var hours = [];
+            for (var h = MTP_WORK_START; h <= MTP_WORK_END; h++) hours.push(h);
+            var total = hours.length, step = 360 / total, offset = hours.indexOf(12);
+            hours.forEach(function (h, i) {
+                var a = ((i - offset) * step - 90) * Math.PI / 180;
+                var x = C + R * Math.cos(a), y = C + R * Math.sin(a);
+                var el = document.createElement('div');
+                el.className = 'mtp-num'; el.textContent = pad2(h);
+                el.style.left = x + '%'; el.style.top = y + '%';
+                if (isDisabled(h, 0) && isDisabled(h, 30)) { el.classList.add('disabled'); }
+                else { el.addEventListener('click', function () { selectHour(h); }); if (t.h === h) el.classList.add('selected'); }
+                clock.appendChild(el);
+            });
+            var si = hours.indexOf(t.h);
+            if (si !== -1) { var ha = ((si - offset) * step - 90) * Math.PI / 180; setHand(C + 35 * Math.cos(ha), C + 35 * Math.sin(ha)); }
+            document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' ? 'Pilih Jam Mulai (07-16)' : 'Pilih Jam Selesai (07-16)';
+        } else {
+            [0, 30].forEach(function (m, i) {
+                var a = (i * 180 - 90) * Math.PI / 180;
+                var x = C + R * Math.cos(a), y = C + R * Math.sin(a);
+                var el = document.createElement('div');
+                el.className = 'mtp-num'; el.textContent = pad2(m);
+                el.style.left = x + '%'; el.style.top = y + '%';
+                if (isDisabled(t.h, m)) { el.classList.add('disabled'); }
+                else { el.addEventListener('click', function () { selectMinute(m); }); if (t.m === m) el.classList.add('selected'); }
+                clock.appendChild(el);
+            });
+            var sm = [0, 30].indexOf(t.m);
+            if (sm !== -1) { var ma = (sm * 180 - 90) * Math.PI / 180; setHand(C + 35 * Math.cos(ma), C + 35 * Math.sin(ma)); }
+            document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' ? 'Pilih Menit Mulai (00/30)' : 'Pilih Menit Selesai (00/30)';
         }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initTooltips);
-        } else { initTooltips(); }
+    }
+    function setHand(x, y) { document.getElementById('mtpHand').setAttribute('x2', x); document.getElementById('mtpHand').setAttribute('y2', y); }
 
-    })();
+    function updateDigitalDisplay() {
+        var s = mtpState.start, e = mtpState.end;
+        document.getElementById('mtpStartHour').textContent = pad2(s.h);
+        document.getElementById('mtpStartMin').textContent = pad2(s.m);
+        document.getElementById('mtpEndHour').textContent = pad2(e.h);
+        document.getElementById('mtpEndMin').textContent = pad2(e.m);
+        document.querySelectorAll('.mtp-field').forEach(function (f) { f.classList.toggle('active', f.dataset.field === mtpState.activeField); });
+        var pre = mtpState.activeField === 'start' ? 'mtpStart' : 'mtpEnd';
+        var he = document.getElementById(pre + 'Hour'), me = document.getElementById(pre + 'Min');
+        document.querySelectorAll('.mtp-digital .mtp-unit').forEach(function (u) { u.classList.remove('mode-active'); });
+        if (mtpState.mode === 'hour' && he) he.classList.add('mode-active');
+        if (mtpState.mode === 'minute' && me) me.classList.add('mode-active');
+    }
+    function showMtpError(msg) { var err = document.getElementById('mtpError'); err.querySelector('span').textContent = msg; err.classList.add('show'); }
+    function hideMtpError() { document.getElementById('mtpError').classList.remove('show'); }
+
+    window.applyTimePicker = function () {
+        if (!isValidOperational(mtpState.start) || !isValidOperational(mtpState.end)) { showMtpError('Waktu harus dalam rentang 07:00–16:00.'); return; }
+        if (minsOf(mtpState.start) >= minsOf(mtpState.end)) { showMtpError('Jam mulai harus lebih awal dari jam selesai.'); return; }
+        var sl = pad2(mtpState.start.h) + ':' + pad2(mtpState.start.m);
+        var el = pad2(mtpState.end.h) + ':' + pad2(mtpState.end.m);
+        document.getElementById('timeTriggerLabel').textContent = sl + ' - ' + el;
+        closeTimePicker();
+        var p = getCurrentParams(); p.start_time = sl; p.end_time = el;
+        loadDashboard(p);
+    };
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && mtpState.open) closeTimePicker(); });
+
+    // GRID ACTIONS
+    window.showBookingDetails = function (id) { window.location.href = '/bookings/' + id; };
+    window.quickBook = function (roomId, date, time) {
+        var url = new URL('{{ route("bookings.create") }}');
+        url.searchParams.set('room', roomId);
+        url.searchParams.set('date', date);
+        url.searchParams.set('start_time', time);
+        window.location.href = url.toString();
+    };
+    window.scrollToNow = function () {
+        var line = document.getElementById('nowLine');
+        var container = document.getElementById('scheduleBody');
+        if (line && container) { container.scrollTop = Math.max(0, line.offsetTop - 80); }
+    };
+    if (document.getElementById('nowLine')) { setTimeout(scrollToNow, 300); }
+
+})();
 </script>
+@endpush
 @endsection
