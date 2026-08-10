@@ -990,7 +990,7 @@
     </div>
     <div class="actions">
         <a href="{{ route('bookings.create') }}" class="btn-primary-sm">
-            <i class="bi bi-plus-lg"></i> Booking Baru
+            <i class="bi bi-plus-lg"></i> Tambah Peminjaman
         </a>
     </div>
 </div>

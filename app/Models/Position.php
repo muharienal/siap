@@ -12,9 +12,15 @@ class Position extends Model
     protected $table = 'positions';
 
     protected $fillable = [
+        'division_id',
         'name',
-        'description',
     ];
+
+    // Bidang dimiliki oleh satu Divisi (hierarki: Divisi -> Bidang -> Pengguna)
+    public function division()
+    {
+        return $this->belongsTo(Division::class);
+    }
 
     // Relationships
     public function employees()

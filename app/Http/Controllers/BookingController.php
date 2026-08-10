@@ -64,8 +64,15 @@ class BookingController extends Controller
         }
 
         // Filter by specific date
+        $hasDateFilter = $request->filled('date') || $request->filled('date_from') || $request->filled('date_to');
         if ($request->filled('date')) {
             $query->whereDate('start_time', $request->date);
+        } elseif (!$hasDateFilter) {
+            // UX: tanpa filter tanggal eksplisit, jangan diam-diam batasi ke
+            // hari ini saja — tampilkan hari ini & semua yang akan datang,
+            // supaya admin/user tidak "kehilangan" booking 2-3 hari ke depan
+            // hanya karena defaultnya kebetulan menyempit ke satu hari.
+            $query->whereDate('start_time', '>=', Carbon::today());
         }
 
         // Search
@@ -84,7 +91,10 @@ class BookingController extends Controller
         }
 
         // Sort
-        $sort = $request->get('sort', 'latest');
+        // Default diubah ke "date_asc" (waktu mulai terdekat lebih dulu) karena
+        // dropdown sort tidak diekspos di UI — ini yang selalu dilihat user,
+        // dan lebih masuk akal untuk daftar jadwal dibanding urutan dibuat.
+        $sort = $request->get('sort', 'date_asc');
         switch ($sort) {
             case 'oldest':
                 $query->orderBy('created_at', 'asc');
@@ -112,7 +122,7 @@ class BookingController extends Controller
             'today' => (clone $statsQuery)->whereDate('start_time', Carbon::today())->count(),
         ];
 
-        return view('bookings.index', compact('bookings', 'rooms', 'stats'));
+        return view('bookings.index', compact('bookings', 'rooms', 'stats', 'hasDateFilter'));
     }
 
     /**
@@ -141,7 +151,11 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            $bookingType = Auth::user()->role == 1 ? 'Priority' : 'Regular';
+            // FIX: Otomatis tentukan booking_type berdasarkan role
+            // 1 = Admin, 3 = Sesdir -> Priority
+            // 2 = User -> Regular
+            $userRole = Auth::user()->role;
+            $bookingType = ($userRole == 1 || $userRole == 3) ? 'Priority' : 'Regular';
 
             $booking = Booking::create([
                 'user_id' => Auth::id(),
@@ -149,6 +163,8 @@ class BookingController extends Controller
                 'start_time' => $request->start_time,
                 'end_time' => $request->end_time,
                 'purpose' => $request->purpose,
+                'consumption_qty' => $request->boolean('needs_consumption') ? $request->consumption_qty : null,
+                'other_notes' => $request->boolean('needs_other') ? $request->other_notes : null,
                 'status' => 0,
                 'booking_type' => $bookingType,
             ]);
@@ -169,12 +185,13 @@ class BookingController extends Controller
 
             DB::commit();
 
-            if ($request->ajax()) {
+            // FIX: Tambahkan header Accept: application/json agar frontend fetch() selalu dapat JSON
+            if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Booking berhasil diajukan dan menunggu persetujuan.',
                     'redirect' => route('bookings.show', $booking->id)
-                ]);
+                ], 200, ['Content-Type' => 'application/json']);
             }
 
             return redirect()->route('bookings.show', $booking->id)
@@ -184,11 +201,11 @@ class BookingController extends Controller
             DB::rollBack();
             Log::error('Booking store error: ' . $e->getMessage());
 
-            if ($request->ajax()) {
+            if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Terjadi kesalahan saat menyimpan booking: ' . $e->getMessage()
-                ], 500);
+                ], 500, ['Content-Type' => 'application/json']);
             }
 
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan booking.'])->withInput();
@@ -200,14 +217,14 @@ class BookingController extends Controller
      */
     public function show(Booking $booking)
     {
+        // FIX: Hapus 'complaints' dari array load karena relasi tersebut tidak ada / dihapus
         $booking->load([
             'room.photos',
             'facilities',
             'user',
             'bookingFacilities.facility',
             'attendances.user',
-            'processedBy',
-            'complaints'
+            'processedBy'
         ]);
 
         $timeline = $this->buildTimeline($booking);
@@ -264,6 +281,8 @@ class BookingController extends Controller
                 'start_time' => $request->start_time,
                 'end_time' => $request->end_time,
                 'purpose' => $request->purpose,
+                'consumption_qty' => $request->boolean('needs_consumption') ? $request->consumption_qty : null,
+                'other_notes' => $request->boolean('needs_other') ? $request->other_notes : null,
                 'status' => $booking->status,
             ]);
 
@@ -293,12 +312,13 @@ class BookingController extends Controller
 
             DB::commit();
 
-            if ($request->ajax()) {
+            // FIX: Tambahkan header Accept: application/json
+            if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Booking berhasil diperbarui.',
                     'redirect' => route('bookings.show', $booking->id)
-                ]);
+                ], 200, ['Content-Type' => 'application/json']);
             }
 
             return redirect()->route('bookings.show', $booking->id)
@@ -308,11 +328,11 @@ class BookingController extends Controller
             DB::rollBack();
             Log::error('Booking update error: ' . $e->getMessage());
 
-            if ($request->ajax()) {
+            if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Terjadi kesalahan saat memperbarui booking.'
-                ], 500);
+                ], 500, ['Content-Type' => 'application/json']);
             }
 
             return back()->with('error', 'Terjadi kesalahan saat memperbarui booking.')->withInput();
@@ -332,11 +352,27 @@ class BookingController extends Controller
             BookingFacility::where('booking_id', $booking->id)->delete();
             $booking->delete();
 
+            // FIX: Tambahkan response JSON untuk AJAX
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking berhasil dihapus.'
+                ], 200, ['Content-Type' => 'application/json']);
+            }
+
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking berhasil dihapus.');
 
         } catch (\Exception $e) {
             Log::error('Booking delete error: ' . $e->getMessage());
+            
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan saat menghapus booking.'
+                ], 500, ['Content-Type' => 'application/json']);
+            }
+
             return back()->with('error', 'Terjadi kesalahan saat menghapus booking.');
         }
     }

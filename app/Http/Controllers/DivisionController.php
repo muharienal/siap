@@ -9,92 +9,59 @@ use App\Models\Division;
 
 class DivisionController extends Controller
 {
-
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        $divisions = Division::all();
-        return view('settings.divisions.index', compact('divisions'));
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        return view('settings.divisions.add');
-    }
-
-    /**
-     * Store a newly created resource in storage.
+     * Divisi dikelola via modal "Kelola Divisi" di halaman Pengguna.
+     * Divisi adalah level tertinggi dalam hierarki (Divisi -> Bidang ->
+     * Pengguna), jadi tidak boleh dihapus selama masih punya Bidang di
+     * bawahnya. Semua method di sini merespons JSON untuk fetch() AJAX.
      */
     public function store(DivisionRequest $request)
     {
-        try {
+        $division = Division::create([
+            'name' => $request->name,
+        ]);
 
-
-            Division::create([
-                'name' => $request->name,
-                'description' => $request->description,
-            ]);
-
-            return redirect('/settings/divisions')->with('success', 'Divisi berhasil ditambahkan.');
-        } catch (\Throwable $th) {
-
-            redirect('/settings/divisions')->withInput()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan data divisi. Silakan coba lagi.']);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Divisi berhasil ditambahkan.',
+            'data' => $division,
+        ]);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Division $division)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Division $division)
-    {
-        return view('settings.divisions.edit', compact('division'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(DivisionRequest $request, Division $division)
     {
-        try {
+        $division->update([
+            'name' => $request->name,
+        ]);
 
-            $division->update([
-                'name' => $request->name,
-                'description' => $request->description,
-            ]);
-
-            return redirect('/settings/divisions')->with('success', 'Divisi berhasil diupdate.');
-
-        } catch (\Throwable $th) {
-
-            redirect('/settings/divisions')->withInput()->withErrors(['error' => 'Terjadi kesalahan saat mengupdate data divisi. Silakan coba lagi.']);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Divisi berhasil diperbarui.',
+            'data' => $division,
+        ]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Division $division)
     {
-        try {
-            $division->delete();
-            return redirect('/settings/divisions')->with('success', 'Divisi berhasil dihapus.');
-        } catch (\Throwable $th) {
-            return redirect('/settings/divisions')->withErrors(['error' => 'Terjadi kesalahan saat menghapus data divisi. Silakan coba lagi.']);
+        if ($division->positions()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Divisi tidak dapat dihapus karena masih memiliki Bidang di dalamnya. Hapus atau pindahkan Bidang tersebut terlebih dahulu.',
+            ], 422);
         }
+
+        if ($division->employees()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Divisi tidak dapat dihapus karena masih digunakan oleh pengguna.',
+            ], 422);
+        }
+
+        $division->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Divisi berhasil dihapus.',
+        ]);
     }
-
-
 }

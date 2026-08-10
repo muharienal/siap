@@ -1,117 +1,185 @@
 @extends('templates.template')
 
+@section('title', 'Ruang Meeting')
 @section('page_title', 'Ruang Meeting')
-@section('page_subtitle', 'Daftar seluruh ruang meeting yang tersedia')
 
 @section('content')
 <style>
-    .room-list-content {
-        padding: var(--space-5) var(--space-6);
-        max-width: 1680px;
-        margin: 0 auto;
-        flex: 1;
-        width: 100%;
-    }
-    .room-card-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    /* ============================================
+       TOOLBAR (identik dengan halaman Manajemen
+       Ruang Rapat)
+    ============================================ */
+    .db-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
         gap: var(--space-4);
+        margin-bottom: var(--space-5);
+    }
+    .db-toolbar .count { font-size: var(--font-size-sm); color: var(--text-muted); }
+
+    /* ============================================
+       ROOM GRID & CARD (disamakan persis dengan
+       settings/rooms/index.blade.php)
+    ============================================ */
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: var(--space-5);
     }
     .room-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        border: 1px solid var(--border-color-light);
-        box-shadow: var(--shadow-card);
-        padding: var(--space-4);
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
-        transition: all var(--transition-fast);
+        background: var(--bg-card); border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+        cursor: pointer;
+        transition: all var(--transition-fast); display: flex; flex-direction: column;
+        text-decoration: none; color: inherit;
     }
     .room-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
+        transform: translateY(-4px); box-shadow: var(--shadow-hover);
         border-color: var(--brand-orange);
     }
-    .room-card-thumb {
-        width: 100%;
-        height: 130px;
-        border-radius: var(--radius-sm);
-        background: var(--bg-input);
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .room-card-image {
+        width: 100%; height: 180px; background: var(--bg-input);
+        position: relative; overflow: hidden;
+        border-top-left-radius: var(--radius-card);
+        border-top-right-radius: var(--radius-card);
     }
-    .room-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .room-card-thumb i { font-size: 2rem; color: var(--text-muted); }
-    .room-card-name {
-        font-weight: 700;
-        font-size: var(--font-size-md);
-        color: var(--text-primary);
+    .room-card-image img {
+        width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease;
     }
-    .room-card-meta {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: var(--space-1);
+    .room-card:hover .room-card-image img { transform: scale(1.05); }
+    .room-card-image-placeholder {
+        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); font-size: 3rem; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
     .room-card-status {
-        align-self: flex-start;
-        font-size: var(--font-size-xs);
-        font-weight: 600;
-        padding: 2px 10px;
-        border-radius: var(--radius-pill);
+        position: absolute; top: 12px; right: 12px; padding: 4px 10px;
+        border-radius: var(--radius-pill); font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.3px; backdrop-filter: blur(8px);
     }
-    .room-card-status.available {
-        background: rgba(16, 185, 129, 0.12);
-        color: var(--status-available);
+    .status-available { background: rgba(16, 185, 129, 0.9); color: white; }
+    .status-busy { background: rgba(239, 68, 68, 0.9); color: white; }
+
+    .room-card-body {
+        padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); flex: 1;
     }
-    .room-card-status.busy {
-        background: rgba(239, 68, 68, 0.12);
-        color: var(--status-rejected);
+    .room-card-title { font-size: var(--font-size-md); font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.3; }
+    .room-card-meta {
+        display: flex; align-items: center; gap: var(--space-3);
+        font-size: var(--font-size-sm); color: var(--text-secondary); flex-wrap: wrap;
     }
-    .empty-rooms {
-        text-align: center;
-        padding: var(--space-9) 0;
-        color: var(--text-muted);
+    .room-card-meta i { color: var(--text-muted); margin-right: 4px; }
+
+    /* Facility Badge with Tooltip */
+    .facility-badge-wrapper { position: relative; display: inline-block; margin-top: var(--space-2); align-self: flex-start; }
+    .facility-badge {
+        padding: 4px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 4px; cursor: default;
     }
-    .empty-rooms i { font-size: 2.5rem; display: block; margin-bottom: var(--space-3); }
+    .facility-badge.has-facilities { background: rgba(59, 130, 246, 0.08); color: var(--brand-blue); }
+    .facility-badge.no-facilities { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); }
+    .facility-tooltip {
+        position: absolute; bottom: calc(100% + 10px); left: 50%;
+        transform: translateX(-50%) translateY(5px);
+        background: #1e293b; color: white; padding: 12px 16px; border-radius: 10px;
+        font-size: 0.8rem; font-weight: 500; min-width: 180px; max-width: 250px;
+        opacity: 0; visibility: hidden; transition: all 0.25s ease; z-index: 1000;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; text-align: left;
+    }
+    .facility-tooltip::after {
+        content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+        border: 6px solid transparent; border-top-color: #1e293b;
+    }
+    .facility-tooltip ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    .facility-tooltip li { display: flex; align-items: center; gap: 6px; white-space: normal; line-height: 1.3; }
+    .facility-tooltip li::before { content: "•"; color: var(--brand-orange); font-weight: bold; }
+    .facility-badge-wrapper:hover .facility-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+    .room-card-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: auto; padding-top: var(--space-3); border-top: 1px solid var(--border-color-light);
+    }
+    .room-card-stats { font-size: var(--font-size-xs); color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .btn-view-detail {
+        padding: 6px 14px; border-radius: var(--radius-sm); font-size: var(--font-size-xs);
+        font-weight: 600; background: rgba(249, 115, 22, 0.08); color: var(--brand-orange-dark);
+        border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all var(--transition-fast);
+    }
+    .room-card:hover .btn-view-detail { background: var(--brand-orange); color: white; }
+
+    .empty-state {
+        text-align: center; padding: var(--space-9) var(--space-4);
+        background: var(--bg-card); border-radius: var(--radius-card); border: 2px dashed var(--border-color);
+    }
+    .empty-state i { font-size: 3rem; color: var(--border-color); margin-bottom: var(--space-4); }
+    .empty-state h4 { font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
+    .empty-state p { color: var(--text-muted); margin-bottom: 0; }
 </style>
 
-<div class="room-list-content">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-5); flex-wrap:wrap; gap:var(--space-2);">
-        <h1 style="font-size:var(--font-size-xl); font-weight:700; color:var(--text-primary); margin:0;">Ruang Meeting</h1>
-        <span style="font-size:var(--font-size-sm); color:var(--text-muted);">{{ $rooms->count() }} ruangan</span>
-    </div>
+<div class="db-toolbar">
+    <div></div>
+    <div class="count">{{ $rooms->count() }} ruangan</div>
+</div>
 
-    @if($rooms->count())
-        <div class="room-card-grid">
-            @foreach($rooms as $room)
-                <a href="{{ route('rooms.show', $room->id) }}" class="room-card">
-                    <div class="room-card-thumb">
-                        @if($room->photos->count())
-                            <img src="{{ $room->photos->first()->photo_url }}" alt="Foto {{ $room->name }}">
-                        @else
-                            <i class="bi bi-image"></i>
-                        @endif
-                    </div>
-                    <div class="room-card-name">{{ $room->name }}</div>
-                    <div class="room-card-meta"><i class="bi bi-people"></i> {{ $room->capacity }} orang</div>
-                    <span class="room-card-status {{ $roomStatus[$room->id] }}">
+@if($rooms->count() > 0)
+    <div class="room-grid">
+        @foreach($rooms as $room)
+            <a href="{{ route('rooms.show', $room->id) }}" class="room-card">
+                <div class="room-card-image">
+                    @php
+                        $validPhoto = $room->photos->first(function($p) { return $p->photo_url !== null; });
+                    @endphp
+                    @if($validPhoto)
+                        <img src="{{ $validPhoto->photo_url }}" alt="{{ $room->name }}">
+                    @else
+                        <div class="room-card-image-placeholder"><i class="bi bi-image"></i></div>
+                    @endif
+                    <span class="room-card-status status-{{ $roomStatus[$room->id] }}">
                         {{ $roomStatus[$room->id] === 'busy' ? 'Terisi' : 'Tersedia' }}
                     </span>
-                </a>
-            @endforeach
-        </div>
-    @else
-        <div class="empty-rooms">
-            <i class="bi bi-building"></i>
-            <p>Belum ada ruangan yang terdaftar.</p>
-        </div>
-    @endif
-</div>
+                </div>
+                <div class="room-card-body">
+                    <h3 class="room-card-title">{{ $room->name }}</h3>
+                    <div class="room-card-meta">
+                        <span><i class="bi bi-geo-alt"></i>{{ $room->location }}</span>
+                        <span><i class="bi bi-people"></i>{{ $room->capacity }} orang</span>
+                    </div>
+
+                    <div class="facility-badge-wrapper">
+                        @if($room->facilities->count() > 0)
+                            <span class="facility-badge has-facilities">
+                                <i class="bi bi-tools"></i> Ada Fasilitas
+                            </span>
+                            <div class="facility-tooltip">
+                                <ul>
+                                    @foreach($room->facilities as $f)
+                                        <li>{{ $f->name }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @else
+                            <span class="facility-badge no-facilities">
+                                <i class="bi bi-dash-circle"></i> Tanpa Fasilitas
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="room-card-footer">
+                        <div class="room-card-stats">
+                            <i class="bi bi-images"></i> {{ $room->photos->filter(function($p) { return $p->photo_url !== null; })->count() }} foto
+                        </div>
+                        <span class="btn-view-detail">Lihat Detail <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </div>
+            </a>
+        @endforeach
+    </div>
+@else
+    <div class="empty-state">
+        <i class="bi bi-building"></i>
+        <h4>Belum ada ruangan</h4>
+        <p>Belum ada ruangan yang terdaftar.</p>
+    </div>
+@endif
 @endsection

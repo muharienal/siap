@@ -13,8 +13,13 @@ class Division extends Model
 
     protected $fillable = [
         'name',
-        'description',
     ];
+
+    // Divisi punya banyak Bidang (hierarki: Divisi -> Bidang -> Pengguna)
+    public function positions()
+    {
+        return $this->hasMany(Position::class);
+    }
 
     // Relationships
     public function employees()

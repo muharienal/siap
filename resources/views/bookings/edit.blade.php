@@ -102,6 +102,25 @@
     .facility-qty { width: 70px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: var(--radius-xs); font-size: var(--font-size-sm); }
     .facility-qty:disabled { background: var(--bg-body); opacity: 0.5; }
 
+    /* Kebutuhan Tambahan (Konsumsi / Lain-lain) */
+    .additional-option {
+        display: flex; flex-direction: column; gap: 10px;
+        padding: 16px; border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-sm); background: var(--bg-input);
+        margin-bottom: 12px;
+    }
+    .additional-option:last-child { margin-bottom: 0; }
+    .form-check-custom {
+        display: flex; align-items: center; gap: 10px;
+        font-weight: 600; color: var(--text-primary); font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .form-check-custom input { width: 18px; height: 18px; accent-color: var(--brand-orange); cursor: pointer; }
+    .additional-input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: var(--radius-xs); background: var(--bg-card); font-size: 0.85rem; font-family: inherit; outline: none; transition: all 0.2s; }
+    .additional-input:focus { border-color: var(--brand-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
+    .additional-input:disabled { background: var(--bg-body); opacity: 0.5; }
+    textarea.additional-input { height: auto; padding: 8px 12px; resize: vertical; }
+
     .form-actions { background: var(--bg-body); display: flex; gap: var(--space-3); justify-content: flex-end; padding: var(--space-5); }
     .btn-submit { height: 48px; padding: 0 var(--space-6); background: var(--brand-gradient); border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: white; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
     .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,0.2); }
@@ -308,6 +327,28 @@
                 @endif
             </div>
 
+            <div class="form-section full-width">
+                <div class="section-title">
+                    <i class="bi bi-tools"></i> Kebutuhan Tambahan
+                </div>
+
+                <div class="additional-option">
+                    <label class="form-check-custom">
+                        <input type="checkbox" name="needs_consumption" id="needsConsumption" value="1" onchange="toggleConsumption(this)" {{ old('needs_consumption', $booking->consumption_qty ? '1' : '') ? 'checked' : '' }}>
+                        Konsumsi
+                    </label>
+                    <input type="number" name="consumption_qty" class="additional-input" placeholder="Jumlah Peserta" min="1" id="consumptionQty" value="{{ old('consumption_qty', $booking->consumption_qty) }}" {{ old('needs_consumption', $booking->consumption_qty) ? '' : 'disabled' }}>
+                </div>
+
+                <div class="additional-option">
+                    <label class="form-check-custom">
+                        <input type="checkbox" name="needs_other" id="needsOther" value="1" onchange="toggleOther(this)" {{ old('needs_other', $booking->other_notes ? '1' : '') ? 'checked' : '' }}>
+                        Lain-lain (Catatan)
+                    </label>
+                    <textarea name="other_notes" class="additional-input" rows="4" placeholder="Tuliskan kebutuhan lain..." id="otherNotes" {{ old('needs_other', $booking->other_notes) ? '' : 'disabled' }}>{{ old('other_notes', $booking->other_notes) }}</textarea>
+                </div>
+            </div>
+
             <div class="form-actions full-width">
                 <a href="{{ route('bookings.show', $booking->id) }}" class="btn-cancel">Batal</a>
                 <button type="submit" class="btn-submit" id="submitBtn">
@@ -371,6 +412,15 @@
             item.classList.remove('selected');
             qtyInput.disabled = true;
         }
+    }
+
+    function toggleConsumption(checkbox) {
+        document.getElementById('consumptionQty').disabled = !checkbox.checked;
+        if (!checkbox.checked) document.getElementById('consumptionQty').value = '';
+    }
+    function toggleOther(checkbox) {
+        document.getElementById('otherNotes').disabled = !checkbox.checked;
+        if (!checkbox.checked) document.getElementById('otherNotes').value = '';
     }
 
     let availabilityTimer;

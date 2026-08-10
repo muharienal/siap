@@ -7,53 +7,70 @@ use Illuminate\Http\Request;
 
 class PositionController extends Controller
 {
-    public function index()
-    {
-        $positions = Position::orderBy('name')->get();
-        return view('settings.positions.index', compact('positions'));
-    }
-
-    public function create()
-    {
-        return view('settings.positions.create');
-    }
-
+    /**
+     * Bidang dikelola via modal "Kelola Bidang" di halaman Pengguna.
+     * Setiap Bidang wajib terhubung ke satu Divisi (hierarki
+     * Divisi -> Bidang -> Pengguna). Semua method di sini merespons JSON
+     * untuk dikonsumsi via fetch() AJAX.
+     */
     public function store(Request $request)
     {
         $request->validate([
+            'division_id' => 'required|exists:divisions,id',
             'name' => 'required|string|max:255|unique:positions,name',
-            'description' => 'nullable|string',
+        ], [
+            'division_id.required' => 'Divisi harus dipilih.',
+            'division_id.exists' => 'Divisi yang dipilih tidak valid.',
         ]);
 
-        Position::create($request->all());
+        $position = Position::create([
+            'division_id' => $request->division_id,
+            'name' => $request->name,
+        ]);
 
-        return redirect()->route('settings.positions.index')
-            ->with('success', 'Bidang berhasil ditambahkan.');
-    }
-
-    public function edit(Position $position)
-    {
-        return view('settings.positions.edit', compact('position'));
+        return response()->json([
+            'success' => true,
+            'message' => 'Bidang berhasil ditambahkan.',
+            'data' => $position->load('division'),
+        ]);
     }
 
     public function update(Request $request, Position $position)
     {
         $request->validate([
+            'division_id' => 'required|exists:divisions,id',
             'name' => 'required|string|max:255|unique:positions,name,' . $position->id,
-            'description' => 'nullable|string',
+        ], [
+            'division_id.required' => 'Divisi harus dipilih.',
+            'division_id.exists' => 'Divisi yang dipilih tidak valid.',
         ]);
 
-        $position->update($request->all());
+        $position->update([
+            'division_id' => $request->division_id,
+            'name' => $request->name,
+        ]);
 
-        return redirect()->route('settings.positions.index')
-            ->with('success', 'Bidang berhasil diperbarui.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Bidang berhasil diperbarui.',
+            'data' => $position->load('division'),
+        ]);
     }
 
     public function destroy(Position $position)
     {
+        if ($position->employees()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bidang tidak dapat dihapus karena masih digunakan oleh pengguna.',
+            ], 422);
+        }
+
         $position->delete();
 
-        return redirect()->route('settings.positions.index')
-            ->with('success', 'Bidang berhasil dihapus.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Bidang berhasil dihapus.',
+        ]);
     }
 }

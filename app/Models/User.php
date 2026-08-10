@@ -19,8 +19,6 @@ class User extends Authenticatable
         'position_id',
         'gender',
         'birth_date',
-        'phone_number',
-        'email',
         'address',
         'employment_status',
         'photo_path',

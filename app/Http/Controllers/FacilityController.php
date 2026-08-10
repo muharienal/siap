@@ -8,7 +8,10 @@ use Illuminate\Http\Request;
 
 class FacilityController extends Controller
 {
-
+    /**
+     * Tidak lagi digunakan karena dialihkan ke halaman index ruangan,
+     * tetapi tetap dipertahankan agar route tidak rusak.
+     */
     public function index(Request $request)
     {
         $rooms = Room::with(['photos', 'facilities'])
@@ -24,6 +27,9 @@ class FacilityController extends Controller
         return view('settings.facilities.index', compact('rooms'));
     }
 
+    /**
+     * Menampilkan halaman master fasilitas (jika masih diperlukan terpisah).
+     */
     public function master()
     {
         $facilities = Facility::orderBy('name')->get();
@@ -35,124 +41,123 @@ class FacilityController extends Controller
         return view('settings.facilities.create');
     }
 
+    /**
+     * AJAX Store: Menyimpan fasilitas baru via JSON response.
+     */
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:facilities,name',
-            'description' => 'nullable|string',
-            'storage_location' => 'required|string|max:255',
         ]);
 
-        Facility::create([
+        $facility = Facility::create([
             'name' => $request->name,
-            'description' => $request->description,
-            'storage_location' => $request->storage_location,
         ]);
 
-        return redirect()->route('settings.facilities.master')
-            ->with('success', 'Fasilitas berhasil ditambahkan.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Fasilitas berhasil ditambahkan.',
+            'data' => $facility
+        ]);
     }
 
-    public function edit(Request $request, Facility $facility)
-    {
-        $roomId = $request->query('room_id');
-        $roomQuantity = null;
-
-        if ($roomId) {
-            $pivotRoom = $facility->rooms()->where('rooms.id', $roomId)->first();
-            $roomQuantity = $pivotRoom?->pivot->quantity;
-        }
-
-        return view('settings.facilities.edit', compact('facility', 'roomId', 'roomQuantity'));
-    }
-
+    /**
+     * AJAX Update: Memperbarui fasilitas via JSON response.
+     */
     public function update(Request $request, Facility $facility)
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:facilities,name,' . $facility->id,
-            'description' => 'nullable|string',
-            'storage_location' => 'required|string|max:255',
-            'room_id' => 'nullable|exists:rooms,id',
-            'quantity' => 'nullable|integer|min:1',
         ]);
 
         $facility->update([
             'name' => $request->name,
-            'description' => $request->description,
-            'storage_location' => $request->storage_location,
         ]);
 
-        if ($request->filled('room_id') && $request->filled('quantity')) {
-            $facility->rooms()->updateExistingPivot($request->room_id, [
-                'quantity' => $request->quantity,
-            ]);
-
-            return redirect()->route('settings.facilities.room', $request->room_id)
-                ->with('success', 'Fasilitas berhasil diperbarui.');
-        }
-
-        return redirect()->route('settings.facilities.master')
-            ->with('success', 'Fasilitas berhasil diperbarui.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Fasilitas berhasil diperbarui.',
+            'data' => $facility
+        ]);
     }
 
+    /**
+     * AJAX Destroy: Menghapus fasilitas via JSON response.
+     */
     public function destroy(Facility $facility)
     {
+        // Detach dari semua ruangan terkait sebelum hapus
+        $facility->rooms()->detach();
         $facility->delete();
 
-        return redirect()->route('settings.facilities.master')
-            ->with('success', 'Fasilitas berhasil dihapus.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Fasilitas berhasil dihapus.'
+        ]);
     }
 
+    // ====================================================================
+    // METHOD UNTUK FASILITAS PER RUANGAN (ROOM FACILITIES)
+    // ====================================================================
+
+    /**
+     * FIX: Endpoint ini sebelumnya mencoba render view
+     * 'settings.facilities.room' yang TIDAK ADA di filesystem, sehingga
+     * setiap kali diakses (termasuk secara tidak langsung lewat redirect
+     * dari attach/updateQuantity/detach di bawah) akan melempar
+     * InvalidArgumentException: "View [settings.facilities.room] not found".
+     *
+     * Kelola fasilitas sekarang sepenuhnya terintegrasi di halaman detail
+     * ruangan (settings.rooms.show) via modal "Kelola Fasilitas", jadi
+     * halaman standalone ini tidak lagi diperlukan. Daripada merender view
+     * yang tidak ada, redirect ke halaman detail ruangan yang sebenarnya.
+     */
     public function room(Room $room)
     {
-        $room->load('facilities');
-
-        // Fasilitas master yang belum ditambahkan ke ruangan ini
-        $availableFacilities = Facility::whereNotIn(
-            'id',
-            $room->facilities->pluck('id')
-        )->orderBy('name')->get();
-
-        return view('settings.facilities.room', compact('room', 'availableFacilities'));
+        return redirect()->route('settings.rooms.show', $room->id);
     }
 
+    /**
+     * Menambahkan fasilitas master ke ruangan tertentu (Attach ke pivot).
+     *
+     * FIX (Critical): sebelumnya method ini SELALU mengembalikan
+     * redirect() HTML meskipun dipanggil via fetch()/AJAX dengan
+     * Accept: application/json. fetch() otomatis mengikuti redirect
+     * tersebut (ke route yang bahkan rusak, lihat method room() di atas),
+     * sehingga JS di frontend menerima response yang gagal di-parse
+     * sebagai JSON / berstatus non-2xx, dan menampilkan toast "Gagal"
+     * PADAHAL operasi database (syncWithoutDetaching) sudah berhasil.
+     * Sekarang method ini mendeteksi request AJAX/JSON dan membalas JSON
+     * secara eksplisit, konsisten dengan store()/update()/destroy() di atas.
+     */
     public function attach(Request $request, Room $room)
     {
         $request->validate([
+            'facility_id' => 'required|exists:facilities,id',
             'quantity' => 'required|integer|min:1',
         ]);
 
-        if ($request->facility_id === 'new') {
-            $request->validate([
-                'new_facility_name' => 'required|string|max:255|unique:facilities,name',
-                'new_facility_location' => 'required|string|max:255',
-            ], [
-                'new_facility_name.required' => 'Nama fasilitas baru wajib diisi.',
-                'new_facility_name.unique' => 'Nama fasilitas sudah ada, pilih dari daftar yang tersedia.',
-                'new_facility_location.required' => 'Lokasi penyimpanan wajib diisi.',
-            ]);
-
-            $facility = Facility::create([
-                'name' => $request->new_facility_name,
-                'storage_location' => $request->new_facility_location,
-            ]);
-        } else {
-            $request->validate([
-                'facility_id' => 'required|exists:facilities,id',
-            ]);
-
-            $facility = Facility::findOrFail($request->facility_id);
-        }
+        $facility = Facility::findOrFail($request->facility_id);
 
         $room->facilities()->syncWithoutDetaching([
             $facility->id => ['quantity' => $request->quantity],
         ]);
 
-        return redirect()->route('settings.facilities.room', $room->id)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Fasilitas berhasil ditambahkan ke ruangan.',
+            ]);
+        }
+
+        return redirect()->route('settings.rooms.show', $room->id)
             ->with('success', 'Fasilitas berhasil ditambahkan ke ruangan.');
     }
 
-    
+    /**
+     * Update kuantitas fasilitas di ruangan tertentu (Update Pivot).
+     * FIX: sama seperti attach() — balas JSON untuk request AJAX.
+     */
     public function updateQuantity(Request $request, Room $room, Facility $facility)
     {
         $request->validate([
@@ -163,16 +168,33 @@ class FacilityController extends Controller
             'quantity' => $request->quantity,
         ]);
 
-        return redirect()->route('settings.facilities.room', $room->id)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Jumlah fasilitas berhasil diperbarui.',
+            ]);
+        }
+
+        return redirect()->route('settings.rooms.show', $room->id)
             ->with('success', 'Jumlah fasilitas berhasil diperbarui.');
     }
 
-    
-    public function detach(Room $room, Facility $facility)
+    /**
+     * Melepas fasilitas dari ruangan tertentu (Detach Pivot).
+     * FIX: sama seperti attach() — balas JSON untuk request AJAX.
+     */
+    public function detach(Request $request, Room $room, Facility $facility)
     {
         $room->facilities()->detach($facility->id);
 
-        return redirect()->route('settings.facilities.room', $room->id)
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Fasilitas berhasil dihapus dari ruangan.',
+            ]);
+        }
+
+        return redirect()->route('settings.rooms.show', $room->id)
             ->with('success', 'Fasilitas berhasil dihapus dari ruangan.');
     }
 }

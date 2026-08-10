@@ -15,6 +15,8 @@ class Booking extends Model
         'start_time',
         'end_time',
         'purpose',
+        'consumption_qty',
+        'other_notes',
         'status',
         'booking_type',
         'processed_by',

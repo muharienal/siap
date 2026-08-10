@@ -72,6 +72,12 @@ class BookingRequest extends FormRequest
             'facilities.*' => 'exists:facilities,id',
             'quantities' => 'sometimes|array',
             'quantities.*' => 'integer|min:1|max:100',
+
+            // Kebutuhan tambahan (checkbox "Konsumsi" & "Lain-lain (Catatan)")
+            'needs_consumption' => 'sometimes|boolean',
+            'consumption_qty' => 'required_if:needs_consumption,1|nullable|integer|min:1|max:1000',
+            'needs_other' => 'sometimes|boolean',
+            'other_notes' => 'required_if:needs_other,1|nullable|string|max:1000',
         ];
     }
 
@@ -96,6 +102,12 @@ class BookingRequest extends FormRequest
             'quantities.*.integer' => 'Jumlah fasilitas harus berupa angka.',
             'quantities.*.min' => 'Jumlah fasilitas minimal 1.',
             'quantities.*.max' => 'Jumlah fasilitas maksimal 100.',
+
+            'consumption_qty.required_if' => 'Jumlah peserta konsumsi harus diisi.',
+            'consumption_qty.integer' => 'Jumlah peserta konsumsi harus berupa angka.',
+            'consumption_qty.min' => 'Jumlah peserta konsumsi minimal 1.',
+            'other_notes.required_if' => 'Catatan kebutuhan lain-lain harus diisi.',
+            'other_notes.max' => 'Catatan kebutuhan lain-lain maksimal 1000 karakter.',
         ];
     }
 

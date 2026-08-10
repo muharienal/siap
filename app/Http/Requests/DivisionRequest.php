@@ -21,9 +21,10 @@ class DivisionRequest extends FormRequest
      */
     public function rules(): array
     {
+        $divisionId = $this->route('division') ? $this->route('division')->id : null;
+
         return [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name' => 'required|string|max:255|unique:divisions,name,' . $divisionId,
         ];
     }
 
@@ -33,6 +34,7 @@ class DivisionRequest extends FormRequest
             'name.required' => 'Nama divisi wajib diisi.',
             'name.string' => 'Nama divisi harus berupa teks.',
             'name.max' => 'Nama divisi tidak boleh lebih dari 255 karakter.',
+            'name.unique' => 'Nama divisi sudah digunakan.',
         ];
     }
 }

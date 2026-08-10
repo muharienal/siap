@@ -40,14 +40,25 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
 
     // ========== SETTINGS MANUAL ROUTES ==========
-    // Ruangan
+    // Settings index redirect
+    Route::get('/settings', function () {
+        return redirect('/settings/rooms');
+    })->name('settings.index');
+
+    // Ruangan & Fasilitas
     Route::prefix('settings')->name('settings.')->group(function () {
+        // Manajemen Ruangan
         Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
         Route::get('/rooms/create', [RoomController::class, 'create'])->name('rooms.create');
         Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
+        
+        // INI BAGIAN YANG DIPERBAIKI: Menggunakan showSettings, BUKAN show
+        Route::get('/rooms/{room}', [RoomController::class, 'showSettings'])->name('rooms.show');
+        
         Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
         Route::put('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
         Route::delete('/rooms/{room}', [RoomController::class, 'destroy'])->name('rooms.destroy');
+        Route::delete('/rooms/{room}/delete-photo', [RoomController::class, 'deletePhoto'])->name('rooms.delete-photo');
 
         // Fasilitas (grid ruangan)
         Route::get('/facilities', [FacilityController::class, 'index'])->name('facilities.index');
@@ -66,19 +77,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/facilities/{facility}', [FacilityController::class, 'update'])->name('facilities.update');
         Route::delete('/facilities/{facility}', [FacilityController::class, 'destroy'])->name('facilities.destroy');
 
-        // Divisi
-        Route::get('/divisions', [DivisionController::class, 'index'])->name('divisions.index');
-        Route::get('/divisions/create', [DivisionController::class, 'create'])->name('divisions.create');
+        // Divisi (dikelola via modal di halaman Pengguna, bukan halaman terpisah)
         Route::post('/divisions', [DivisionController::class, 'store'])->name('divisions.store');
-        Route::get('/divisions/{division}/edit', [DivisionController::class, 'edit'])->name('divisions.edit');
         Route::put('/divisions/{division}', [DivisionController::class, 'update'])->name('divisions.update');
         Route::delete('/divisions/{division}', [DivisionController::class, 'destroy'])->name('divisions.destroy');
 
-        // Jabatan
-        Route::get('/positions', [PositionController::class, 'index'])->name('positions.index');
-        Route::get('/positions/create', [PositionController::class, 'create'])->name('positions.create');
+        // Bidang (dikelola via modal di halaman Pengguna, bukan halaman terpisah)
         Route::post('/positions', [PositionController::class, 'store'])->name('positions.store');
-        Route::get('/positions/{position}/edit', [PositionController::class, 'edit'])->name('positions.edit');
         Route::put('/positions/{position}', [PositionController::class, 'update'])->name('positions.update');
         Route::delete('/positions/{position}', [PositionController::class, 'destroy'])->name('positions.destroy');
 
@@ -92,12 +97,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ========== END SETTINGS ==========
-
-    // Settings - Users (manajemen pengguna + karyawan)
-    Route::prefix('settings')->name('settings.')->group(function () {
-        // ... routes lain
-        Route::resource('users', App\Http\Controllers\UserController::class);
-    });
 
     // Complaints
     Route::resource('complaints', App\Http\Controllers\ComplaintController::class);
@@ -127,10 +126,3 @@ Route::post('booking/meet/{code}', [App\Http\Controllers\BookingController::clas
 Route::get('attendance/success/{code}', function($code) {
     return view('attendance.success', ['code' => $code]);
 })->name('attendance.success');
-
-// Settings index redirect (fix for missing route)
-Route::get('/settings', function () {
-    return redirect('/settings/rooms');
-})->name('settings.index');
-
-Route::delete('settings/rooms/{room}/delete-photo', [RoomController::class, 'deletePhoto'])->name('settings.rooms.delete-photo');

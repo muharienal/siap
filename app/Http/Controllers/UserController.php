@@ -14,8 +14,14 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['division', 'position'])->get();
-        return view('settings.users.index', compact('users'));
+        $users = User::with(['division', 'position'])->orderBy('full_name')->get();
+
+        // Divisi & Bidang sekarang dikelola langsung di halaman ini lewat
+        // modal "Kelola Bidang & Divisi", jadi ikut dimuat di sini.
+        $divisions = Division::orderBy('name')->get();
+        $positions = Position::orderBy('name')->get();
+
+        return view('settings.users.index', compact('users', 'divisions', 'positions'));
     }
 
     public function create()
@@ -31,10 +37,19 @@ class UserController extends Controller
             'nip' => 'required|string|max:50|unique:users,nip',
             'full_name' => 'required|string|max:255',
             'division_id' => 'required|exists:divisions,id',
-            'position_id' => 'required|exists:positions,id',
-            'email' => 'nullable|email|max:255',
-            'phone_number' => 'nullable|string|max:20',
-            'role' => 'required|in:1,2',
+            'position_id' => [
+                'required',
+                'exists:positions,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    $position = Position::find($value);
+                    if ($position && (int) $position->division_id !== (int) $request->division_id) {
+                        $fail('Bidang yang dipilih tidak termasuk dalam Divisi yang dipilih.');
+                    }
+                },
+            ],
+            // FIX: role 3 (Sesdir) belum bisa dibuat sebelumnya padahal
+            // sudah didukung penuh di alur booking (booking_type Priority).
+            'role' => 'required|in:1,2,3',
             'password' => 'required|string|min:6',
             'is_active' => 'required|in:0,1',
         ]);
@@ -46,11 +61,7 @@ class UserController extends Controller
                 'full_name' => $request->full_name,
                 'division_id' => $request->division_id,
                 'position_id' => $request->position_id,
-                'email' => $request->email,
-                'phone_number' => $request->phone_number,
                 'gender' => $request->gender ?? 'L',
-                'birth_date' => $request->birth_date ?? '2000-01-01',
-                'address' => $request->address ?? '',
                 'employment_status' => $request->employment_status ?? 'Kontrak',
                 'password' => Hash::make($request->password),
                 'role' => $request->role,
@@ -83,10 +94,18 @@ class UserController extends Controller
             'nip' => 'required|string|max:50|unique:users,nip,' . $user->id,
             'full_name' => 'required|string|max:255',
             'division_id' => 'required|exists:divisions,id',
-            'position_id' => 'required|exists:positions,id',
-            'email' => 'nullable|email|max:255',
-            'phone_number' => 'nullable|string|max:20',
-            'role' => 'required|in:1,2',
+            'position_id' => [
+                'required',
+                'exists:positions,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    $position = Position::find($value);
+                    if ($position && (int) $position->division_id !== (int) $request->division_id) {
+                        $fail('Bidang yang dipilih tidak termasuk dalam Divisi yang dipilih.');
+                    }
+                },
+            ],
+            // FIX: role 3 (Sesdir) belum bisa diberikan ke pengguna manapun sebelumnya.
+            'role' => 'required|in:1,2,3',
             'password' => 'nullable|string|min:6',
             'is_active' => 'required|in:0,1',
         ]);
@@ -98,8 +117,6 @@ class UserController extends Controller
                 'full_name' => $request->full_name,
                 'division_id' => $request->division_id,
                 'position_id' => $request->position_id,
-                'email' => $request->email,
-                'phone_number' => $request->phone_number,
                 'role' => $request->role,
                 'is_active' => $request->is_active,
             ];

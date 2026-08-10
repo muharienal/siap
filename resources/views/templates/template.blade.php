@@ -700,29 +700,23 @@
                     <i class="bi bi-grid-1x2-fill"></i> Dashboard
                 </a>
                 <a href="/bookings" class="nav-item {{ request()->is('bookings*') ? 'active' : '' }}">
-                    <i class="bi bi-calendar-event-fill"></i> Peminjaman
+                    <i class="bi bi-calendar-event-fill"></i> Peminjaman Ruangan
                 </a>
                 <a href="/rooms" class="nav-item {{ request()->is('rooms*') ? 'active' : '' }}">
-                    <i class="bi bi-building"></i> Ruang Meeting
+                    <i class="bi bi-building"></i> Ruang Rapat
                 </a>
 
                 @if (Auth::user()->role == 1)
                     <div class="section-title">Pengaturan</div>
 
                     <a href="/settings/rooms" class="nav-item {{ request()->is('settings/rooms*') ? 'active' : '' }}">
-                        <i class="bi bi-door-open-fill"></i> Ruangan
+                        <i class="bi bi-door-open-fill"></i> Manajemen Ruang Rapat
                     </a>
-                    <a href="/settings/facilities" class="nav-item {{ request()->is('settings/facilities*') ? 'active' : '' }}">
+                    <!-- <a href="/settings/facilities" class="nav-item {{ request()->is('settings/facilities*') ? 'active' : '' }}">
                         <i class="bi bi-tools"></i> Fasilitas
-                    </a>
+                    </a> -->
                     <a href="/settings/users" class="nav-item {{ request()->is('settings/users*') ? 'active' : '' }}">
                         <i class="bi bi-people-fill"></i> Pengguna
-                    </a>
-                    <a href="/settings/positions" class="nav-item {{ request()->is('settings/positions*') ? 'active' : '' }}">
-                        <i class="bi bi-briefcase-fill"></i> Bidang
-                    </a>
-                    <a href="/settings/divisions" class="nav-item {{ request()->is('settings/divisions*') ? 'active' : '' }}">
-                        <i class="bi bi-diagram-2-fill"></i> Divisi
                     </a>
                 @endif
             </nav>
