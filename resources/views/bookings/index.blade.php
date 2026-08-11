@@ -810,30 +810,6 @@
     .empty-state h4 { font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
     .empty-state p { color: var(--text-muted); margin-bottom: var(--space-4); }
 
-    /* Mobile FAB */
-    .fab-book {
-        display: none;
-        position: fixed;
-        bottom: calc(80px + var(--safe-bottom));
-        right: 20px;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: var(--brand-gradient);
-        color: white;
-        border: none;
-        font-size: 1.5rem;
-        box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
-        z-index: 1001;
-        cursor: pointer;
-        transition: transform var(--transition-fast);
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-    }
-    .fab-book:hover { transform: scale(1.05); color: white; }
-    .fab-book:active { transform: scale(0.95); }
-
     /* ============================================================
        RESPONSIVE
        ============================================================ */
@@ -857,7 +833,6 @@
         
         .booking-table-wrap { display: none; }
         .booking-cards { display: flex; }
-        .fab-book { display: flex; }
     }
 
     @media (max-width: 575.98px) {
@@ -873,8 +848,6 @@
         .mtp-field { padding: 8px 12px; }
         .mtp-clock { width: 240px; height: 240px; }
         .mtp-footer { padding: 12px 16px 16px; }
-        
-        .fab-book { bottom: calc(76px + var(--safe-bottom)); right: 16px; }
     }
 
     @media (min-width: 992px) {
@@ -1257,10 +1230,6 @@
     {{ $bookings->appends(request()->query())->links() }}
 </div>
 @endif
-
-<a href="{{ route('bookings.create') }}" class="fab-book" aria-label="Tambah Peminjaman">
-    <i class="bi bi-plus-lg"></i>
-</a>
 
 <!-- MATERIAL TIME PICKER -->
 <div class="mtp-overlay" id="mtpOverlay" onclick="if(event.target===this)closeTimePicker()">
