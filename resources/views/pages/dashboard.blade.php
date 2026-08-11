@@ -160,6 +160,25 @@
         min-width: 0;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+    /* Statistik Pemakaian (khusus Admin) */
+    .stats-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .chart-card {
+        background: var(--bg-card); border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 1.25rem 1.5rem;
+        min-width: 0; /* FIX: item grid harus boleh menyusut, defaultnya min-width:auto
+                         bikin canvas Chart.js mendorong grid (dan halaman) melebar ke
+                         samping di HP — inilah sebab card kepotong/scroll horizontal. */
+        overflow: hidden;
+    }
+    .chart-card-title {
+        font-size: 0.92rem; font-weight: 700; color: var(--text-primary);
+        margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+    }
+    .chart-card-title i { color: var(--brand-orange); }
+    .chart-canvas-wrapper { position: relative; height: 220px; width: 100%; }
+    .chart-card-caption { text-align: center; color: var(--text-muted); font-size: 0.78rem; margin-top: 10px; }
+    @media (max-width: 900px) { .stats-charts-grid { grid-template-columns: 1fr; } }
     .stat-icon {
         width: 56px; height: 56px;
         border-radius: var(--radius-sm);
@@ -814,22 +833,52 @@
     .cal-event {
         position: absolute;
         left: 6px; right: 6px;
-        border-left: 4px solid;
-        border-radius: var(--radius-sm);
-        padding: 6px 10px;
+        border-radius: 10px;
+        padding: 8px 10px 8px 12px;
         z-index: 2;
         cursor: pointer;
         overflow: hidden;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+        border: 1px solid transparent;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+        transition: box-shadow 0.18s ease, transform 0.18s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
     }
-    .cal-event:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.14); transform: translateY(-1px); }
+    .cal-event::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        border-radius: 10px 0 0 10px;
+        background: var(--event-accent, var(--brand-orange));
+    }
+    .cal-event:hover {
+        box-shadow: 0 10px 24px rgba(15,23,42,0.16);
+        transform: translateY(-2px) scale(1.01);
+        z-index: 5;
+    }
+    .cal-event-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+    .cal-event-avatar {
+        width: 20px; height: 20px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px; font-weight: 800;
+        color: #fff;
+    }
     .cal-event-title {
         font-weight: 700;
         font-size: var(--font-size-sm);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        min-width: 0;
     }
     .cal-event-sub {
         font-size: var(--font-size-xs);
@@ -837,9 +886,38 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-weight: 500;
     }
-    .cal-event-time { font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px; }
-    .cal-event-status { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+    .cal-event-time {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-variant-numeric: tabular-nums;
+    }
+    .cal-event-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 9px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        width: fit-content;
+        margin-top: auto;
+    }
+    .cal-event-priority-flag {
+        position: absolute;
+        top: 6px; right: 6px;
+        font-size: 11px;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+    }
+    .cal-event.is-compact .cal-event-sub,
+    .cal-event.is-compact .cal-event-status { display: none; }
 
     .cal-weekend-overlay {
         position: absolute;
@@ -858,6 +936,119 @@
 
     .no-results { padding: var(--space-9); text-align: center; color: var(--text-muted); font-size: var(--font-size-md); }
     .no-results i { font-size: 2.75rem; display: block; margin-bottom: var(--space-3); color: var(--border-color); }
+
+    /* ============================================================
+       AGENDA LIST (MOBILE) — ditampilkan hanya di layar kecil,
+       menggantikan grid horizontal supaya terasa seperti native app.
+    ============================================================ */
+    .agenda-mobile { display: none; }
+    .agenda-room-tabs {
+        display: flex;
+        gap: 8px;
+        padding: var(--space-3) var(--space-4);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-bottom: 1px solid var(--border-color-light);
+        background: var(--bg-body);
+        scrollbar-width: none;
+    }
+    .agenda-room-tabs::-webkit-scrollbar { display: none; }
+    .agenda-room-tab {
+        flex-shrink: 0;
+        padding: 8px 16px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.18s ease;
+    }
+    .agenda-room-tab.active {
+        background: var(--brand-gradient);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 3px 10px rgba(249,115,22,0.25);
+    }
+    .agenda-room-panel { display: none; }
+    .agenda-room-panel.active { display: block; }
+    .agenda-empty {
+        padding: var(--space-8) var(--space-4);
+        text-align: center;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .agenda-list { padding: var(--space-3) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: 8px; }
+    .agenda-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-radius: 12px;
+        padding: 12px;
+        cursor: pointer;
+        transition: transform 0.15s ease;
+    }
+    .agenda-item:active { transform: scale(0.98); }
+    .agenda-item-time {
+        flex-shrink: 0;
+        width: 46px;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+    }
+    .agenda-item-time span { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+    .agenda-item-body { flex: 1; min-width: 0; }
+    .agenda-item-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .agenda-item-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .agenda-item-status {
+        flex-shrink: 0;
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        padding: 4px 9px;
+        border-radius: 999px;
+    }
+    .agenda-item-booked {
+        border-left: 4px solid var(--event-accent, var(--brand-orange));
+        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    }
+    .agenda-item-available {
+        border: 1.5px dashed var(--brand-green);
+        background: rgba(16,185,129,0.05);
+    }
+    .agenda-item-available .agenda-item-time { color: var(--brand-green-dark); }
+    .agenda-item-available .agenda-item-empty-label { color: var(--brand-green-dark); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .agenda-item-past {
+        background: var(--bg-body);
+        opacity: 0.6;
+    }
+    .agenda-item-past .agenda-item-empty-label { color: var(--text-muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
 
     /* Lightbox */
     .gallery-lightbox {
@@ -884,29 +1075,6 @@
     .gallery-lightbox .lightbox-thumbnails { display: flex; gap: 8px; margin-top: 12px; max-width: 80%; overflow-x: auto; padding: 4px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); }
     .gallery-lightbox .lightbox-thumbnails img { width: 50px; height: 50px; object-fit: cover; border-radius: var(--radius-xs); cursor: pointer; border: 2px solid transparent; }
     .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); }
-
-    /* Mobile Floating Action Button */
-    .fab-book {
-        display: none;
-        position: fixed;
-        bottom: calc(80px + var(--safe-bottom));
-        right: 20px;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: var(--brand-gradient);
-        color: white;
-        border: none;
-        font-size: 1.5rem;
-        box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
-        z-index: 1001;
-        cursor: pointer;
-        transition: transform var(--transition-fast);
-        align-items: center;
-        justify-content: center;
-    }
-    .fab-book:hover { transform: scale(1.05); }
-    .fab-book:active { transform: scale(0.95); }
 
     /* Loading */
     .db-ajax-loading .schedule-card,
@@ -936,7 +1104,13 @@
         .cal-room-photo, .cal-room-photo-placeholder { width: 48px; height: 48px; }
         .cal-room-name { font-size: var(--font-size-xs); }
         .schedule-card .card-body { max-height: 500px; }
-        .fab-book { display: flex; }
+    }
+
+    @media (max-width: 767.98px) {
+        .cal-grid-header, .cal-grid-body-wrapper { display: none; }
+        .agenda-mobile { display: block; }
+        .schedule-card .card-body { max-height: none; overflow: visible; }
+        .schedule-card .card-header .title .date-info { display: none; }
     }
 
     @media (max-width: 575.98px) {
@@ -961,8 +1135,6 @@
         
         .db-toolbar .db-meta { font-size: var(--font-size-xs); }
         .badge-holiday, .badge-live-time { font-size: 10px; padding: 3px 8px; }
-        
-        .fab-book { bottom: calc(76px + var(--safe-bottom)); right: 16px; }
     }
 
     @media (max-width: 991.98px) and (orientation: landscape) and (max-height: 500px) {
@@ -1018,6 +1190,109 @@
         </div>
     </div>
 </div>
+
+@if(Auth::user()->role == 1 && $roomUsageStats)
+<div class="stats-charts-grid">
+    <div class="chart-card">
+        <div class="chart-card-title"><i class="bi bi-bar-chart-fill"></i> Ruangan Paling Sering Dipakai</div>
+        <div class="chart-canvas-wrapper"><canvas id="roomUsageChart"></canvas></div>
+        @if($roomUsageStats->sum('approved_count') == 0)
+            <div class="chart-card-caption">Belum ada booking disetujui — semua ruangan masih 0.</div>
+        @endif
+    </div>
+    <div class="chart-card">
+        <div class="chart-card-title"><i class="bi bi-clock-history"></i> Jam Sibuk (30 Hari Terakhir)</div>
+        <div class="chart-canvas-wrapper"><canvas id="busyHoursChart"></canvas></div>
+        @if(array_sum($busyHoursStats) == 0)
+            <div class="chart-card-caption">Belum ada aktivitas booking pada 30 hari terakhir.</div>
+        @endif
+    </div>
+</div>
+<script>
+    // FIX: dibungkus DOMContentLoaded karena <script src="chart.js"> dimuat
+    // di bagian bawah layout (setelah @yield('content')) — tanpa ini,
+    // script di bawah jalan duluan sebelum Chart.js siap, jadi typeof Chart
+    // selalu 'undefined' dan chart gagal dibuat tanpa error yang kelihatan
+    // (persis gejala kotak kosong tanpa pesan apa pun).
+    document.addEventListener('DOMContentLoaded', function() {
+        // Chart tetap ditampilkan walau datanya kosong (semua bar bernilai 0)
+        // supaya jelas ini bukan bug/loading gagal, cuma memang belum ada data.
+        var roomCtx = document.getElementById('roomUsageChart');
+        if (roomCtx && typeof Chart !== 'undefined') {
+            new Chart(roomCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($roomUsageStats->pluck('name')) !!},
+                    datasets: [{
+                        data: {!! json_encode($roomUsageStats->pluck('approved_count')) !!},
+                        backgroundColor: '#f97316',
+                        borderRadius: 6,
+                        maxBarThickness: 36
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 5,
+                            ticks: { precision: 0, stepSize: 1, color: '#94a3b8', font: { size: 11 } },
+                            grid: { display: false },
+                            border: { display: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: '#64748b', font: { size: 11, weight: '600' } }
+                        }
+                    }
+                }
+            });
+        } else if (roomCtx) {
+            console.error('Chart.js belum termuat saat roomUsageChart diinisialisasi.');
+        }
+
+        var busyCtx = document.getElementById('busyHoursChart');
+        if (busyCtx && typeof Chart !== 'undefined') {
+            new Chart(busyCtx, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode(array_keys($busyHoursStats)) !!},
+                    datasets: [{
+                        data: {!! json_encode(array_values($busyHoursStats)) !!},
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6,
+                        maxBarThickness: 36
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 5,
+                            ticks: { precision: 0, stepSize: 1, color: '#94a3b8', font: { size: 11 } },
+                            grid: { display: false },
+                            border: { display: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: '#64748b', font: { size: 11, weight: '600' } }
+                        }
+                    }
+                }
+            });
+        } else if (busyCtx) {
+            console.error('Chart.js belum termuat saat busyHoursChart diinisialisasi.');
+        }
+    });
+</script>
+@endif
 
 <div class="db-controls">
     <div class="db-filter-group">
@@ -1110,9 +1385,9 @@
             $showNowLine = ($isToday ?? false) && !($isWeekend ?? false) && $nowTopPx >= 0 && $nowTopPx <= $gridHeight;
 
             $statusColors = [
-                0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'label' => 'Pending'],
-                1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'label' => 'Disetujui'],
-                2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'label' => 'Ditolak'],
+                0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'chipBg' => 'rgba(245,158,11,0.18)', 'label' => 'Pending'],
+                1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'chipBg' => 'rgba(16,185,129,0.18)', 'label' => 'Disetujui'],
+                2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'chipBg' => 'rgba(239,68,68,0.18)', 'label' => 'Ditolak'],
             ];
         @endphp
 
@@ -1193,19 +1468,28 @@
                                             $topPx = max(0, ($bStartMin - $dayStartMinutes) * $pxPerMin);
                                             $heightPx = max(28, ($bEndMin - $bStartMin) * $pxPerMin);
                                             $colors = $statusColors[$booking->status] ?? $statusColors[0];
+                                            $bookerName = $booking->user->full_name ?? 'Unknown';
+                                            $initial = strtoupper(mb_substr($bookerName, 0, 1));
+                                            $isCompact = $heightPx < 52;
                                         @endphp
-                                        <div class="cal-event" role="button" tabindex="0"
+                                        <div class="cal-event {{ $isCompact ? 'is-compact' : '' }}" role="button" tabindex="0"
                                              onclick="showBookingDetails({{ $booking->id }})"
                                              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $booking->id }});}"
                                              aria-label="Detail booking {{ $booking->purpose }}"
-                                             title="Klik untuk lihat detail"
-                                             style="top: {{ $topPx }}px; height: {{ $heightPx }}px; background: {{ $colors['bg'] }}; border-left-color: {{ $colors['border'] }};">
-                                            <div class="cal-event-title" style="color: {{ $colors['text'] }};">
-                                                <i class="bi bi-person-workspace"></i> {{ Str::limit($booking->purpose, 28) }}
+                                             title="{{ $booking->purpose }} — {{ $bookerName }} ({{ $colors['label'] }})"
+                                             style="top: {{ $topPx }}px; height: {{ $heightPx }}px; background: {{ $colors['bg'] }}; --event-accent: {{ $colors['border'] }};">
+                                            @if($booking->booking_type === 'Priority' && Auth::user()->role == 1)
+                                                <span class="cal-event-priority-flag" title="Priority">
+                                                    <i class="bi bi-star-fill" style="color: #f97316;"></i>
+                                                </span>
+                                            @endif
+                                            <div class="cal-event-top">
+                                                <span class="cal-event-avatar" style="background: {{ $colors['border'] }};">{{ $initial }}</span>
+                                                <span class="cal-event-title" style="color: {{ $colors['text'] }};">{{ Str::limit($booking->purpose, 24) }}</span>
                                             </div>
-                                            <div class="cal-event-sub">{{ $booking->user->full_name ?? 'Unknown' }}</div>
-                                            <div class="cal-event-time"><i class="bi bi-clock"></i> {{ $bStart->format('H:i') }} - {{ $bEnd->format('H:i') }}</div>
-                                            <span class="cal-event-status" style="color: {{ $colors['text'] }};">{{ $colors['label'] }}</span>
+                                            <div class="cal-event-sub">{{ $bookerName }}</div>
+                                            <div class="cal-event-time"><i class="bi bi-clock"></i> {{ $bStart->format('H:i') }}–{{ $bEnd->format('H:i') }}</div>
+                                            <span class="cal-event-status" style="color: {{ $colors['text'] }}; background: {{ $colors['chipBg'] }};">{{ $colors['label'] }}</span>
                                         </div>
                                     @endforeach
                                 @endif
@@ -1217,6 +1501,82 @@
                 @if($showNowLine)
                     <div class="cal-now-line" id="nowLine" style="top: {{ $nowTopPx }}px;"><span class="cal-now-dot"></span></div>
                 @endif
+            </div>
+
+            {{-- ============================================================
+                 AGENDA LIST (KHUSUS MOBILE) — pengganti grid horizontal
+                 supaya terasa seperti native app di HP, bukan tabel desktop
+                 yang diperkecil.
+            ============================================================ --}}
+            <div class="agenda-mobile">
+                <div class="agenda-room-tabs">
+                    @foreach($rooms as $i => $room)
+                        <button type="button" class="agenda-room-tab {{ $i === 0 ? 'active' : '' }}"
+                                onclick="switchAgendaRoom({{ $room->id }})" data-room-tab="{{ $room->id }}">
+                            {{ $room->name }}
+                        </button>
+                    @endforeach
+                </div>
+
+                @foreach($rooms as $i => $room)
+                    <div class="agenda-room-panel {{ $i === 0 ? 'active' : '' }}" data-room-panel="{{ $room->id }}">
+                        @if($isWeekend)
+                            <div class="agenda-empty"><i class="bi bi-calendar-x"></i> Libur — tidak ada jadwal hari ini</div>
+                        @else
+                            @php $roomBookings = $dayBookings->where('room_id', $room->id)->sortBy('start_time'); @endphp
+                            <div class="agenda-list">
+                                @foreach($timeSlots as $timeSlot)
+                                    @php
+                                        $slotStart = Carbon::parse(($selectedDate ?? date('Y-m-d')) . ' ' . $timeSlot);
+                                        $slotEnd = $slotStart->copy()->addMinutes(30);
+                                        $isPastSlot = $slotEnd->lte(Carbon::now());
+                                        $slotBooking = $roomBookings->first(function ($b) use ($slotStart) {
+                                            return $slotStart->gte(Carbon::parse($b->start_time)) && $slotStart->lt(Carbon::parse($b->end_time));
+                                        });
+                                        $isBookingStartSlot = $slotBooking && Carbon::parse($slotBooking->start_time)->format('H:i') === $timeSlot;
+                                    @endphp
+
+                                    @if($slotBooking && !$isBookingStartSlot)
+                                        {{-- lanjutan booking yang sama, sudah dirender di slot mulainya --}}
+                                    @elseif($slotBooking && $isBookingStartSlot)
+                                        @php
+                                            $bStart = Carbon::parse($slotBooking->start_time);
+                                            $bEnd = Carbon::parse($slotBooking->end_time);
+                                            $colors = $statusColors[$slotBooking->status] ?? $statusColors[0];
+                                            $bookerName = $slotBooking->user->full_name ?? 'Unknown';
+                                        @endphp
+                                        <div class="agenda-item agenda-item-booked" role="button" tabindex="0"
+                                             onclick="showBookingDetails({{ $slotBooking->id }})"
+                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $slotBooking->id }});}"
+                                             style="--event-accent: {{ $colors['border'] }}; background: {{ $colors['bg'] }};">
+                                            <div class="agenda-item-time">{{ $bStart->format('H:i') }}<span>{{ $bEnd->format('H:i') }}</span></div>
+                                            <div class="agenda-item-body">
+                                                <div class="agenda-item-title">
+                                                    @if($slotBooking->booking_type === 'Priority' && Auth::user()->role == 1)<i class="bi bi-star-fill" style="color:#f97316;"></i>@endif
+                                                    {{ Str::limit($slotBooking->purpose, 42) }}
+                                                </div>
+                                                <div class="agenda-item-sub"><i class="bi bi-person"></i> {{ $bookerName }}</div>
+                                            </div>
+                                            <span class="agenda-item-status" style="color: {{ $colors['text'] }}; background: {{ $colors['chipBg'] }};">{{ $colors['label'] }}</span>
+                                        </div>
+                                    @elseif($isPastSlot)
+                                        <div class="agenda-item agenda-item-past">
+                                            <div class="agenda-item-time">{{ $timeSlot }}</div>
+                                            <div class="agenda-item-body"><span class="agenda-item-empty-label"><i class="bi bi-lock-fill"></i> Waktu lewat</span></div>
+                                        </div>
+                                    @else
+                                        <div class="agenda-item agenda-item-available" role="button" tabindex="0"
+                                             onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')"
+                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}');}">
+                                            <div class="agenda-item-time">{{ $timeSlot }}</div>
+                                            <div class="agenda-item-body"><span class="agenda-item-empty-label"><i class="bi bi-plus-circle"></i> Tersedia — ketuk untuk booking</span></div>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
             </div>
         @else
             <div class="no-results">
@@ -1237,10 +1597,6 @@
         @endif
     </div>
 </div>
-
-<a href="{{ route('bookings.create') }}" class="fab-book" aria-label="Booking Baru">
-    <i class="bi bi-plus-lg"></i>
-</a>
 
 <script type="application/json" id="roomsDataJson">@json($roomsData)</script>
 
@@ -1613,6 +1969,16 @@
         if (line && container) { container.scrollTop = Math.max(0, line.offsetTop - 80); }
     };
     if (document.getElementById('nowLine')) { setTimeout(scrollToNow, 300); }
+
+    // AGENDA LIST (MOBILE) — ganti ruangan yang ditampilkan
+    window.switchAgendaRoom = function (roomId) {
+        document.querySelectorAll('.agenda-room-tab').forEach(function (el) {
+            el.classList.toggle('active', String(el.dataset.roomTab) === String(roomId));
+        });
+        document.querySelectorAll('.agenda-room-panel').forEach(function (el) {
+            el.classList.toggle('active', String(el.dataset.roomPanel) === String(roomId));
+        });
+    };
 
 })();
 </script>

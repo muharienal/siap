@@ -108,7 +108,6 @@ class RoomController extends Controller
             return [
                 'id' => $room->id,
                 'name' => $room->name,
-                'description' => $room->description,
                 'capacity' => $room->capacity,
                 'location' => $room->location,
                 'status' => $room->status,
@@ -141,7 +140,6 @@ class RoomController extends Controller
             'name' => 'required|string|max:255|unique:rooms,name',
             'capacity' => 'required|integer|min:1',
             'location' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'status' => 'required|in:0,1',
             'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'facilities' => 'nullable|array',
@@ -154,7 +152,6 @@ class RoomController extends Controller
                 'name' => $request->name,
                 'capacity' => $request->capacity,
                 'location' => $request->location,
-                'description' => $request->description,
                 'status' => $request->status,
             ]);
 
@@ -216,7 +213,6 @@ class RoomController extends Controller
             'name' => 'required|string|max:255|unique:rooms,name,' . $room->id,
             'capacity' => 'required|integer|min:1',
             'location' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'status' => 'required|in:0,1',
             'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
@@ -226,7 +222,6 @@ class RoomController extends Controller
                 'name' => $request->name,
                 'capacity' => $request->capacity,
                 'location' => $request->location,
-                'description' => $request->description,
                 'status' => $request->status,
             ]);
 

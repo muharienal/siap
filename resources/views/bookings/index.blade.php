@@ -696,6 +696,13 @@
     .status-approved { background: rgba(16,185,129,0.12); color: #047857; }
     .status-rejected { background: rgba(239,68,68,0.12); color: #b91c1c; }
 
+    .conflict-badge {
+        font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill);
+        background: rgba(249,115,22,0.12); color: var(--brand-orange-dark);
+        display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+        white-space: nowrap; margin-top: 4px;
+    }
+
     /* Rejection Reason Tooltip */
     .reason-cell {
         max-width: 200px;
@@ -1045,7 +1052,9 @@
                         <th>Ruangan</th>
                         <th>Tanggal & Waktu</th>
                         <th>Peminjam</th>
+                        @if(Auth::user()->role == 1)
                         <th>Jenis</th>
+                        @endif
                         <th>Keperluan</th>
                         <th>Status</th>
                         <th>Catatan</th>
@@ -1117,17 +1126,25 @@
                                 <div>{{ $booking->user->full_name ?? 'Unknown' }}</div>
                                 <small class="text-muted">{{ $booking->user->nip ?? '-' }}</small>
                             </td>
+                            @if(Auth::user()->role == 1)
                             <td>
                                 <span class="type-badge type-{{ $typeClass }}">
                                     <i class="bi bi-{{ $booking->booking_type == 'Priority' ? 'star-fill' : 'circle' }}"></i>
                                     {{ $typeLabel }}
                                 </span>
                             </td>
+                            @endif
                             <td class="purpose-cell" title="{{ $booking->purpose }}">{{ $booking->purpose }}</td>
                             <td>
                                 <span class="status-badge status-{{ $statusClass }}">
                                     <i class="bi bi-circle-fill" style="font-size: 6px;"></i> {{ $statusLabel }}
                                 </span>
+                                @if($booking->displaced_by_id && Auth::user()->role == 1)
+                                    <br>
+                                    <span class="conflict-badge">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Bentrok
+                                    </span>
+                                @endif
                             </td>
                             <td class="reason-cell" data-reason="{{ $booking->rejection_reason ?? '-' }}">
                                 {{ $booking->rejection_reason ? Str::limit($booking->rejection_reason, 30) : '-' }}
@@ -1195,14 +1212,23 @@
                                 </div>
                             </div>
                         </div>
-                        <span class="status-badge status-{{ $statusClass }}">{{ $statusLabel }}</span>
+                        <div class="d-flex flex-column align-items-end gap-1">
+                            <span class="status-badge status-{{ $statusClass }}">{{ $statusLabel }}</span>
+                            @if($booking->displaced_by_id && Auth::user()->role == 1)
+                                <span class="conflict-badge" style="margin-top:0;">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Bentrok
+                                </span>
+                            @endif
+                        </div>
                     </div>
                     <div class="booking-card-body">
                         <div class="booking-card-meta">
+                            @if(Auth::user()->role == 1)
                             <span class="type-badge type-{{ $typeClass }}">
                                 <i class="bi bi-{{ $booking->booking_type == 'Priority' ? 'star-fill' : 'circle' }}"></i>
                                 {{ $typeLabel }}
                             </span>
+                            @endif
                             <small class="text-muted">
                                 <i class="bi bi-person"></i> {{ $booking->user->full_name ?? 'Unknown' }}
                             </small>

@@ -23,7 +23,6 @@ class RoomRequest extends FormRequest
     {
         $rules = [
             'name' => 'required|string|max:255', 
-            'description' => 'nullable|string',
             'capacity' => 'required|integer|min:1',
         ];
 

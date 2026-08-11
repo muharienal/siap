@@ -18,14 +18,18 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display notifications page
+     * Halaman "Semua Notifikasi". Mendukung filter ?status=unread untuk
+     * menampilkan yang belum dibaca saja.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $notifications = $this->notificationService->getUserNotifications(Auth::id(), 20);
+        $filter = $request->get('status', 'all');
+        $unreadOnly = $filter === 'unread';
+
+        $notifications = $this->notificationService->getUserNotifications(Auth::id(), 50, $unreadOnly);
         $unreadCount = $this->notificationService->getUnreadCount(Auth::id());
-        
-        return view('notifications.index', compact('notifications', 'unreadCount'));
+
+        return view('notifications.index', compact('notifications', 'unreadCount', 'filter'));
     }
 
     /**
@@ -35,19 +39,19 @@ class NotificationController extends Controller
     {
         $notifications = $this->notificationService->getUserNotifications(Auth::id(), 5);
         $unreadCount = $this->notificationService->getUnreadCount(Auth::id());
-        
+
         return response()->json([
-            'notifications' => $notifications->map(function($notification) {
+            'notifications' => $notifications->map(function ($notification) {
                 return [
                     'id' => $notification->id,
                     'message' => $notification->message,
                     'is_read' => $notification->is_read,
                     'created_at' => $notification->created_at->diffForHumans(),
                     'booking_id' => $notification->booking_id,
-                    'room_name' => $notification->booking->room->name ?? null
+                    'room_name' => $notification->booking->room->name ?? null,
                 ];
             }),
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 
@@ -57,9 +61,9 @@ class NotificationController extends Controller
     public function markAsRead(Request $request)
     {
         $notificationId = $request->input('notification_id');
-        
+
         $this->notificationService->markAsRead($notificationId, Auth::id());
-        
+
         return response()->json(['success' => true]);
     }
 
@@ -69,23 +73,7 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         $this->notificationService->markAllAsRead(Auth::id());
-        
+
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Notification $notification)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Notification $notification)
-    {
-        //
     }
 }

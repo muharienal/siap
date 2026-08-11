@@ -28,10 +28,7 @@ Auth::routes();
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
-    Route::get('/profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
-    Route::post('/profile/update', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/update-password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.update.password');
-    Route::post('/profile/remove-photo', [App\Http\Controllers\ProfileController::class, 'removePhoto'])->name('profile.remove.photo');
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
@@ -108,9 +105,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('bookings/room-schedule', [App\Http\Controllers\BookingController::class, 'roomDaySchedule'])->name('bookings.room-schedule');
     Route::patch('bookings/{booking}/approve', [App\Http\Controllers\BookingController::class, 'approve'])->name('bookings.approve');
     Route::patch('bookings/{booking}/reject', [App\Http\Controllers\BookingController::class, 'reject'])->name('bookings.reject');
+    Route::post('bookings/{booking}/relocate', [App\Http\Controllers\BookingController::class, 'relocate'])->name('bookings.relocate');
     Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
     Route::get('bookings/export', [App\Http\Controllers\BookingController::class, 'export'])->name('bookings.export');
-    Route::get('bookings/{booking}/qr-code', [App\Http\Controllers\BookingController::class, 'showQrCode'])->name('bookings.qr-code');
 
     // Notification routes
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
@@ -123,6 +120,4 @@ Route::middleware(['auth'])->group(function () {
 // Attendance routes (accessible without auth for guest attendance)
 Route::get('booking/meet/{code}', [App\Http\Controllers\BookingController::class, 'attendMeeting'])->name('attendance.meet');
 Route::post('booking/meet/{code}', [App\Http\Controllers\BookingController::class, 'submitAttendance'])->name('attendance.submit');
-Route::get('attendance/success/{code}', function($code) {
-    return view('attendance.success', ['code' => $code]);
-})->name('attendance.success');
+Route::get('attendance/success/{code}', [App\Http\Controllers\BookingController::class, 'attendanceSuccess'])->name('attendance.success');

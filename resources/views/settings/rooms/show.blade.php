@@ -363,7 +363,7 @@
 <div class="room-hero-card">
     <div class="room-hero-text">
         <h1 class="room-title">{{ $room->name }}</h1>
-        <p class="room-hero-description">{{ $room->description ?? 'Tidak ada deskripsi.' }}</p>
+        <p class="room-hero-description">{{ $room->location }} &middot; Kapasitas {{ $room->capacity }} orang</p>
     </div>
 </div>
 
@@ -500,10 +500,6 @@
                     <div class="mb-3">
                         <label class="form-label-modern">Lokasi</label>
                         <input type="text" name="location" class="modern-input" value="{{ $room->location }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label-modern">Deskripsi</label>
-                        <textarea name="description" class="modern-input" rows="3">{{ $room->description }}</textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label-modern">Status</label>
@@ -802,7 +798,6 @@
         formData.append('name', '{{ $room->name }}');
         formData.append('capacity', '{{ $room->capacity }}');
         formData.append('location', '{{ $room->location }}');
-        formData.append('description', '{{ $room->description }}');
         formData.append('status', '{{ $room->status }}');
 
         filesToUpload.forEach(file => {

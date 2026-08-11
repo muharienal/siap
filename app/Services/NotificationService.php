@@ -94,6 +94,72 @@ class NotificationService
     }
 
     /**
+     * Notifikasi ke karyawan yang bookingnya perlu ditinjau ulang akibat
+     * bentrok jadwal. Sengaja TIDAK menyebut "prioritas" — karyawan biasa
+     * tidak perlu (dan tidak boleh) tahu ada sistem prioritas, supaya tidak
+     * menimbulkan kecemburuan antar pengguna. Detail lengkap hanya
+     * dikirim ke admin lewat notifyPriorityConflictToAdmins().
+     */
+    public function notifyPriorityConflict(Booking $displacedBooking, Booking $priorityBooking)
+    {
+        $message = "Peminjaman ruangan {$displacedBooking->room->name} Anda pada " .
+                   $displacedBooking->start_time->format('d M Y, H:i') . " - " . $displacedBooking->end_time->format('H:i') .
+                   " sedang ditinjau ulang oleh admin karena ada penyesuaian jadwal. " .
+                   "Admin akan segera menghubungi Anda jika perlu dialihkan ke ruangan atau waktu lain.";
+
+        $this->createNotification($displacedBooking->user_id, $message, $displacedBooking->id);
+    }
+
+    /**
+     * Notifikasi ke seluruh admin saat terjadi konflik prioritas, supaya
+     * segera ditindaklanjuti (dialihkan ke ruangan/jam lain). Detail
+     * lengkap (termasuk kata "prioritas") HANYA boleh dikirim ke admin —
+     * jangan pernah dipakai untuk notifikasi ke karyawan biasa.
+     */
+    public function notifyPriorityConflictToAdmins(Booking $displacedBooking, Booking $priorityBooking)
+    {
+        $priorityUserName = $priorityBooking->user->full_name ?? 'Direksi';
+        $displacedUserName = $displacedBooking->user->full_name ?? 'Unknown';
+        $message = "Konflik jadwal prioritas: peminjaman {$priorityUserName} bentrok dengan peminjaman " .
+                   "{$displacedUserName} di ruangan {$displacedBooking->room->name} pada " .
+                   $displacedBooking->start_time->format('d M Y, H:i') . " - " . $displacedBooking->end_time->format('H:i') .
+                   ". Perlu dialihkan segera.";
+
+        $admins = User::where('role', 1)->where('is_active', true)->get();
+        foreach ($admins as $admin) {
+            $this->createNotification($admin->id, $message, $displacedBooking->id);
+        }
+    }
+
+    /**
+     * Notifikasi ke karyawan saat bookingnya berhasil dialihkan admin ke
+     * ruangan/waktu lain. Netral — tidak menyebut "prioritas".
+     */
+    public function notifyRelocated(Booking $booking, string $oldRoomName, $oldStartTime, string $note)
+    {
+        $message = "Peminjaman ruangan Anda telah dialihkan oleh admin dari {$oldRoomName} (" .
+                   \Carbon\Carbon::parse($oldStartTime)->format('d M Y, H:i') . ") ke {$booking->room->name} (" .
+                   $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') .
+                   "). Catatan admin: \"{$note}\"";
+
+        $this->createNotification($booking->user_id, $message, $booking->id);
+    }
+
+    /**
+     * Notifikasi ke karyawan saat bentrok jadwal pada bookingnya batal
+     * dengan sendirinya — booking miliknya aman kembali di jadwal semula.
+     * Netral — tidak menyebut "prioritas".
+     */
+    public function notifyConflictResolvedAutomatically(Booking $booking)
+    {
+        $message = "Kabar baik — peminjaman ruangan {$booking->room->name} Anda pada " .
+                   $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') .
+                   " tidak jadi dialihkan. Jadwal Anda tetap seperti semula.";
+
+        $this->createNotification($booking->user_id, $message, $booking->id);
+    }
+
+    /**
      * Create base notification
      */
     private function createNotification(int $userId, string $message, int $bookingId = null)
@@ -117,15 +183,19 @@ class NotificationService
     }
 
     /**
-     * Get notifications for user with pagination
+     * Get notifications for user with pagination, opsional filter belum dibaca saja.
      */
-    public function getUserNotifications(int $userId, int $limit = 10)
+    public function getUserNotifications(int $userId, int $limit = 10, bool $unreadOnly = false)
     {
-        return Notification::where('user_id', $userId)
+        $query = Notification::where('user_id', $userId)
                          ->with(['booking.room'])
-                         ->orderBy('created_at', 'desc')
-                         ->limit($limit)
-                         ->get();
+                         ->orderBy('created_at', 'desc');
+
+        if ($unreadOnly) {
+            $query->where('is_read', false);
+        }
+
+        return $query->limit($limit)->get();
     }
 
     /**

@@ -269,6 +269,7 @@
     .availability-status.unavailable { display: flex; background: rgba(239,68,68,0.1); color: #b91c1c; }
     .availability-status.checking { display: flex; background: rgba(59,130,246,0.1); color: #1d4ed8; }
     .availability-status.idle { display: flex; background: rgba(148,163,184,0.12); color: var(--text-muted); }
+    .availability-status.priority-notice { display: flex; background: rgba(249,115,22,0.1); color: var(--brand-orange-dark); }
 
     /* Additional Facilities (Custom Options) */
     .additional-option {
@@ -472,35 +473,29 @@
                 </div>
 
                 @php
-                    // 1 = Admin (Bisa pilih), 2 = User (Fix Reguler), 3 = Sesdir (Fix Priority)
+                    // 1 = Admin (Bisa pilih), 2 = Karyawan (Fix Reguler), 3 = Sesdir (Fix Priority)
+                    // PENTING: field ini sengaja TIDAK ditampilkan ke Karyawan/Sesdir
+                    // sama sekali — hanya Admin yang boleh tahu ada perbedaan
+                    // jenis peminjaman, supaya tidak menimbulkan kecemburuan
+                    // antar pengguna. Nilainya tetap dikirim via hidden input.
                     $userRole = Auth::user()->role;
                     $isFixed = in_array($userRole, [2, 3]);
                     $fixedType = $userRole == 3 ? 'Priority' : 'Regular';
                     $currentType = old('booking_type', $isFixed ? $fixedType : 'Regular');
                 @endphp
+                @if($isFixed)
+                    <input type="hidden" name="booking_type" value="{{ $fixedType }}">
+                @else
                 <div class="form-group">
                     <label class="form-label">Jenis Peminjaman</label>
-                    @if($isFixed)
-                        <input type="hidden" name="booking_type" value="{{ $fixedType }}">
-                        <div class="modern-input input-readonly">
-                            @if($fixedType == 'Priority')
-                                <i class="bi bi-star-fill" style="color: var(--brand-orange);"></i>
-                                <span>Priority (Direksi)</span>
-                            @else
-                                <i class="bi bi-circle" style="color: var(--text-muted);"></i>
-                                <span>Reguler</span>
-                            @endif
-                        </div>
-                        <small class="text-muted mt-1 d-block">Otomatis ditentukan berdasarkan peran akun Anda.</small>
-                    @else
-                        <div class="select-wrapper">
-                            <select name="booking_type" class="form-select" required>
-                                <option value="Regular" {{ $currentType == 'Regular' ? 'selected' : '' }}>Reguler</option>
-                                <option value="Priority" {{ $currentType == 'Priority' ? 'selected' : '' }}>Priority (Direksi)</option>
-                            </select>
-                        </div>
-                    @endif
+                    <div class="select-wrapper">
+                        <select name="booking_type" class="form-select" required onchange="checkAvailability()">
+                            <option value="Regular" {{ $currentType == 'Regular' ? 'selected' : '' }}>Reguler</option>
+                            <option value="Priority" {{ $currentType == 'Priority' ? 'selected' : '' }}>Priority (Direksi)</option>
+                        </select>
+                    </div>
                 </div>
+                @endif
 
                 <div class="availability-status idle" id="availabilityStatus">
                     <i class="bi bi-info-circle"></i>
@@ -708,12 +703,17 @@
                 body: JSON.stringify({
                     room_id: roomId,
                     start_time: startDateTime,
-                    end_time: endDateTime
+                    end_time: endDateTime,
+                    booking_type: document.querySelector('[name="booking_type"]')?.value || 'Regular'
                 })
             })
             .then(r => r.json())
             .then(data => {
-                if (data.available) {
+                if (data.priority_override) {
+                    statusEl.className = 'availability-status priority-notice';
+                    statusEl.querySelector('i').className = 'bi bi-star-fill';
+                    msgEl.textContent = data.message;
+                } else if (data.available) {
                     statusEl.className = 'availability-status available';
                     statusEl.querySelector('i').className = 'bi bi-check-circle-fill';
                     msgEl.textContent = data.message;

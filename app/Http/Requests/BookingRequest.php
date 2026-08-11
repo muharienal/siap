@@ -144,6 +144,14 @@ class BookingRequest extends FormRequest
                       });
             });
 
+        // Sistem konflik prioritas: booking Priority (Sesdir/Admin) boleh
+        // menembus bentrok dengan booking Reguler yang sudah ada — booking
+        // Reguler itu akan ditandai "bentrok" dan dialihkan admin setelahnya.
+        // Priority vs Priority dan Reguler vs Reguler tetap diblokir seperti biasa.
+        if ($this->resolveBookingType() === 'Priority') {
+            $query->where('booking_type', 'Priority');
+        }
+
         // Exclude current booking when updating
         if ($this->route('booking')) {
             $query->where('id', '!=', $this->route('booking')->id);
@@ -154,5 +162,31 @@ class BookingRequest extends FormRequest
         if ($conflictingBooking) {
             $fail('Ruangan sudah dipesan pada waktu tersebut. Silakan pilih waktu lain.');
         }
+    }
+
+    /**
+     * Tentukan booking_type yang sebenarnya akan disimpan, mengikuti aturan
+     * yang sama dengan BookingController::store()/update():
+     * - Karyawan (role 2): selalu Regular, apa pun input yang dikirim.
+     * - Sesdir (role 3): selalu Priority.
+     * - Admin (role 1): mengikuti pilihan eksplisit di form (default Priority
+     *   jika tidak dikirim / tidak valid).
+     * Dipakai di sini supaya validasi bentrok konsisten dengan apa yang
+     * benar-benar akan tersimpan ke database.
+     */
+    private function resolveBookingType(): string
+    {
+        $userRole = auth()->user()->role ?? 2;
+
+        if ($userRole == 2) {
+            return 'Regular';
+        }
+        if ($userRole == 3) {
+            return 'Priority';
+        }
+
+        return in_array($this->input('booking_type'), ['Regular', 'Priority'])
+            ? $this->input('booking_type')
+            : 'Priority';
     }
 }

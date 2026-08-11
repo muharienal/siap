@@ -3,10 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
-use App\Models\User;
 use App\Models\Booking;
-use App\Models\Facility;
-use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -33,31 +30,33 @@ class DashboardController extends Controller
         $isWeekend = $selectedDateObj->isWeekend();
         $isToday = $selectedDateObj->isToday();
 
-        $totalRooms = Room::count();
-        $totalUsers = User::count();
-        $totalFacilities = Facility::count();
+        // ===== STATISTIK PEMAKAIAN RUANGAN (KHUSUS ADMIN) =====
+        // Cuma dihitung untuk admin — selain berat query-nya untuk tiap
+        // page load, non-admin juga tidak butuh gambaran global ini.
+        $roomUsageStats = null;
+        $busyHoursStats = null;
 
-        if ($user->role == 0) {
-            $totalBookings = Booking::count();
-            $pendingBookings = Booking::where('status', 0)->count();
-            $approvedBookings = Booking::where('status', 1)->count();
-            $rejectedBookings = Booking::where('status', 2)->count();
-        } else {
-            $totalBookings = Booking::where('user_id', $user->id)->count();
-            $pendingBookings = Booking::where('user_id', $user->id)->where('status', 0)->count();
-            $approvedBookings = Booking::where('user_id', $user->id)->where('status', 1)->count();
-            $rejectedBookings = Booking::where('user_id', $user->id)->where('status', 2)->count();
+        if ($user->role == 1) {
+            $roomUsageStats = Room::withCount(['bookings as approved_count' => function ($q) {
+                $q->where('status', 1);
+            }])
+                ->orderByDesc('approved_count')
+                ->limit(6)
+                ->get();
+
+            $busyHoursRaw = Booking::where('status', 1)
+                ->where('start_time', '>=', Carbon::now()->subDays(30))
+                ->selectRaw('HOUR(start_time) as hour, COUNT(*) as total')
+                ->groupBy('hour')
+                ->pluck('total', 'hour');
+
+            // Normalisasi ke rentang jam kerja (07-15) supaya chart selalu
+            // konsisten meskipun belum ada data di jam tertentu.
+            $busyHoursStats = [];
+            foreach (range(7, 15) as $h) {
+                $busyHoursStats[sprintf('%02d:00', $h)] = (int) ($busyHoursRaw[$h] ?? 0);
+            }
         }
-
-        $popularRoom = Room::withCount('bookings')->orderBy('bookings_count', 'desc')->first();
-        $bookingsByMonth = Booking::selectRaw('MONTH(created_at) as month, COUNT(*) as total')
-            ->whereYear('created_at', date('Y'))
-            ->groupBy('month')
-            ->pluck('total', 'month')
-            ->toArray();
-
-        $roomUsage = Room::withCount('bookings')->orderBy('bookings_count', 'desc')->limit(5)->get();
-        $totalAttendances = Attendance::count();
 
         // --- JADWAL ---
         $allRooms = Room::with('photos')->get();
@@ -143,17 +142,8 @@ class DashboardController extends Controller
         }
 
         return view('pages.dashboard', compact(
-            'totalRooms',
-            'totalUsers',
-            'totalFacilities',
-            'totalBookings',
-            'pendingBookings',
-            'approvedBookings',
-            'rejectedBookings',
-            'popularRoom',
-            'bookingsByMonth',
-            'roomUsage',
-            'totalAttendances',
+            'roomUsageStats',
+            'busyHoursStats',
             'selectedDate',
             'rooms',
             'timeSlots',
@@ -184,7 +174,11 @@ class DashboardController extends Controller
         if ($end->lt($start)) {
             $end = $start->copy()->addHour();
         }
-        while ($start->lte($end)) {
+        // FIX: pakai '<' bukan '<=' — jam tutup (mis. 16:00) adalah batas akhir,
+        // bukan slot yang boleh dipilih sebagai jam MULAI booking baru.
+        // Tanpa ini, muncul slot "+ Booking" jam 16:00 padahal itu sudah lewat
+        // jam kerja (rapat tidak mungkin selesai sebelum jam tutup).
+        while ($start->lt($end)) {
             $slots[] = $start->format('H:i');
             $start->addMinutes(30);
         }

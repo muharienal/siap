@@ -205,6 +205,19 @@
             color: var(--text-muted);
             transition: color var(--transition-fast);
         }
+        .nav-badge {
+            margin-left: auto;
+            background: var(--brand-orange);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 4px 7px;
+            border-radius: 999px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);
+        }
+        .nav-item.active .nav-badge { background: #fff; color: var(--brand-orange-dark); }
         .nav-item:hover {
             background: var(--bg-hover);
             color: var(--brand-orange-dark);
@@ -435,6 +448,15 @@
             font-size: var(--font-size-sm);
             min-width: 0;
         }
+        .n-room {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--brand-blue);
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
         .n-time {
             font-size: var(--font-size-xs);
             color: var(--text-muted);
@@ -580,25 +602,29 @@
             50% { opacity: 0.4; transform: scale(0.8); }
         }
 
+        .mobile-bottom-nav {
+            display: none;
+        }
+
         /* ============================================================
            RESPONSIVE: MOBILE (< 992px) - NATIVE APP FEEL
            ============================================================ */
         @media (max-width: 991.98px) {
+            /* FIX: sidebar drawer dihapus total di mobile/tablet — bukan lagi
+               menu geser (hamburger), diganti sepenuhnya oleh floating bottom
+               nav ala native app. */
             .app-sidebar {
-                transform: translateX(-100%);
-                box-shadow: var(--shadow-dropdown);
-                width: 280px;
-                padding-top: var(--safe-top);
+                display: none;
             }
-            .app-sidebar.open { transform: translateX(0); }
-            
+
             .app-content {
                 margin-left: 0;
-                padding-bottom: 70px; /* Space for bottom nav */
+                padding-bottom: 100px; /* Space for floating bottom nav */
+                overflow-x: hidden; /* jaga-jaga anti horizontal scroll */
             }
-            
-            .sidebar-toggle { display: flex; }
-            
+
+            .sidebar-toggle { display: none; }
+
             .app-header {
                 padding: 0 var(--space-4);
                 height: 64px;
@@ -609,22 +635,12 @@
             .page-title {
                 font-size: var(--font-size-lg);
             }
-            
-            .user-name {
+
+            /* FIX: bell notifikasi & avatar user di header disembunyikan di
+               mobile/tablet — fungsinya sudah ada di bottom sheet "Menu"
+               (Profil Saya, Notifikasi), jadi tidak perlu dobel. */
+            .header-right {
                 display: none;
-            }
-            
-            .user-avatar {
-                padding: var(--space-1);
-            }
-            
-            .dropdown-notif {
-                min-width: 300px;
-                position: fixed !important;
-                right: 16px !important;
-                left: auto !important;
-                transform: none !important;
-                top: 70px !important;
             }
             
             .main-content {
@@ -635,52 +651,130 @@
                 display: none; /* Sembunyikan footer di mobile, ganti bottom nav */
             }
             
-            /* Mobile Bottom Nav */
+            /* Mobile Floating Bottom Nav — ala native app (bukan bar rata
+               nempel tepi layar, tapi "melayang" dengan jarak & rounded) */
             .mobile-bottom-nav {
                 display: flex;
                 position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: var(--bg-card);
-                border-top: 1px solid var(--border-color-light);
-                padding: var(--space-2) var(--space-1);
+                left: 14px;
+                right: 14px;
+                bottom: calc(14px + var(--safe-bottom));
+                background: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.6);
+                border-radius: 26px;
+                padding: 8px 6px;
                 z-index: 1020;
-                padding-bottom: calc(var(--space-2) + var(--safe-bottom));
                 justify-content: space-around;
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+                box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
             }
-            
+
             .mobile-bottom-nav .nav-btn {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
                 gap: 2px;
-                padding: var(--space-1);
+                padding: 8px 4px;
                 background: none;
                 border: none;
                 color: var(--text-muted);
                 font-size: 10px;
                 font-weight: 600;
                 text-decoration: none;
-                transition: color var(--transition-fast);
+                transition: all 0.2s ease;
                 min-height: 48px;
                 justify-content: center;
+                border-radius: 18px;
+                position: relative;
             }
-            
+
             .mobile-bottom-nav .nav-btn i {
                 font-size: 1.3rem;
+                transition: transform 0.2s ease;
             }
-            
-            .mobile-bottom-nav .nav-btn.active,
-            .mobile-bottom-nav .nav-btn:hover {
-                color: var(--brand-orange);
+
+            .mobile-bottom-nav .nav-btn.active {
+                color: var(--brand-orange-dark);
+                background: rgba(249, 115, 22, 0.1);
+            }
+            .mobile-bottom-nav .nav-btn.active i { transform: translateY(-1px); }
+            .mobile-bottom-nav .nav-btn:hover { color: var(--brand-orange); }
+
+            .mobile-bottom-nav .nav-btn .nav-btn-badge {
+                position: absolute;
+                top: 2px;
+                right: 18%;
+                background: var(--brand-orange);
+                color: #fff;
+                font-size: 9px;
+                font-weight: 700;
+                min-width: 15px;
+                height: 15px;
+                border-radius: 999px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 3px;
+                box-shadow: 0 2px 4px rgba(249, 115, 22, 0.4);
             }
         }
+    </style>
 
-        .mobile-bottom-nav {
-            display: none;
+    <style>
+        /* ============================================================
+           BOTTOM SHEET "MENU LAINNYA" — dipicu tombol Menu di floating
+           bottom nav. Cuma bisa dipicu di mobile/tablet (tombolnya
+           disembunyikan di desktop), tapi style ini ditaruh di luar
+           media query supaya berlaku konsisten kapan pun dipanggil.
+        ============================================================ */
+        .mobile-menu-sheet {
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            max-height: 80vh;
+            padding-bottom: var(--safe-bottom);
+        }
+        .mobile-sheet-handle {
+            width: 40px; height: 5px; border-radius: 999px;
+            background: var(--border-color); margin: 10px auto 0;
+        }
+        .mobile-menu-sheet .offcanvas-header { padding: var(--space-3) var(--space-5) var(--space-2); }
+        .mobile-menu-sheet .offcanvas-title { font-weight: 700; font-size: 1.05rem; color: var(--text-primary); }
+        .mobile-menu-sheet .offcanvas-body { padding: 0 var(--space-4) var(--space-4); }
+
+        .mobile-sheet-user {
+            display: flex; align-items: center; gap: 12px;
+            padding: var(--space-3) var(--space-3); background: var(--bg-hover);
+            border-radius: var(--radius-sm); margin-bottom: var(--space-3);
+        }
+        .mobile-sheet-avatar {
+            width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+            background: var(--brand-gradient); color: #fff; font-weight: 800; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .mobile-sheet-user-name { font-weight: 700; color: var(--text-primary); font-size: 0.92rem; }
+        .mobile-sheet-user-role { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+
+        .mobile-sheet-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 13px var(--space-3); border-radius: var(--radius-sm);
+            color: var(--text-secondary); font-weight: 600; font-size: 0.92rem;
+            text-decoration: none; position: relative;
+        }
+        .mobile-sheet-item:hover, .mobile-sheet-item:active { background: var(--bg-hover); color: var(--brand-orange-dark); }
+        .mobile-sheet-item i { font-size: 1.2rem; width: 24px; text-align: center; color: var(--text-muted); }
+        .mobile-sheet-item.text-danger i { color: #ef4444; }
+        .mobile-sheet-item.text-danger:hover { color: #dc2626; background: rgba(239,68,68,0.06); }
+
+        .mobile-sheet-badge {
+            margin-left: auto; background: var(--brand-orange); color: #fff;
+            font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+        }
+        .mobile-sheet-divider {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-muted); padding: var(--space-3) var(--space-3) var(--space-2);
+            border-top: 1px solid var(--border-color-light); margin-top: 6px;
         }
     </style>
     
@@ -701,6 +795,9 @@
                 </a>
                 <a href="/bookings" class="nav-item {{ request()->is('bookings*') ? 'active' : '' }}">
                     <i class="bi bi-calendar-event-fill"></i> Peminjaman Ruangan
+                    @if(($sidebarPendingCount ?? 0) > 0)
+                        <span class="nav-badge">{{ $sidebarPendingCount > 99 ? '99+' : $sidebarPendingCount }}</span>
+                    @endif
                 </a>
                 <a href="/rooms" class="nav-item {{ request()->is('rooms*') ? 'active' : '' }}">
                     <i class="bi bi-building"></i> Ruang Rapat
@@ -810,7 +907,7 @@
         </div>
     </div>
 
-    <!-- MOBILE BOTTOM NAV -->
+    <!-- MOBILE FLOATING BOTTOM NAV -->
     <nav class="mobile-bottom-nav">
         <a href="/dashboard" class="nav-btn {{ request()->is('dashboard') ? 'active' : '' }}">
             <i class="bi bi-grid-1x2-fill"></i>
@@ -818,17 +915,62 @@
         </a>
         <a href="/bookings" class="nav-btn {{ request()->is('bookings*') ? 'active' : '' }}">
             <i class="bi bi-calendar-event-fill"></i>
+            @if(($sidebarPendingCount ?? 0) > 0)
+                <span class="nav-btn-badge">{{ $sidebarPendingCount > 9 ? '9+' : $sidebarPendingCount }}</span>
+            @endif
             <span>Booking</span>
         </a>
         <a href="/rooms" class="nav-btn {{ request()->is('rooms*') ? 'active' : '' }}">
             <i class="bi bi-building"></i>
             <span>Ruang</span>
         </a>
-        <a href="{{ route('profile') }}" class="nav-btn {{ request()->is('profile*') ? 'active' : '' }}">
-            <i class="bi bi-person-circle"></i>
-            <span>Profil</span>
-        </a>
+        <button type="button" class="nav-btn" data-bs-toggle="offcanvas" data-bs-target="#mobileMoreMenu" aria-label="Menu Lainnya">
+            <i class="bi bi-grid-3x3-gap-fill" id="mobileMoreIcon"></i>
+            <span id="mobileMoreBadgeDot" class="nav-btn-badge" style="display:none; top:2px; right:16%;"></span>
+            <span>Menu</span>
+        </button>
     </nav>
+
+    <!-- MOBILE "MENU LAINNYA" BOTTOM SHEET -->
+    <div class="offcanvas offcanvas-bottom mobile-menu-sheet" tabindex="-1" id="mobileMoreMenu">
+        <div class="mobile-sheet-handle"></div>
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Menu Lainnya</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mobile-sheet-user">
+                <div class="mobile-sheet-avatar">{{ strtoupper(mb_substr(Auth::user()->full_name ?? 'U', 0, 1)) }}</div>
+                <div>
+                    <div class="mobile-sheet-user-name">{{ Auth::user()->full_name }}</div>
+                    <div class="mobile-sheet-user-role">{{ Auth::user()->role == 1 ? 'Admin' : (Auth::user()->role == 3 ? 'Sesdir' : 'Karyawan') }}</div>
+                </div>
+            </div>
+
+            <a href="{{ route('profile') }}" class="mobile-sheet-item">
+                <i class="bi bi-person-circle"></i> Profil Saya
+            </a>
+            <a href="{{ route('notifications.index') }}" class="mobile-sheet-item">
+                <i class="bi bi-bell"></i> Notifikasi
+                <span class="mobile-sheet-badge" id="mobileSheetNotifBadge" style="display:none;"></span>
+            </a>
+
+            @if(Auth::user()->role == 1)
+                <div class="mobile-sheet-divider">Pengaturan</div>
+                <a href="/settings/rooms" class="mobile-sheet-item">
+                    <i class="bi bi-door-open"></i> Manajemen Ruang Rapat
+                </a>
+                <a href="/settings/users" class="mobile-sheet-item">
+                    <i class="bi bi-people"></i> Pengguna
+                </a>
+            @endif
+
+            <div class="mobile-sheet-divider"></div>
+            <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="mobile-sheet-item text-danger">
+                <i class="bi bi-box-arrow-right"></i> Keluar
+            </a>
+        </div>
+    </div>
 
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -915,6 +1057,20 @@
                 badge.style.display = 'none';
                 countEl.textContent = '0';
             }
+
+            // Sinkronkan juga ke badge tombol "Menu" & item Notifikasi di
+            // bottom sheet mobile, supaya konsisten dengan bell di header.
+            const mobileMoreBadge = document.getElementById('mobileMoreBadgeDot');
+            const mobileSheetBadge = document.getElementById('mobileSheetNotifBadge');
+            if (mobileMoreBadge) mobileMoreBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
+            if (mobileSheetBadge) {
+                if (unreadCount > 0) {
+                    mobileSheetBadge.style.display = 'inline-block';
+                    mobileSheetBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                } else {
+                    mobileSheetBadge.style.display = 'none';
+                }
+            }
             
             const list = document.getElementById('notificationList');
             if (!list) return;
@@ -928,11 +1084,13 @@
             notifications.forEach(function(notif) {
                 const isUnread = !notif.is_read;
                 const bg = isUnread ? 'background:var(--bg-hover);' : '';
+                const roomLine = notif.room_name ? `<div class="n-room"><i class="bi bi-door-open"></i> ${notif.room_name}</div>` : '';
                 html += `
-                    <a href="#" class="notif-item" data-id="${notif.id}" style="${bg}">
+                    <a href="#" class="notif-item" data-id="${notif.id}" data-booking-id="${notif.booking_id || ''}" style="${bg}">
                         <div class="n-icon"><i class="bi bi-bell"></i></div>
                         <div class="n-content">
                             <div>${notif.message}</div>
+                            ${roomLine}
                             <div class="n-time">${notif.created_at}</div>
                         </div>
                         ${isUnread ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--brand-orange);flex-shrink:0;margin-top:8px;"></span>' : ''}
@@ -945,19 +1103,28 @@
                 el.addEventListener('click', function(e) {
                     e.preventDefault();
                     const id = this.dataset.id;
-                    markAsRead(id, this);
+                    const bookingId = this.dataset.bookingId;
+                    // Tandai dibaca, lalu kalau notifikasi ini terkait booking,
+                    // langsung arahkan ke halaman detail booking tersebut.
+                    markAsRead(id, this, bookingId);
                 });
             });
         }
 
-        function markAsRead(id, element) {
+        function markAsRead(id, element, bookingId) {
             if (typeof $ === 'undefined') return;
             $.ajax({
                 url: '{{ route("notifications.mark-read") }}',
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
                 data: { notification_id: id },
-                success: function() { loadNotifications(); },
+                success: function() {
+                    if (bookingId) {
+                        window.location.href = '/bookings/' + bookingId;
+                    } else {
+                        loadNotifications();
+                    }
+                },
                 error: function() { console.error('Gagal menandai notifikasi'); }
             });
         }
@@ -996,7 +1163,111 @@
 
     })();
     </script>
-    
+
+    {{-- ============================================================
+         BUBBLE BANTUAN (WhatsApp Admin) — muncul di semua halaman
+         karena ditaruh di layout utama.
+    ============================================================ --}}
+    <style>
+        .help-bubble-fab {
+            position: fixed; right: 24px; bottom: 24px; z-index: 1050;
+            width: 56px; height: 56px; border-radius: 50%;
+            background: #25D366; color: white; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem; cursor: pointer;
+            box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .help-bubble-fab:hover { transform: scale(1.08); box-shadow: 0 10px 26px rgba(37, 211, 102, 0.5); }
+        .help-bubble-fab .pulse-ring {
+            position: absolute; inset: 0; border-radius: 50%;
+            border: 2px solid #25D366; animation: helpPulse 2.2s ease-out infinite;
+        }
+        @keyframes helpPulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .help-bubble-popup {
+            position: fixed; right: 24px; bottom: 92px; z-index: 1050;
+            width: 300px; max-width: calc(100vw - 48px);
+            background: var(--bg-card); border-radius: var(--radius-card);
+            box-shadow: var(--shadow-hover); border: 1px solid var(--border-color-light);
+            overflow: hidden; transform: translateY(12px) scale(0.96); opacity: 0;
+            visibility: hidden; transition: all 0.2s ease;
+        }
+        .help-bubble-popup.show { transform: translateY(0) scale(1); opacity: 1; visibility: visible; }
+        .help-bubble-header {
+            background: #25D366; color: white; padding: 16px 18px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .help-bubble-header i { font-size: 1.6rem; }
+        .help-bubble-header .title { font-weight: 700; font-size: 0.95rem; }
+        .help-bubble-header .subtitle { font-size: 0.75rem; opacity: 0.9; }
+        .help-bubble-body { padding: 16px 18px; }
+        .help-bubble-body p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5; }
+        .help-bubble-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; height: 44px; border-radius: var(--radius-sm); border: none;
+            background: #25D366; color: white; font-weight: 600; font-size: 0.88rem;
+            text-decoration: none; transition: filter 0.2s ease;
+        }
+        .help-bubble-btn:hover { filter: brightness(0.95); color: white; }
+        .help-bubble-close {
+            background: none; border: none; color: white; opacity: 0.85;
+            margin-left: auto; font-size: 1.1rem; cursor: pointer; align-self: flex-start;
+        }
+        .help-bubble-close:hover { opacity: 1; }
+
+        @media (max-width: 991.98px) {
+            .help-bubble-fab { bottom: calc(112px + var(--safe-bottom)); }
+            .help-bubble-popup { bottom: calc(176px + var(--safe-bottom)); }
+        }
+        @media (max-width: 575.98px) {
+            .help-bubble-fab { right: 16px; width: 52px; height: 52px; font-size: 1.4rem; }
+            .help-bubble-popup { right: 16px; }
+        }
+    </style>
+
+    <div class="help-bubble-popup" id="helpBubblePopup">
+        <div class="help-bubble-header">
+            <i class="bi bi-whatsapp"></i>
+            <div>
+                <div class="title">Butuh Bantuan?</div>
+                <div class="subtitle">Admin SIAP biasanya balas cepat</div>
+            </div>
+            <button type="button" class="help-bubble-close" onclick="toggleHelpBubble(false)" aria-label="Tutup">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="help-bubble-body">
+            <p>Ada kendala pakai sistem peminjaman ruangan, atau butuh bantuan lain? Langsung chat admin lewat WhatsApp.</p>
+            <a href="https://wa.me/628xxxx?text=Halo%20Admin%20SIAP%2C%20saya%20butuh%20bantuan." target="_blank" rel="noopener" class="help-bubble-btn">
+                <i class="bi bi-whatsapp"></i> Chat Admin via WhatsApp
+            </a>
+        </div>
+    </div>
+
+    <button type="button" class="help-bubble-fab" id="helpBubbleFab" onclick="toggleHelpBubble()" aria-label="Bantuan">
+        <span class="pulse-ring"></span>
+        <i class="bi bi-headset"></i>
+    </button>
+
+    <script>
+        function toggleHelpBubble(force) {
+            const popup = document.getElementById('helpBubblePopup');
+            const shouldShow = typeof force === 'boolean' ? force : !popup.classList.contains('show');
+            popup.classList.toggle('show', shouldShow);
+        }
+        document.addEventListener('click', function (e) {
+            const popup = document.getElementById('helpBubblePopup');
+            const fab = document.getElementById('helpBubbleFab');
+            if (popup.classList.contains('show') && !popup.contains(e.target) && !fab.contains(e.target)) {
+                toggleHelpBubble(false);
+            }
+        });
+    </script>
+
     @stack('scripts')
 </body>
 </html>

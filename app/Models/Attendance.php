@@ -13,6 +13,7 @@ class Attendance extends Model
         'booking_id',
         'user_id',
         'guest_name',
+        'guest_institution',
         'check_in_time',
         'status',
         'notes',

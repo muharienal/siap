@@ -710,10 +710,6 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="form-label-modern">Deskripsi</label>
-                                <textarea name="description" class="modern-input" rows="3" placeholder="Deskripsi singkat ruangan..."></textarea>
-                            </div>
-                            <div>
                                 <label class="form-label-modern">Status</label>
                                 <select name="status" class="modern-input" required>
                                     <option value="1" selected>Aktif</option>

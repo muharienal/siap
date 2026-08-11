@@ -1,325 +1,181 @@
 @extends('templates.template')
 
+@section('title', 'Profil Saya')
+@section('page_title', 'Profil Saya')
+
 @section('content')
-<div class="content-page">
-    <div class="container-fluid">
-        
-        <!-- Profile Header -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="card-title mb-0">
-                                <i class="fas fa-user-circle me-2"></i>
-                                Profile Pengguna
-                            </h4>
-                            <div>
-                                <a href="{{ route('profile.edit') }}" class="btn btn-primary btn-sm">
-                                    <i class="fas fa-edit me-1"></i>
-                                    Edit Profile
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Success/Error Messages -->
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
-
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
-
-        <!-- Profile Content -->
-        <div class="row">
-            <!-- Left Column - Profile Photo & Basic Info -->
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <!-- Profile Photo -->
-                        <div class="profile-photo mb-4">
-                            @if($employee && $employee->photo_path)
-                                <img src="{{ asset('storage/' . $employee->photo_path) }}" 
-                                     alt="Profile Photo" 
-                                     class="rounded-circle profile-img"
-                                     style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #e9ecef;">
-                            @else
-                                <div class="profile-placeholder rounded-circle mx-auto d-flex align-items-center justify-content-center"
-                                     style="width: 150px; height: 150px; background-color: #f8f9fa; border: 4px solid #e9ecef;">
-                                    <i class="fas fa-user" style="font-size: 4rem; color: #adb5bd;"></i>
-                                </div>
-                            @endif
-                        </div>
-
-                        <!-- Basic Info -->
-                        <h4 class="mb-1">{{ $employee->full_name ?? $user->name }}</h4>
-                        <p class="text-muted mb-2">{{ $employee->position->name ?? 'Belum ada jabatan' }}</p>
-                        <p class="text-muted small mb-3">{{ $employee->division->name ?? 'Belum ada divisi' }}</p>
-                        
-                        <!-- Status Badge -->
-                        @if($employee && $employee->employment_status)
-                            <span class="badge bg-{{ $employee->employment_status === 'active' ? 'success' : ($employee->employment_status === 'inactive' ? 'warning' : 'danger') }}">
-                                {{ ucfirst($employee->employment_status) }}
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Quick Stats -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-line me-2"></i>
-                            Statistik Cepat
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-6 border-end">
-                                <div class="counter text-primary">{{ $user->bookings()->count() }}</div>
-                                <small class="text-muted">Total Booking</small>
-                            </div>
-                            <div class="col-6">
-                                <div class="counter text-success">{{ $user->bookings()->where('status', 1)->count() }}</div>
-                                <small class="text-muted">Disetujui</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column - Detailed Information -->
-            <div class="col-lg-8">
-                <!-- Personal Information -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Informasi Personal
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Nama Lengkap</label>
-                                <p class="form-control-plaintext">{{ $employee->full_name ?? 'Belum diisi' }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Email</label>
-                                <p class="form-control-plaintext">{{ $user->email }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">NIP</label>
-                                <p class="form-control-plaintext">{{ $employee->nip ?? 'Belum diisi' }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Jenis Kelamin</label>
-                                <p class="form-control-plaintext">
-                                    @if($employee && $employee->gender)
-                                        {{ $employee->gender === 'male' ? 'Laki-laki' : 'Perempuan' }}
-                                    @else
-                                        Belum diisi
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Tanggal Lahir</label>
-                                <p class="form-control-plaintext">
-                                    {{ $employee && $employee->birth_date ? $employee->birth_date->format('d F Y') : 'Belum diisi' }}
-                                </p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">No. Telepon</label>
-                                <p class="form-control-plaintext">{{ $employee->phone_number ?? 'Belum diisi' }}</p>
-                            </div>
-                            <div class="col-12 mb-3">
-                                <label class="form-label fw-bold text-muted">Alamat</label>
-                                <p class="form-control-plaintext">{{ $employee->address ?? 'Belum diisi' }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Work Information -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-briefcase me-2"></i>
-                            Informasi Pekerjaan
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Divisi</label>
-                                <p class="form-control-plaintext">{{ $employee->division->name ?? 'Belum ditentukan' }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Jabatan</label>
-                                <p class="form-control-plaintext">{{ $employee->position->name ?? 'Belum ditentukan' }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Status Karyawan</label>
-                                <p class="form-control-plaintext">
-                                    @if($employee && $employee->employment_status)
-                                        <span class="badge bg-{{ $employee->employment_status === 'active' ? 'success' : ($employee->employment_status === 'inactive' ? 'warning' : 'danger') }}">
-                                            {{ ucfirst($employee->employment_status) }}
-                                        </span>
-                                    @else
-                                        <span class="badge bg-secondary">Belum ditentukan</span>
-                                    @endif
-                                </p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Role</label>
-                                <p class="form-control-plaintext">
-                                    <span class="badge bg-{{ $user->role == 0 ? 'danger' : 'primary' }}">
-                                        {{ $user->role == 0 ? 'Administrator' : 'User' }}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Account Information -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-user-cog me-2"></i>
-                            Informasi Akun
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Bergabung Sejak</label>
-                                <p class="form-control-plaintext">{{ $user->created_at->format('d F Y') }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold text-muted">Terakhir Diperbarui</label>
-                                <p class="form-control-plaintext">{{ $user->updated_at->format('d F Y H:i') }}</p>
-                            </div>
-                        </div>
-                        
-                       
-                      
-
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Change Password Modal -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ route('profile.update.password') }}">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="changePasswordModalLabel">
-                        <i class="fas fa-key me-2"></i>
-                        Ubah Password
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group mb-3">
-                        <label for="current_password" class="form-label">Password Lama</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="password" class="form-label">Password Baru</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                        <small class="text-muted">Minimal 8 karakter</small>
-                    </div>
-                    <div class="form-group mb-3">
-                        <label for="password_confirmation" class="form-label">Konfirmasi Password Baru</label>
-                        <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i>
-                        Simpan Password
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-@endsection
-
-@push('custom-css')
 <style>
-    .profile-img {
-        transition: all 0.3s ease;
+    .section-card {
+        background: var(--bg-card); border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+        overflow: hidden; margin-bottom: var(--space-5);
     }
-    
-    .profile-img:hover {
-        transform: scale(1.05);
-        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    .section-card:last-child { margin-bottom: 0; }
+    .form-section-block { padding: 1.5rem; }
+    .section-title {
+        font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
+        margin: 0 0 1.25rem 0; padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color-light);
+        display: flex; align-items: center; gap: 8px;
     }
-    
-    .counter {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1.2;
+    .section-title i {
+        width: 28px; height: 28px; border-radius: 8px; background: rgba(249, 115, 22, 0.1);
+        color: var(--brand-orange); display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem;
     }
-    
-    .card {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        border: 1px solid rgba(0, 0, 0, 0.125);
-        transition: all 0.15s ease-in-out;
+
+    /* Profile hero */
+    .profile-hero {
+        display: flex; align-items: center; gap: var(--space-4);
+        padding: 1.5rem; flex-wrap: wrap;
     }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    .profile-avatar {
+        width: 72px; height: 72px; border-radius: 50%;
+        background: var(--brand-gradient); color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.75rem; font-weight: 800; flex-shrink: 0;
+        box-shadow: 0 6px 16px rgba(249,115,22,0.25);
     }
-    
-    .form-control-plaintext {
-        padding: 0.375rem 0;
-        margin-bottom: 0;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        color: #495057;
-        background-color: transparent;
-        border: none;
+    .profile-name { font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); margin: 0; }
+    .profile-sub { color: var(--text-muted); font-size: var(--font-size-sm); margin-top: 4px; }
+    .role-pill {
+        font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: var(--radius-pill);
+        display: inline-block; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 8px;
     }
-    
-    .badge {
-        font-size: 0.75rem;
+    .role-pill.admin { background: rgba(249,115,22,0.12); color: var(--brand-orange-dark); }
+    .role-pill.sesdir { background: rgba(139,92,246,0.12); color: #7c3aed; }
+    .role-pill.karyawan { background: rgba(59,130,246,0.12); color: #1d4ed8; }
+
+    .info-grid { display: flex; flex-direction: column; gap: 10px; }
+    .info-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: var(--bg-input); border-radius: var(--radius-sm); }
+    .info-item-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; flex-shrink: 0; }
+    .info-item-icon.icon-blue { background: rgba(59, 130, 246, 0.1); color: var(--brand-blue); }
+    .info-item-icon.icon-orange { background: rgba(249, 115, 22, 0.1); color: var(--brand-orange); }
+    .info-item-icon.icon-green { background: rgba(16, 185, 129, 0.1); color: var(--brand-green); }
+    .info-item-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .info-item-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; }
+    .info-item-value { font-weight: 600; color: var(--text-primary); font-size: 0.9rem; }
+
+    .form-hint {
+        font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 6px;
+        display: flex; align-items: center; gap: 6px;
     }
-    
-    .profile-placeholder {
-        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+    .form-group { margin-bottom: var(--space-4); }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-label-modern { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .modern-input {
+        width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm); background: var(--bg-input); font-size: 0.9rem; color: var(--text-primary);
+        transition: all 0.2s; outline: none;
+    }
+    .modern-input:focus { border-color: var(--brand-orange); background: var(--bg-card); box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+
+    .btn-submit {
+        height: 44px; padding: 0 var(--space-6); border-radius: var(--radius-sm); border: none; background: var(--brand-gradient);
+        color: white; font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(249,115,22,0.2); display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-submit:hover { box-shadow: 0 6px 16px rgba(16,185,129,0.25); transform: translateY(-1px); }
+
+    .alert-box {
+        padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); margin-bottom: var(--space-4);
+        font-size: var(--font-size-sm); display: flex; align-items: center; gap: 8px;
+    }
+    .alert-box.success { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); color: #047857; }
+    .alert-box.error { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: #dc2626; }
+    .alert-box ul { margin: 0; padding-left: var(--space-4); }
+
+    @media (max-width: 767.98px) {
+        .form-grid { grid-template-columns: 1fr; }
     }
 </style>
-@endpush
 
-@push('scripts')
-<script>
-    // Auto-hide alerts after 5 seconds
-    setTimeout(function() {
-        $('.alert').alert('close');
-    }, 5000);
-</script>
-@endpush
+@if(session('success'))
+    <div class="alert-box success"><i class="bi bi-check-circle-fill"></i> {{ session('success') }}</div>
+@endif
+@if(session('error'))
+    <div class="alert-box error"><i class="bi bi-exclamation-circle-fill"></i> {{ session('error') }}</div>
+@endif
+@if($errors->any())
+    <div class="alert-box error">
+        <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+    </div>
+@endif
+
+@php
+    $roleMap = [
+        1 => ['label' => 'Admin', 'class' => 'admin'],
+        2 => ['label' => 'Karyawan', 'class' => 'karyawan'],
+        3 => ['label' => 'Sesdir', 'class' => 'sesdir'],
+    ];
+    $roleInfo = $roleMap[$user->role] ?? ['label' => 'Karyawan', 'class' => 'karyawan'];
+    $initial = strtoupper(mb_substr($user->full_name ?? 'U', 0, 1));
+@endphp
+
+<div class="section-card">
+    <div class="profile-hero">
+        <div class="profile-avatar">{{ $initial }}</div>
+        <div>
+            <h1 class="profile-name">{{ $user->full_name }}</h1>
+            <div class="profile-sub">NIK: {{ $user->nip }}</div>
+            <span class="role-pill {{ $roleInfo['class'] }}">{{ $roleInfo['label'] }}</span>
+        </div>
+    </div>
+
+    <div class="form-section-block" style="padding-top: 0;">
+        <div class="section-title"><i class="bi bi-person-vcard"></i> Informasi Kepegawaian</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-item-icon icon-blue"><i class="bi bi-diagram-3-fill"></i></div>
+                <div class="info-item-text">
+                    <span class="info-item-label">Divisi</span>
+                    <span class="info-item-value">{{ $user->division->name ?? '-' }}</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-icon icon-orange"><i class="bi bi-briefcase-fill"></i></div>
+                <div class="info-item-text">
+                    <span class="info-item-label">Bidang</span>
+                    <span class="info-item-value">{{ $user->position->name ?? '-' }}</span>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-item-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
+                <div class="info-item-text">
+                    <span class="info-item-label">Status Akun</span>
+                    <span class="info-item-value">{{ $user->is_active ? 'Aktif' : 'Nonaktif' }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="form-hint">
+            <i class="bi bi-info-circle"></i> Data di atas hanya bisa diubah oleh Admin lewat menu Manajemen Pengguna.
+        </div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="form-section-block">
+        <div class="section-title"><i class="bi bi-shield-lock"></i> Ubah Password</div>
+        <form action="{{ route('profile.update.password') }}" method="POST">
+            @csrf
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label class="form-label-modern">Password Lama <span class="text-danger">*</span></label>
+                    <input type="password" name="current_password" class="modern-input" required autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label-modern">Password Baru <span class="text-danger">*</span></label>
+                    <input type="password" name="password" class="modern-input" required minlength="8" autocomplete="new-password" placeholder="Minimal 8 karakter">
+                </div>
+                <div class="form-group">
+                    <label class="form-label-modern">Konfirmasi Password Baru <span class="text-danger">*</span></label>
+                    <input type="password" name="password_confirmation" class="modern-input" required minlength="8" autocomplete="new-password">
+                </div>
+            </div>
+            <button type="submit" class="btn-submit"><i class="bi bi-key-fill"></i> Simpan Password Baru</button>
+        </form>
+    </div>
+</div>
+@endsection

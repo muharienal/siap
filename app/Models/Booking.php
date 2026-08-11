@@ -19,6 +19,8 @@ class Booking extends Model
         'other_notes',
         'status',
         'booking_type',
+        'displaced_by_id',
+        'relocation_note',
         'processed_by',
         'processed_at',
         'rejection_reason',
@@ -62,5 +64,17 @@ class Booking extends Model
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    // Booking Priority yang menyebabkan booking ini bentrok (jika ada)
+    public function displacedBy()
+    {
+        return $this->belongsTo(Booking::class, 'displaced_by_id');
+    }
+
+    // Booking-booking lain yang tergeser akibat booking Priority ini
+    public function displaces()
+    {
+        return $this->hasMany(Booking::class, 'displaced_by_id');
     }
 }

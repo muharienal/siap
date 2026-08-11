@@ -88,7 +88,6 @@
     }
     .no-photos i { color: var(--text-muted); }
 
-    .room-desc { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.6; margin: 0; }
 
     .info-grid { display: flex; flex-direction: column; gap: 10px; }
     .info-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; background: var(--bg-input); border-radius: var(--radius-sm); }
@@ -167,13 +166,6 @@
                     </div>
                 @endif
             </div>
-        </div>
-
-        <div class="section-card">
-            <div class="section-title">
-                <span><i class="bi bi-card-text"></i> Deskripsi</span>
-            </div>
-            <p class="room-desc">{{ $room->description ?: 'Belum ada deskripsi untuk ruangan ini.' }}</p>
         </div>
 
         <div class="section-card">

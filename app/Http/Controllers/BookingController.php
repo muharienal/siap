@@ -6,6 +6,7 @@ use App\Models\Room;
 use App\Models\Booking;
 use App\Models\Facility;
 use App\Models\BookingFacility;
+use App\Models\Attendance;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use App\Http\Requests\BookingRequest;
@@ -151,11 +152,22 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            // FIX: Otomatis tentukan booking_type berdasarkan role
-            // 1 = Admin, 3 = Sesdir -> Priority
-            // 2 = User -> Regular
+            // Tentukan booking_type berdasarkan role:
+            // - Karyawan (2): selalu Regular, apa pun yang dikirim di form.
+            // - Sesdir (3): selalu Priority.
+            // - Admin (1): mengikuti pilihan eksplisit di form (default Priority
+            //   jika tidak dikirim / tidak valid), sesuai dropdown yang memang
+            //   sudah ditampilkan untuknya di form Tambah Peminjaman.
             $userRole = Auth::user()->role;
-            $bookingType = ($userRole == 1 || $userRole == 3) ? 'Priority' : 'Regular';
+            if ($userRole == 2) {
+                $bookingType = 'Regular';
+            } elseif ($userRole == 3) {
+                $bookingType = 'Priority';
+            } else {
+                $bookingType = in_array($request->booking_type, ['Regular', 'Priority'])
+                    ? $request->booking_type
+                    : 'Priority';
+            }
 
             $booking = Booking::create([
                 'user_id' => Auth::id(),
@@ -183,6 +195,14 @@ class BookingController extends Controller
             $booking->load(['user', 'room']);
             $this->notificationService->notifyNewBookingToAdmins($booking);
 
+            // Sistem konflik prioritas: kalau booking ini Priority dan bentrok
+            // dengan booking Reguler yang sudah ada (pending/approved), tandai
+            // booking Reguler tersebut sebagai "bentrok" dan beri tahu
+            // karyawan pemiliknya + seluruh admin supaya segera dialihkan.
+            if ($bookingType === 'Priority') {
+                $this->flagPriorityConflicts($booking);
+            }
+
             DB::commit();
 
             // FIX: Tambahkan header Accept: application/json agar frontend fetch() selalu dapat JSON
@@ -208,7 +228,40 @@ class BookingController extends Controller
                 ], 500, ['Content-Type' => 'application/json']);
             }
 
+
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan booking.'])->withInput();
+        }
+    }
+
+    /**
+     * Tandai booking Reguler yang bentrok dengan booking Priority yang baru
+     * dibuat, lalu beri tahu karyawan pemiliknya dan seluruh admin.
+     *
+     * Dipanggil setelah booking Priority berhasil disimpan — bukan berarti
+     * booking Reguler yang bentrok otomatis dibatalkan, hanya ditandai
+     * "perlu ditinjau admin" supaya bisa segera dialihkan ke ruangan/jam lain.
+     */
+    private function flagPriorityConflicts(Booking $priorityBooking)
+    {
+        $conflicts = Booking::where('room_id', $priorityBooking->room_id)
+            ->where('id', '!=', $priorityBooking->id)
+            ->where('booking_type', 'Regular')
+            ->whereIn('status', [0, 1]) // pending & approved sama-sama bisa bentrok
+            ->where(function ($q) use ($priorityBooking) {
+                $q->whereBetween('start_time', [$priorityBooking->start_time, $priorityBooking->end_time])
+                  ->orWhereBetween('end_time', [$priorityBooking->start_time, $priorityBooking->end_time])
+                  ->orWhere(function ($q2) use ($priorityBooking) {
+                      $q2->where('start_time', '<=', $priorityBooking->start_time)
+                         ->where('end_time', '>=', $priorityBooking->end_time);
+                  });
+            })
+            ->get();
+
+        foreach ($conflicts as $conflict) {
+            $conflict->update(['displaced_by_id' => $priorityBooking->id]);
+            $conflict->load(['user', 'room']);
+            $this->notificationService->notifyPriorityConflict($conflict, $priorityBooking);
+            $this->notificationService->notifyPriorityConflictToAdmins($conflict, $priorityBooking);
         }
     }
 
@@ -229,7 +282,12 @@ class BookingController extends Controller
 
         $timeline = $this->buildTimeline($booking);
 
-        return view('bookings.show', compact('booking', 'timeline'));
+        // Untuk modal "Alihkan ke Ruangan Lain" (hanya relevan kalau booking
+        // ini sedang bentrok dan yang membuka admin, tapi dimuat sekalian
+        // supaya modal siap pakai tanpa request tambahan).
+        $rooms = Room::where('status', 1)->orderBy('name')->get();
+
+        return view('bookings.show', compact('booking', 'timeline', 'rooms'));
     }
 
     /**
@@ -349,6 +407,11 @@ class BookingController extends Controller
         }
 
         try {
+            // Kalau booking ini menyebabkan booking lain "bentrok", beri tahu
+            // pemiliknya dulu sebelum dihapus (kolom displaced_by_id akan
+            // otomatis ter-null-kan oleh database lewat foreign key).
+            $this->clearDisplacedConflicts($booking);
+
             BookingFacility::where('booking_id', $booking->id)->delete();
             $booking->delete();
 
@@ -439,17 +502,56 @@ class BookingController extends Controller
             $conflicts = $query->get();
 
             if ($conflicts->count() > 0) {
+                // Sistem prioritas: booking Priority (Sesdir/Admin) boleh
+                // menembus bentrok dengan booking Reguler yang sudah ada.
+                // PENTING: mekanisme ini disembunyikan total dari selain
+                // admin — karyawan/Sesdir tidak boleh tahu ada perbedaan
+                // perlakuan Priority/Reguler, supaya tidak menimbulkan
+                // kecemburuan. Non-admin hanya melihat "tersedia" polos.
+                $bookingType = in_array($request->booking_type, ['Regular', 'Priority'])
+                    ? $request->booking_type
+                    : 'Regular';
+
+                $blockingConflicts = $bookingType === 'Priority'
+                    ? $conflicts->where('booking_type', 'Priority')->values()
+                    : $conflicts;
+
+                if ($blockingConflicts->count() > 0) {
+                    return response()->json([
+                        'available' => false,
+                        'message' => 'Ruangan sudah dipesan pada waktu tersebut.',
+                        'conflicts' => $blockingConflicts->map(fn($b) => [
+                            'id' => $b->id,
+                            'start' => $b->start_time,
+                            'end' => $b->end_time,
+                            'user' => $b->user->full_name ?? 'Unknown',
+                            'purpose' => $b->purpose,
+                            'status' => $b->status == 0 ? 'Pending' : 'Disetujui',
+                        ])
+                    ]);
+                }
+
+                // Priority menembus konflik Reguler. Admin boleh tahu detailnya;
+                // selain admin hanya melihat "tersedia" tanpa keterangan apa pun.
+                if (Auth::user()->role == 1) {
+                    return response()->json([
+                        'available' => true,
+                        'priority_override' => true,
+                        'message' => 'Ruangan sedang dipakai peminjam reguler. Karena ini peminjaman Priority, Anda tetap bisa melanjutkan — booking reguler yang bentrok akan dialihkan.',
+                        'conflicts' => $conflicts->map(fn($b) => [
+                            'id' => $b->id,
+                            'start' => $b->start_time,
+                            'end' => $b->end_time,
+                            'user' => $b->user->full_name ?? 'Unknown',
+                            'purpose' => $b->purpose,
+                            'status' => $b->status == 0 ? 'Pending' : 'Disetujui',
+                        ])
+                    ]);
+                }
+
                 return response()->json([
-                    'available' => false,
-                    'message' => 'Ruangan sudah dipesan pada waktu tersebut.',
-                    'conflicts' => $conflicts->map(fn($b) => [
-                        'id' => $b->id,
-                        'start' => $b->start_time,
-                        'end' => $b->end_time,
-                        'user' => $b->user->full_name ?? 'Unknown',
-                        'purpose' => $b->purpose,
-                        'status' => $b->status == 0 ? 'Pending' : 'Disetujui',
-                    ])
+                    'available' => true,
+                    'message' => 'Ruangan tersedia untuk waktu tersebut.'
                 ]);
             }
 
@@ -503,6 +605,82 @@ class BookingController extends Controller
     }
 
     /**
+     * Alihkan booking yang bentrok (displaced_by_id terisi) ke ruangan
+     * dan/atau waktu lain. Admin wajib mengisi catatan alasan yang akan
+     * dikirim ke peminjam. Setelah berhasil, flag konflik dilepas.
+     */
+    public function relocate(Request $request, Booking $booking)
+    {
+        if (Auth::user()->role != 1) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (!$booking->displaced_by_id) {
+            return back()->with('error', 'Booking ini tidak sedang dalam status konflik.');
+        }
+
+        $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            'relocation_note' => 'required|string|min:10|max:500',
+        ], [
+            'room_id.required' => 'Ruangan pengganti harus dipilih.',
+            'start_time.required' => 'Waktu mulai harus diisi.',
+            'end_time.after' => 'Waktu selesai harus setelah waktu mulai.',
+            'relocation_note.required' => 'Catatan untuk peminjam harus diisi.',
+            'relocation_note.min' => 'Catatan minimal 10 karakter.',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Pastikan slot pengganti benar-benar kosong (kecuali booking ini sendiri)
+            $conflict = Booking::where('room_id', $request->room_id)
+                ->where('id', '!=', $booking->id)
+                ->whereIn('status', [0, 1])
+                ->where(function ($q) use ($request) {
+                    $q->whereBetween('start_time', [$request->start_time, $request->end_time])
+                      ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
+                      ->orWhere(function ($q2) use ($request) {
+                          $q2->where('start_time', '<=', $request->start_time)
+                             ->where('end_time', '>=', $request->end_time);
+                      });
+                })
+                ->exists();
+
+            if ($conflict) {
+                DB::rollBack();
+                return back()->with('error', 'Ruangan/waktu pengganti yang dipilih juga sudah terpakai. Silakan pilih yang lain.')->withInput();
+            }
+
+            $oldRoomName = $booking->room->name;
+            $oldStartTime = $booking->start_time;
+
+            $booking->update([
+                'room_id' => $request->room_id,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'relocation_note' => $request->relocation_note,
+                'displaced_by_id' => null,
+            ]);
+
+            $booking->load(['user', 'room']);
+            $this->notificationService->notifyRelocated($booking, $oldRoomName, $oldStartTime, $request->relocation_note);
+
+            DB::commit();
+
+            return redirect()->route('bookings.show', $booking->id)
+                ->with('success', 'Booking berhasil dialihkan dan peminjam telah diberi tahu.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Booking relocate error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat mengalihkan booking.')->withInput();
+        }
+    }
+
+    /**
      * Reject booking (admin only).
      */
     public function reject(Request $request, Booking $booking)
@@ -539,11 +717,33 @@ class BookingController extends Controller
             $booking->load(['user', 'room']);
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '2');
 
+            // Kalau booking ini sebelumnya menyebabkan booking lain "bentrok"
+            // (booking Priority yang ditolak/dibatalkan), lepaskan flag itu
+            // dan beri tahu pemiliknya bahwa jadwal mereka aman kembali.
+            $this->clearDisplacedConflicts($booking);
+
             return back()->with('success', $actionMessage);
 
         } catch (\Exception $e) {
             Log::error('Booking reject error: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menolak booking.');
+        }
+    }
+
+    /**
+     * Lepaskan flag "bentrok" pada booking-booking yang tergeser oleh
+     * booking Priority ini, lalu beri tahu pemiliknya jadwal mereka aman
+     * kembali. Dipanggil saat booking Priority yang bersangkutan
+     * ditolak/dibatalkan admin (konflik jadi tidak relevan lagi).
+     */
+    private function clearDisplacedConflicts(Booking $priorityBooking)
+    {
+        $displaced = Booking::where('displaced_by_id', $priorityBooking->id)->get();
+
+        foreach ($displaced as $booking) {
+            $booking->update(['displaced_by_id' => null]);
+            $booking->load(['user', 'room']);
+            $this->notificationService->notifyConflictResolvedAutomatically($booking);
         }
     }
 
@@ -706,5 +906,145 @@ class BookingController extends Controller
         }
 
         return $timeline;
+    }
+
+    /**
+     * ============================================================
+     * ABSENSI TAMU VIA QR CODE
+     * ============================================================
+     * Melengkapi fitur yang sudah setengah dibangun (kolom absent_code,
+     * qr_code_path, tabel attendances, dan generate QR di halaman detail
+     * sudah ada) tapi belum punya handler — sebelumnya scan QR selalu
+     * berujung 500 error karena method-method ini belum dibuat.
+     */
+
+    /**
+     * Cek validitas kode absensi & jendela waktu check-in. Dipakai bareng
+     * oleh attendMeeting() (GET, tampilkan form) dan submitAttendance()
+     * (POST, proses absen) supaya aturannya konsisten di satu tempat.
+     */
+    private function resolveAttendanceBooking(string $code): array
+    {
+        $booking = Booking::with('room')->where('absent_code', $code)->first();
+
+        if (!$booking) {
+            return [
+                'ok' => false,
+                'message' => 'Kode absensi tidak ditemukan. Pastikan Anda memindai QR code yang benar.',
+            ];
+        }
+
+        if ($booking->status == 2) {
+            return [
+                'ok' => false,
+                'message' => 'Peminjaman ruangan ini telah ditolak, absensi tidak tersedia.',
+                'booking' => $booking,
+            ];
+        }
+
+        if ($booking->status == 0) {
+            return [
+                'ok' => false,
+                'message' => 'Peminjaman ruangan ini belum disetujui admin, absensi belum dapat dilakukan.',
+                'booking' => $booking,
+            ];
+        }
+
+        // Jendela absensi: 15 menit sebelum mulai s/d 15 menit setelah selesai,
+        // supaya tamu yang datang sedikit lebih awal/telat tetap bisa absen.
+        $now = Carbon::now();
+        $opens = Carbon::parse($booking->start_time)->subMinutes(15);
+        $closes = Carbon::parse($booking->end_time)->addMinutes(15);
+
+        if ($now->lt($opens)) {
+            return [
+                'ok' => false,
+                'message' => 'Sesi absensi belum dibuka. Absensi tersedia mulai pukul ' . $opens->format('H:i') . ' WIB.',
+                'booking' => $booking,
+            ];
+        }
+
+        if ($now->gt($closes)) {
+            return [
+                'ok' => false,
+                'message' => 'Sesi absensi sudah ditutup. Rapat ini berakhir pada pukul ' . Carbon::parse($booking->end_time)->format('H:i') . ' WIB.',
+                'booking' => $booking,
+            ];
+        }
+
+        return ['ok' => true, 'booking' => $booking];
+    }
+
+    /**
+     * Halaman form absensi yang dibuka saat tamu scan QR code (publik, tanpa login).
+     */
+    public function attendMeeting(string $code)
+    {
+        $result = $this->resolveAttendanceBooking($code);
+
+        if (!$result['ok']) {
+            return view('attendance.error', [
+                'message' => $result['message'],
+                'booking' => $result['booking'] ?? null,
+            ]);
+        }
+
+        return view('attendance.form', ['booking' => $result['booking']]);
+    }
+
+    /**
+     * Proses submit form absensi.
+     */
+    public function submitAttendance(Request $request, string $code)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'institution' => 'nullable|string|max:100',
+        ], [
+            'name.required' => 'Nama lengkap wajib diisi.',
+        ]);
+
+        $result = $this->resolveAttendanceBooking($code);
+
+        if (!$result['ok']) {
+            return view('attendance.error', [
+                'message' => $result['message'],
+                'booking' => $result['booking'] ?? null,
+            ]);
+        }
+
+        $booking = $result['booking'];
+
+        // Hindari duplikat kalau orang yang sama tidak sengaja submit dua kali
+        // (misal double-tap tombol atau refresh halaman).
+        $alreadyCheckedIn = Attendance::where('booking_id', $booking->id)
+            ->whereRaw('LOWER(TRIM(guest_name)) = ?', [strtolower(trim($request->name))])
+            ->exists();
+
+        if (!$alreadyCheckedIn) {
+            Attendance::create([
+                'booking_id' => $booking->id,
+                'user_id' => Auth::id(), // terisi otomatis kalau yang scan sedang login
+                'guest_name' => trim($request->name),
+                'guest_institution' => $request->institution,
+                'check_in_time' => now(),
+                'status' => 'Hadir',
+            ]);
+        }
+
+        return redirect()->route('attendance.success', $booking->absent_code);
+    }
+
+    /**
+     * Halaman sukses setelah absensi berhasil.
+     */
+    public function attendanceSuccess(string $code)
+    {
+        $booking = Booking::with('room')->where('absent_code', $code)->first();
+
+        return view('attendance.success', [
+            'booking' => $booking,
+            'message' => 'Terima kasih! Kehadiran Anda telah tercatat.',
+        ]);
     }
 }

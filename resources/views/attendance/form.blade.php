@@ -275,6 +275,13 @@
                                name="name" value="{{ old('name') }}" required
                                placeholder="Masukkan nama lengkap Anda">
 
+                        <label for="institution" class="form-label">
+                            <i class="bi bi-building me-2"></i>Instansi/Perusahaan <span class="text-muted" style="font-weight:400;">(opsional)</span>
+                        </label>
+                        <input id="institution" type="text" class="form-control"
+                               name="institution" value="{{ old('institution') }}"
+                               placeholder="Nama instansi/perusahaan Anda">
+
                         <button type="submit" class="btn btn-login">
                             <i class="bi bi-check-circle me-2"></i>
                             Konfirmasi Absensi
