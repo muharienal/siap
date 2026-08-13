@@ -21,13 +21,13 @@
            SIAP DESIGN SYSTEM
            ============================================================ */
         :root {
-            --brand-orange: #f97316;
-            --brand-orange-dark: #ea580c;
-            --brand-green: #10b981;
-            --brand-green-dark: #059669;
+            --brand-orange: #FF9142;
+            --brand-orange-dark: #F2751A;
+            --brand-green: #22C55E;
+            --brand-green-dark: #16A34A;
             --brand-blue: #3b82f6;
-            --brand-gradient: linear-gradient(145deg, var(--brand-orange) 0%, var(--brand-green) 100%);
-            --brand-gradient-hover: linear-gradient(145deg, var(--brand-orange-dark) 0%, var(--brand-green-dark) 100%);
+            --brand-gradient: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-green) 100%);
+            --brand-gradient-hover: linear-gradient(135deg, var(--brand-orange-dark) 0%, var(--brand-green-dark) 100%);
 
             --bg-body: #f5f7fa;
             --bg-card: #ffffff;
@@ -157,15 +157,28 @@
             border-bottom: 1px solid var(--border-color-light);
             flex-shrink: 0;
         }
-        .sidebar-brand img { width: 40px; height: 40px; object-fit: contain; }
-        .sidebar-brand span {
-            font-weight: 800;
-            font-size: var(--font-size-xl);
+        .sidebar-brand-icon {
+            width: 42px; height: 42px; flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(34,197,94,0.25);
+            border-radius: 12px; overflow: hidden;
+        }
+        .sidebar-brand-icon svg { display: block; }
+        .sidebar-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+        .sidebar-brand-name {
+            font-weight: 700;
+            font-size: var(--font-size-lg);
             background: var(--brand-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.2px;
+        }
+        .sidebar-brand-sub {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: normal;
+            line-height: 1.3;
         }
 
         .sidebar-nav {
@@ -218,6 +231,25 @@
             box-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);
         }
         .nav-item.active .nav-badge { background: #fff; color: var(--brand-orange-dark); }
+
+        /* ============================================================
+           ALERT MODERN — komponen acuan (dari halaman login), dipakai
+           di halaman mana pun butuh notifikasi error/sukses/peringatan/
+           info inline. Contoh: <div class="alert-modern alert-error">
+           <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+           <span>Pesan di sini</span></div>
+           ============================================================ */
+        .alert-modern {
+            display: flex; align-items: flex-start; gap: 9px;
+            padding: 11px 14px; border-radius: 11px;
+            font-size: 0.85rem; font-weight: 500; line-height: 1.5;
+            border: 1px solid transparent; margin-bottom: var(--space-4);
+        }
+        .alert-modern .alert-modern-icon { font-size: 1.05rem; flex-shrink: 0; margin-top: 1px; }
+        .alert-modern.alert-error { background: #fef2f2; border-color: #fecdd3; color: #c0263c; }
+        .alert-modern.alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+        .alert-modern.alert-warning { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+        .alert-modern.alert-info { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
         .nav-item:hover {
             background: var(--bg-hover);
             color: var(--brand-orange-dark);
@@ -785,8 +817,26 @@
         <!-- SIDEBAR -->
         <aside class="app-sidebar" id="appSidebar">
             <div class="sidebar-brand">
-                <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP">
-                <span>SIAP</span>
+                <div class="sidebar-brand-icon">
+                    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                        <defs>
+                            <linearGradient id="siapSidebarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f2994a"/>
+                                <stop offset="50%" stop-color="#8fa23f"/>
+                                <stop offset="100%" stop-color="#1fae6e"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="4" y="4" width="192" height="192" rx="44" fill="url(#siapSidebarGrad)"/>
+                        <g transform="translate(45,51.1) scale(0.191)" fill="#ffffff">
+                            <path d="M288 0a64 64 0 1 1 0 128 64 64 0 1 1 0-128zm96 312c0 25-12.7 47-32 59.9l0 44.1-128 0 0-44.1C204.7 359 192 337 192 312l0-40c0-53 43-96 96-96s96 43 96 96l0 40zm16 104l0-27.3c19.9-22.5 32-52.2 32-84.7l0-32c0-26.7-7.3-51.6-19.9-73.1 11.1-4.5 23.2-6.9 35.9-6.9 53 0 96 43 96 96l0 32c0 23.7-12.9 44.4-32 55.4l0 40.6-112 0zM64 375.4C44.9 364.4 32 343.7 32 320l0-32c0-53 43-96 96-96 12.7 0 24.8 2.5 35.9 6.9-12.6 21.4-19.9 46.4-19.9 73.1l0 32c0 32.5 12.1 62.1 32 84.7l0 27.3-112 0 0-40.6zM128 32a56 56 0 1 1 0 112 56 56 0 1 1 0-112zm320 0a56 56 0 1 1 0 112 56 56 0 1 1 0-112zM24 464l528 0c13.3 0 24 10.7 24 24s-10.7 24-24 24L24 512c-13.3 0-24-10.7-24-24s10.7-24 24-24z"/>
+                        </g>
+                    </svg>
+                </div>
+                <div class="sidebar-brand-text">
+                    <span class="sidebar-brand-name">SIAP</span>
+                    <span class="sidebar-brand-sub">Sistem Informasi</span>
+                    <span class="sidebar-brand-sub">Administrasi Rapat</span>
+                </div>
             </div>
 
             <nav class="sidebar-nav">
@@ -814,6 +864,9 @@
                     </a> -->
                     <a href="/settings/users" class="nav-item {{ request()->is('settings/users*') ? 'active' : '' }}">
                         <i class="bi bi-people-fill"></i> Pengguna
+                    </a>
+                    <a href="/settings/signage" class="nav-item {{ request()->is('settings/signage*') ? 'active' : '' }}">
+                        <i class="bi bi-tv-fill"></i> Digital Signage
                     </a>
                 @endif
             </nav>
@@ -962,6 +1015,9 @@
                 </a>
                 <a href="/settings/users" class="mobile-sheet-item">
                     <i class="bi bi-people"></i> Pengguna
+                </a>
+                <a href="/settings/signage" class="mobile-sheet-item">
+                    <i class="bi bi-tv"></i> Digital Signage
                 </a>
             @endif
 
@@ -1234,7 +1290,7 @@
             <i class="bi bi-whatsapp"></i>
             <div>
                 <div class="title">Butuh Bantuan?</div>
-                <div class="subtitle">Admin SIAP biasanya balas cepat</div>
+                <div class="subtitle">Admin SIAP memberikan bantuan</div>
             </div>
             <button type="button" class="help-bubble-close" onclick="toggleHelpBubble(false)" aria-label="Tutup">
                 <i class="bi bi-x-lg"></i>
@@ -1242,7 +1298,7 @@
         </div>
         <div class="help-bubble-body">
             <p>Ada kendala pakai sistem peminjaman ruangan, atau butuh bantuan lain? Langsung chat admin lewat WhatsApp.</p>
-            <a href="https://wa.me/628xxxx?text=Halo%20Admin%20SIAP%2C%20saya%20butuh%20bantuan." target="_blank" rel="noopener" class="help-bubble-btn">
+            <a href="https://wa.me/6281332867075?text=Halo%20Admin%20SIAP%2C%20saya%20butuh%20bantuan." target="_blank" rel="noopener" class="help-bubble-btn">
                 <i class="bi bi-whatsapp"></i> Chat Admin via WhatsApp
             </a>
         </div>

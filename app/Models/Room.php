@@ -46,4 +46,9 @@ class Room extends Model
                     ->withPivot('id', 'quantity')
                     ->withTimestamps();
     }
+
+    public function display()
+    {
+        return $this->hasOne(RoomDisplay::class);
+    }
 }

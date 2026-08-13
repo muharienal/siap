@@ -5,32 +5,36 @@
 @section('content')
 <style>
     /* ============================================================
-       DESIGN TOKENS
+       DESIGN TOKENS — palet disegarkan: lebih terang & hidup,
+       tidak lagi terkesan gelap/tua seperti oranye-hijau sebelumnya.
        ============================================================ */
     :root {
-        --brand-orange: #f97316;
-        --brand-orange-dark: #ea580c;
-        --brand-green: #10b981;
-        --brand-green-dark: #059669;
-        --brand-gradient: linear-gradient(145deg, var(--brand-orange) 0%, var(--brand-green) 100%);
-        --brand-gradient-hover: linear-gradient(145deg, var(--brand-orange-dark) 0%, var(--brand-green-dark) 100%);
+        --brand-orange: #FF9142;
+        --brand-orange-light: #FFB27A;
+        --brand-orange-dark: #F2751A;
+        --brand-green: #22C55E;
+        --brand-green-light: #4ADE80;
+        --brand-green-dark: #16A34A;
+        --brand-gradient: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-green) 100%);
+        --brand-gradient-hover: linear-gradient(135deg, var(--brand-orange-dark) 0%, var(--brand-green-dark) 100%);
+        --brand-gradient-soft: linear-gradient(135deg, rgba(255,145,66,0.10) 0%, rgba(34,197,94,0.10) 100%);
 
-        --ui-bg: #f1f5f9;
+        --ui-bg: #f6f8fb;
         --ui-card-bg: #ffffff;
-        --ui-border: #e2e8f0;
-        --ui-text-primary: #0f172a;
-        --ui-text-secondary: #475569;
-        --ui-text-muted: #94a3b8;
-        --ui-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15);
-        --ui-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --ui-border: #e7ebf1;
+        --ui-text-primary: #10182b;
+        --ui-text-secondary: #5b6577;
+        --ui-text-muted: #97a1b3;
+        --ui-shadow: 0 30px 70px -20px rgba(16, 24, 43, 0.18);
+        --ui-shadow-sm: 0 4px 14px rgba(16, 24, 43, 0.06);
         --ui-radius: 28px;
         --ui-radius-sm: 14px;
 
         --input-bg: #f8fafc;
-        --input-border: #e2e8f0;
+        --input-border: #e7ebf1;
         --input-focus-border: var(--brand-orange);
-        --input-focus-shadow: 0 0 0 4px rgba(249, 115, 22, 0.12);
-        --input-height: 54px;
+        --input-focus-shadow: 0 0 0 4px rgba(255, 145, 66, 0.14);
+        --input-height: 50px;
         --input-height-mobile: 52px;
 
         --wa-green: #25D366;
@@ -42,13 +46,8 @@
     /* ============================================================
        BASE RESET & CENTERING
        ============================================================ */
-    * {
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    html, body {
-        height: 100%;
-    }
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
 
     body.auth-page {
         background: var(--ui-bg);
@@ -57,38 +56,45 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
+        padding: 2.5rem 2rem;
         margin: 0;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
+        position: relative;
+    }
+
+    /* Wash gradient dekoratif — sangat halus, bukan warna gelap penuh */
+    body.auth-page::before {
+        content: '';
+        position: fixed; top: -15%; right: -10%; width: 50vw; height: 50vw;
+        background: radial-gradient(circle, rgba(255,145,66,0.08), transparent 70%);
+        pointer-events: none; z-index: 0;
+    }
+    body.auth-page::after {
+        content: '';
+        position: fixed; bottom: -15%; left: -10%; width: 42vw; height: 42vw;
+        background: radial-gradient(circle, rgba(34,197,94,0.08), transparent 70%);
+        pointer-events: none; z-index: 0;
     }
 
     /* ============================================================
-       WRAPPER & ZOOM DESKTOP
+       WRAPPER — FIX: menghapus `zoom: 0.9` (properti CSS non-standar,
+       perilakunya beda-beda antar browser & jadi sumber bug tampilan
+       tidak konsisten). Ukuran dasar sengaja dikecilkan ~10% langsung
+       di sini (bukan pakai transform:scale/zoom) supaya hasilnya
+       konsisten di semua browser tanpa efek samping.
        ============================================================ */
     .auth-wrapper {
         width: 100%;
-        max-width: 960px;
+        max-width: 840px;
         margin: 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-    }
-
-    @media (min-width: 992px) {
-        .auth-wrapper {
-            zoom: 0.9;
-        }
-        /* Fallback untuk Firefox */
-        @-moz-document url-prefix() {
-            .auth-wrapper {
-                zoom: 1;
-                -moz-transform: scale(0.9);
-                -moz-transform-origin: center center;
-            }
-        }
+        position: relative;
+        z-index: 1;
     }
 
     /* ============================================================
@@ -101,7 +107,6 @@
         background: var(--ui-card-bg);
         box-shadow: var(--ui-shadow);
         width: 100%;
-        transition: transform 0.3s ease;
         position: relative;
         z-index: 1;
     }
@@ -111,9 +116,9 @@
        ============================================================ */
     .auth-brand-panel {
         background: var(--brand-gradient);
-        padding: 4rem 3rem;
+        padding: 3.1rem 2.4rem;
         height: 100%;
-        min-height: 520px;
+        min-height: 480px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -126,66 +131,64 @@
 
     .auth-brand-panel::before {
         content: '';
-        position: absolute;
-        inset: 0;
+        position: absolute; inset: 0;
         background-image:
-            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 60%),
-            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 50%);
+            radial-gradient(circle at 15% 20%, rgba(255,255,255,0.14) 0%, transparent 55%),
+            radial-gradient(circle at 85% 80%, rgba(255,255,255,0.10) 0%, transparent 50%);
         pointer-events: none;
     }
 
-    .auth-brand-panel > * {
-        position: relative;
-        z-index: 2;
+    /* Aksen cahaya statis halus — diganti dari shape mengambang yang
+       sebelumnya bisa salah posisi di panel dengan tinggi berbeda-beda. */
+    .auth-brand-panel::after {
+        content: '';
+        position: absolute; top: 50%; left: 50%; width: 340px; height: 340px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 65%);
+        pointer-events: none;
     }
 
-    .auth-logo {
-        width: 120px;
-        height: 120px;
-        object-fit: contain;
-        background: rgba(255,255,255,0.15);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        padding: 20px;
-        border-radius: 30px;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-        margin-bottom: 1.75rem;
-        transition: transform 0.3s ease;
-    }
-    .auth-logo:hover {
-        transform: scale(1.02);
-    }
+    .auth-brand-panel > * { position: relative; z-index: 2; }
 
     .auth-app-name {
-        font-size: 2.8rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        line-height: 1.1;
-        margin-bottom: 0.25rem;
+        font-size: 2.2rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15;
+        margin-bottom: 0.3rem;
     }
-
     .auth-app-sub {
-        font-size: 1.1rem;
-        font-weight: 400;
-        opacity: 0.9;
-        letter-spacing: 0.3px;
-        margin-bottom: 1rem;
+        font-size: 1rem; font-weight: 500; opacity: 0.95; letter-spacing: 0.2px;
+        margin-bottom: 0.9rem;
+    }
+    .auth-tagline {
+        font-size: 0.88rem; line-height: 1.62; opacity: 0.88; max-width: 290px;
+        margin: 0 auto; font-weight: 400;
     }
 
-    .auth-tagline {
-        font-size: 0.95rem;
-        line-height: 1.6;
-        opacity: 0.85;
-        max-width: 320px;
-        margin: 0 auto;
-        font-weight: 300;
+    /* Dua logo disandingkan sejajar — SIAP & PCS setara, bukan lagi
+       logo utama + badge teks kecil. */
+    .brand-logo-row {
+        display: flex; align-items: center; justify-content: center; gap: 14px;
+        margin-bottom: 1.4rem;
     }
+    .brand-logo-box {
+        width: 84px; height: 84px;
+        background: rgba(255,255,255,0.16);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        padding: 13px; border-radius: 24px;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.13);
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        flex-shrink: 0;
+    }
+    .brand-logo-box:hover { transform: scale(1.05) rotate(-2deg); }
+    .brand-logo-box svg { width: 100%; height: 100%; display: block; border-radius: 14px; overflow: hidden; }
+    .brand-logo-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
+    .brand-logo-box.company-box { background: #fff; padding: 12px; }
 
     /* ============================================================
        FORM PANEL
        ============================================================ */
     .auth-form-panel {
-        padding: 3.5rem 3rem;
+        padding: 2.9rem 2.7rem;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -193,653 +196,333 @@
         position: relative;
     }
 
-    .form-heading {
-        margin-bottom: 2rem;
-    }
+    .form-heading { margin-bottom: 1.9rem; }
     .form-heading h1 {
-        font-size: 1.85rem;
-        font-weight: 700;
-        color: var(--ui-text-primary);
-        letter-spacing: -0.02em;
-        margin-bottom: 0.25rem;
+        font-size: 1.55rem; font-weight: 700; color: var(--ui-text-primary);
+        letter-spacing: -0.02em; margin-bottom: 0.3rem;
     }
     .form-heading p {
-        color: var(--ui-text-secondary);
-        font-size: 0.95rem;
-        margin-bottom: 0;
+        color: var(--ui-text-secondary); font-size: 0.92rem; margin-bottom: 0; font-weight: 500;
     }
 
     /* ============================================================
-       INPUT MODERN
+       FIELD INPUT — FIX: sebelumnya ikon diposisikan `position:absolute`
+       di atas input, rawan geser/tumpang-tindih tergantung state
+       (fokus, error, dsb). Diganti pendekatan flexbox murni: ikon dan
+       input sama-sama anak flex dalam satu kontainer, jadi sejajar
+       otomatis oleh browser — tidak mungkin salah posisi lagi.
        ============================================================ */
-    .input-group-icon {
-        position: relative;
-        margin-bottom: 1.25rem;
-    }
+    .field-group { margin-bottom: 1.05rem; }
 
-    .input-group-icon .input-icon {
-        position: absolute;
-        left: 18px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--ui-text-muted);
-        font-size: 1.1rem;
-        pointer-events: none;
-        transition: color 0.2s;
-        z-index: 4;
-    }
-
-    .input-group-icon .form-control {
-        height: var(--input-height);
-        padding: 0 48px 0 48px;
-        font-size: 0.95rem;
-        border: 2px solid var(--input-border);
-        border-radius: var(--ui-radius-sm);
+    .field-control {
+        display: flex; align-items: center; gap: 12px;
+        height: var(--input-height); padding: 0 16px;
+        border: 1.5px solid var(--input-border); border-radius: var(--ui-radius-sm);
         background-color: var(--input-bg);
-        color: var(--ui-text-primary);
-        transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-        width: 100%;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
-
-    .input-group-icon .form-control:focus {
+    .field-control:focus-within {
         border-color: var(--input-focus-border);
         background-color: #ffffff;
         box-shadow: var(--input-focus-shadow);
-        outline: none;
     }
+    .field-control.has-error { border-color: #ef4444; background-color: #fef7f7; }
+    .field-control.has-error:focus-within { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12); }
 
-    .input-group-icon .form-control.is-invalid {
-        border-color: #dc3545;
-        background-image: none;
+    .field-icon {
+        font-size: 1.02rem; color: var(--ui-text-muted); flex-shrink: 0;
+        width: 20px; text-align: center; transition: color 0.2s ease;
     }
-    .input-group-icon .form-control.is-invalid:focus {
-        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.12);
-    }
+    .field-control:focus-within .field-icon { color: var(--brand-orange); }
+    .field-control.has-error .field-icon { color: #ef4444; }
 
-    .input-group-icon .form-control:active {
-        transform: scale(0.998);
+    .field-input {
+        flex: 1; min-width: 0; height: 100%;
+        border: none; background: none; outline: none;
+        font-size: 0.94rem; font-weight: 500; color: var(--ui-text-primary);
+        font-family: inherit;
     }
+    .field-input::placeholder { color: var(--ui-text-muted); font-weight: 400; }
 
-    .password-toggle-btn {
-        position: absolute;
-        right: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: none;
-        border: none;
-        color: var(--ui-text-muted);
-        padding: 0;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: color 0.2s, background 0.2s;
-        z-index: 4;
+    .field-toggle-btn {
+        flex-shrink: 0; background: none; border: none; color: var(--ui-text-muted);
+        padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; cursor: pointer; transition: color 0.2s, background 0.2s; font-size: 1rem;
     }
-    .password-toggle-btn:hover {
-        color: var(--brand-orange-dark);
-        background: rgba(249, 115, 22, 0.06);
-    }
-    .password-toggle-btn:active {
-        transform: translateY(-50%) scale(0.92);
-    }
+    .field-toggle-btn:hover { color: var(--brand-orange-dark); background: rgba(255, 145, 66, 0.08); }
+    .field-toggle-btn:active { transform: scale(0.92); }
 
-    .invalid-feedback-custom {
-        font-size: 0.8rem;
-        color: #dc3545;
-        margin-top: 0.35rem;
-        padding-left: 4px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
+    /* ============================================================
+       ALERT MODERN — komponen acuan untuk seluruh halaman (error,
+       sukses, peringatan, info). Kartu ringan dengan ikon + border
+       tipis, bukan sekadar teks merah polos.
+       ============================================================ */
+    .alert-modern {
+        display: flex; align-items: flex-start; gap: 9px;
+        padding: 10px 13px; border-radius: 11px;
+        font-size: 0.81rem; font-weight: 500; line-height: 1.5;
+        border: 1px solid transparent;
     }
-    .invalid-feedback-custom i {
-        font-size: 0.9rem;
-    }
+    .alert-modern .alert-modern-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+    .alert-modern.alert-error { background: #fef2f2; border-color: #fecdd3; color: #c0263c; }
+    .alert-modern.alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+    .alert-modern.alert-warning { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+    .alert-modern.alert-info { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+
+    .field-alert { margin-top: 0.5rem; }
 
     /* ============================================================
        FORM OPTIONS
        ============================================================ */
     .form-options {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 0.5rem 0 1.5rem 0;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        margin: 0.4rem 0 1.4rem 0; flex-wrap: wrap; gap: 0.5rem;
     }
 
     .form-check-custom .form-check-input {
-        width: 1.1rem;
-        height: 1.1rem;
-        border: 2px solid var(--ui-border);
-        border-radius: 4px;
-        margin-top: 0.15rem;
-        cursor: pointer;
-        transition: all 0.15s;
+        width: 1.1rem; height: 1.1rem; border: 1.5px solid var(--ui-border);
+        border-radius: 5px; margin-top: 0.15rem; cursor: pointer; transition: all 0.15s;
     }
     .form-check-custom .form-check-input:checked {
-        background-color: var(--brand-orange);
-        border-color: var(--brand-orange);
-        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+        background-color: var(--brand-orange); border-color: var(--brand-orange);
+        box-shadow: 0 0 0 3px rgba(255, 145, 66, 0.18);
     }
     .form-check-custom .form-check-label {
-        font-size: 0.9rem;
-        color: var(--ui-text-secondary);
-        cursor: pointer;
-        padding-left: 0.25rem;
+        font-size: 0.86rem; color: var(--ui-text-secondary); cursor: pointer;
+        padding-left: 0.25rem; font-weight: 500;
     }
 
     .forgot-link {
-        background: none;
-        border: none;
-        color: var(--brand-orange-dark);
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        padding: 0;
-        transition: color 0.2s, text-decoration 0.2s;
-        text-decoration: none;
+        background: none; border: none; color: var(--brand-orange-dark);
+        font-weight: 600; font-size: 0.86rem; cursor: pointer; padding: 0;
+        transition: color 0.2s; text-decoration: none;
     }
-    .forgot-link:hover {
-        color: var(--brand-green-dark);
-        text-decoration: underline;
-    }
+    .forgot-link:hover { color: var(--brand-green-dark); text-decoration: underline; }
 
     /* ============================================================
        BUTTON LOGIN
        ============================================================ */
     .btn-login {
-        width: 100%;
-        height: var(--input-height);
-        background: var(--brand-gradient);
-        border: none;
-        border-radius: var(--ui-radius-sm);
-        font-weight: 600;
-        font-size: 1rem;
-        color: #fff;
-        transition: all 0.3s ease;
-        box-shadow: 0 6px 20px rgba(249, 115, 22, 0.3);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        letter-spacing: 0.3px;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
+        width: 100%; height: var(--input-height);
+        background: var(--brand-gradient); border: none; border-radius: var(--ui-radius-sm);
+        font-weight: 600; font-size: 0.94rem; color: #fff;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.3s ease;
+        box-shadow: 0 8px 22px rgba(255, 145, 66, 0.32);
+        display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+        letter-spacing: 0.1px; cursor: pointer; position: relative; overflow: hidden;
     }
     .btn-login:hover {
-        background: var(--brand-gradient-hover);
-        transform: translateY(-2px);
-        box-shadow: 0 10px 28px rgba(16, 185, 129, 0.35);
-        color: #fff;
+        background: var(--brand-gradient-hover); transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(34, 197, 94, 0.32); color: #fff;
     }
-    .btn-login:active {
-        transform: translateY(0);
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
-    }
+    .btn-login:active { transform: translateY(0); box-shadow: 0 6px 14px rgba(255, 145, 66, 0.28); }
+    .btn-login:disabled { opacity: 0.75; cursor: not-allowed; transform: none; }
 
     .btn-login::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        transform: translate(-50%, -50%);
+        content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0;
+        border-radius: 50%; background: rgba(255, 255, 255, 0.3); transform: translate(-50%, -50%);
         transition: width 0.5s ease, height 0.5s ease;
     }
-    .btn-login:active::after {
-        width: 300px;
-        height: 300px;
-    }
+    .btn-login:active::after { width: 320px; height: 320px; }
 
     /* ============================================================
        FOOTER
        ============================================================ */
     .login-footer {
-        margin-top: 1.75rem;
-        text-align: center;
-        font-size: 0.8rem;
-        color: var(--ui-text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-        border-top: 1px solid var(--ui-border);
-        padding-top: 1.25rem;
+        margin-top: 1.75rem; text-align: center; font-size: 0.76rem; color: var(--ui-text-muted);
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap;
+        border-top: 1px solid var(--ui-border); padding-top: 1.25rem;
     }
     .login-footer a {
-        color: var(--ui-text-secondary);
-        text-decoration: none;
-        transition: color 0.2s ease;
-        font-weight: 500;
+        color: var(--ui-text-secondary); text-decoration: none; transition: color 0.2s ease; font-weight: 600;
     }
-    .login-footer a:hover {
-        color: var(--brand-orange-dark);
-    }
+    .login-footer a:hover { color: var(--brand-orange-dark); }
 
     /* ============================================================
        MODAL FORGOT PASSWORD
+       FIX: background & z-index dibuat eksplisit supaya modal selalu
+       solid/opaque, tidak pernah tembus pandang ke konten di belakangnya
+       walau ada elemen dekoratif lain di halaman.
        ============================================================ */
+    .forgot-modal { z-index: 1060; }
     .forgot-modal .modal-content {
-        border: none;
-        border-radius: var(--ui-radius);
-        overflow: hidden;
-        box-shadow: 0 30px 70px rgba(0,0,0,0.20);
+        border: none; border-radius: var(--ui-radius); overflow: hidden;
+        box-shadow: 0 30px 70px rgba(16,24,43,0.20);
+        background-color: #ffffff;
+        background-clip: padding-box;
+        isolation: isolate;
     }
     .forgot-modal .modal-header {
-        background: var(--brand-gradient);
-        color: #fff;
-        border-bottom: none;
-        padding: 1.5rem 1.75rem;
-        justify-content: center;
-        position: relative;
+        background: var(--brand-gradient); color: #fff; border-bottom: none;
+        padding: 1.5rem 1.75rem; justify-content: center; position: relative;
     }
-    .forgot-modal .modal-header .modal-title {
-        font-weight: 700;
-        font-size: 1.35rem;
-        letter-spacing: -0.2px;
-    }
+    .forgot-modal .modal-header .modal-title { font-weight: 700; font-size: 1.2rem; letter-spacing: -0.1px; }
     .forgot-modal .modal-header .btn-close {
-        position: absolute;
-        right: 1.25rem;
-        top: 50%;
-        transform: translateY(-50%);
-        filter: brightness(0) invert(1);
-        opacity: 0.8;
-        transition: opacity 0.2s;
+        position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%);
+        filter: brightness(0) invert(1); opacity: 0.85; transition: opacity 0.2s;
     }
-    .forgot-modal .modal-header .btn-close:hover {
-        opacity: 1;
-    }
-    .forgot-modal .modal-body {
-        padding: 2.5rem 2rem;
-        text-align: center;
-    }
+    .forgot-modal .modal-header .btn-close:hover { opacity: 1; }
+    .forgot-modal .modal-body { padding: 2.5rem 2rem; text-align: center; background-color: #ffffff; }
     .wa-icon-circle {
-        width: 80px;
-        height: 80px;
-        background: rgba(37,211,102,0.10);
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 1.25rem;
+        width: 78px; height: 78px; background: rgba(37,211,102,0.10); border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;
     }
-    .wa-icon-circle i {
-        font-size: 2.4rem;
-        color: var(--wa-green-dark);
-    }
+    .wa-icon-circle i { font-size: 2.3rem; color: var(--wa-green-dark); }
     .modal-help-text {
-        color: var(--ui-text-secondary);
-        font-size: 0.95rem;
-        max-width: 380px;
-        margin: 0 auto 1.25rem auto;
-        line-height: 1.6;
+        color: var(--ui-text-secondary); font-size: 0.93rem; max-width: 380px;
+        margin: 0 auto 1.25rem auto; line-height: 1.6; font-weight: 500;
     }
     .btn-wa-chat {
-        background: var(--wa-green);
-        color: #fff;
-        border: none;
-        border-radius: var(--ui-radius-sm);
-        padding: 12px 28px;
-        font-weight: 600;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        text-decoration: none;
+        background: var(--wa-green); color: #fff; border: none; border-radius: var(--ui-radius-sm);
+        padding: 12px 28px; font-weight: 600; font-size: 0.92rem; transition: all 0.3s ease;
+        display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
     }
     .btn-wa-chat:hover {
-        background: var(--wa-green-dark);
-        color: #fff;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(37,211,102,0.35);
+        background: var(--wa-green-dark); color: #fff; transform: translateY(-2px);
+        box-shadow: 0 10px 26px rgba(37,211,102,0.35);
     }
 
     /* ============================================================
-       ANIMASI
+       ANIMASI MASUK
        ============================================================ */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInDown { from { opacity: 0; transform: translateY(-18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInScale { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
-    @keyframes slideInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .auth-card { animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
+    .brand-logo-row { animation: fadeInScale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
+    .auth-app-name, .auth-app-sub, .auth-tagline { animation: fadeInDown 0.55s ease-out both; }
+    .auth-app-name { animation-delay: 0.18s; }
+    .auth-app-sub { animation-delay: 0.24s; }
+    .auth-tagline { animation-delay: 0.3s; }
+    .form-heading, .field-group, .form-options, .btn-login {
+        animation: fadeInUp 0.5s ease-out both;
     }
-
-    .auth-card {
-        animation: fadeInUp 0.5s ease-out;
-    }
-
-    .auth-brand-panel > * {
-        animation: slideInDown 0.6s ease-out;
-    }
+    .form-heading { animation-delay: 0.2s; }
+    .field-group:nth-of-type(1) { animation-delay: 0.28s; }
+    .field-group:nth-of-type(2) { animation-delay: 0.34s; }
+    .form-options { animation-delay: 0.4s; }
+    .btn-login { animation-delay: 0.46s; }
 
     @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-            animation-duration: 0.01ms !important;
-            transition-duration: 0.01ms !important;
-        }
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
 
     /* ============================================================
        RESPONSIVE: TABLET
        ============================================================ */
     @media (max-width: 991.98px) {
-        body.auth-page {
-            padding: 1.5rem;
-            align-items: center;
-        }
-        .auth-card {
-            min-height: auto;
-        }
-        .auth-card > .row {
-            min-height: auto;
-        }
-        .auth-brand-panel {
-            min-height: 280px;
-            padding: 2.5rem 1.5rem;
-        }
-        .auth-logo {
-            width: 90px;
-            height: 90px;
-            padding: 16px;
-            margin-bottom: 1rem;
-        }
-        .auth-app-name {
-            font-size: 2.4rem;
-        }
-        .auth-app-sub {
-            font-size: 1rem;
-        }
-        .auth-tagline {
-            font-size: 0.9rem;
-            max-width: 100%;
-        }
-        .auth-form-panel {
-            padding: 2.5rem 2rem;
-        }
+        body.auth-page { padding: 1.5rem; align-items: center; }
+        .auth-card { min-height: auto; }
+        .auth-card > .row { min-height: auto; }
+        .auth-brand-panel { min-height: 300px; padding: 2.5rem 1.75rem; }
+        .brand-logo-box { width: 74px; height: 74px; padding: 11px; border-radius: 20px; }
+        .brand-logo-row { margin-bottom: 1rem; }
+        .auth-app-name { font-size: 2.2rem; }
+        .auth-app-sub { font-size: 1rem; }
+        .auth-tagline { font-size: 0.88rem; max-width: 100%; }
+        .auth-form-panel { padding: 2.5rem 2rem; }
     }
 
     /* ============================================================
        MOBILE NATIVE APP LAYOUT (< 768px)
        ============================================================ */
     @media (max-width: 767.98px) {
-        body.auth-page {
-            padding: 0;
-            background: #fff;
-            align-items: stretch;
-        }
+        body.auth-page { padding: 0; background: #fff; align-items: stretch; }
+        body.auth-page::before, body.auth-page::after { display: none; }
+        .auth-brand-panel::after { width: 200px; height: 200px; }
 
-        .auth-wrapper {
-            min-height: 100vh;
-            min-height: 100dvh;
-            width: 100%;
-            max-width: 100%;
-        }
+        .auth-wrapper { min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 100%; }
 
         .auth-card {
-            border-radius: 0;
-            box-shadow: none;
-            min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            background: #fff;
+            border-radius: 0; box-shadow: none; min-height: 100vh; min-height: 100dvh;
+            display: flex; flex-direction: column; background: #fff;
         }
+        .auth-card > .row { flex: 1; min-height: 100vh; min-height: 100dvh; margin: 0; flex-direction: column; }
+        .auth-card > .row > [class*="col-"] { padding: 0; flex: none; }
+        .auth-card > .row > .col-lg-6:nth-child(2) { flex: 1; display: flex; }
 
-        .auth-card > .row {
-            flex: 1;
-            min-height: 100vh;
-            min-height: 100dvh;
-            margin: 0;
-            flex-direction: column;
-        }
-
-        .auth-card > .row > [class*="col-"] {
-            padding: 0;
-            flex: none;
-        }
-
-        .auth-card > .row > .col-lg-6:nth-child(2) {
-            flex: 1;
-            display: flex;
-        }
-
-        /* Header kompak dengan rounded bottom */
         .auth-brand-panel {
-            min-height: auto;
-            padding: 3rem 1.5rem 3.5rem 1.5rem;
-            border-radius: 0 0 32px 32px;
-            flex-shrink: 0;
+            min-height: auto; padding: 2.75rem 1.5rem 3.25rem 1.5rem;
+            border-radius: 0 0 32px 32px; flex-shrink: 0;
         }
-        .auth-logo {
-            width: 72px;
-            height: 72px;
-            padding: 12px;
-            border-radius: 22px;
-            margin-bottom: 0.75rem;
-        }
-        .auth-app-name {
-            font-size: 1.8rem;
-        }
-        .auth-app-sub {
-            font-size: 0.85rem;
-            margin-bottom: 0;
-        }
-        .auth-tagline {
-            display: none;
-        }
+        .brand-logo-box { width: 56px; height: 56px; padding: 8px; border-radius: 16px; }
+        .brand-logo-row { margin-bottom: 0.7rem; gap: 10px; }
+        .auth-app-name { font-size: 1.7rem; }
+        .auth-app-sub { font-size: 0.82rem; margin-bottom: 0.65rem; }
+        .auth-tagline { display: none; }
 
-        /* Form panel "naik" menutupi header */
         .auth-form-panel {
-            padding: 2.5rem 1.5rem 1.5rem 1.5rem;
-            margin-top: -1.5rem;
-            z-index: 2;
-            position: relative;
-            background: #fff;
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -8px 16px rgba(0,0,0,0.05);
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
+            padding: 2.25rem 1.5rem 1.5rem 1.5rem; margin-top: -1.5rem; z-index: 2; position: relative;
+            background: #fff; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 20px rgba(16,24,43,0.05);
+            flex: 1; display: flex; flex-direction: column; width: 100%;
         }
 
-        .form-heading {
-            margin-bottom: 1.5rem;
-        }
-        .form-heading h1 {
-            font-size: 1.5rem;
-        }
-        .form-heading p {
-            font-size: 0.85rem;
-        }
+        .form-heading { margin-bottom: 1.4rem; }
+        .form-heading h1 { font-size: 1.4rem; }
+        .form-heading p { font-size: 0.84rem; }
 
-        /* Input anti-zoom iOS */
-        .input-group-icon {
-            margin-bottom: 1rem;
-        }
-        .input-group-icon .form-control {
-            height: var(--input-height-mobile);
-            font-size: 16px;
-            padding: 0 44px 0 44px;
-            border-radius: 12px;
-        }
-        .input-group-icon .input-icon {
-            left: 16px;
-            font-size: 1rem;
-        }
+        .field-group { margin-bottom: 0.85rem; }
+        .field-control { height: var(--input-height-mobile); padding: 0 14px; border-radius: 12px; }
+        .field-icon { font-size: 0.95rem; }
+        .field-input { font-size: 16px; }
 
-        .form-options {
-            margin: 0.25rem 0 1.25rem 0;
-        }
+        .form-options { margin: 0.25rem 0 1.15rem 0; }
+        .btn-login { height: var(--input-height-mobile); font-size: 0.92rem; border-radius: 12px; }
 
-        .btn-login {
-            height: var(--input-height-mobile);
-            font-size: 0.95rem;
-            border-radius: 12px;
-        }
+        .login-footer { margin-top: auto; padding-top: 1.75rem; border-top: none; padding-bottom: env(safe-area-inset-bottom, 1rem); }
 
-        /* Footer di dorong ke bawah */
-        .login-footer {
-            margin-top: auto;
-            padding-top: 2rem;
-            border-top: none;
-            padding-bottom: env(safe-area-inset-bottom, 1rem);
-        }
-
-        /* Modal responsive */
-        .forgot-modal .modal-dialog {
-            margin: 1rem;
-        }
-        .forgot-modal .modal-content {
-            border-radius: 20px;
-        }
-        .forgot-modal .modal-body {
-            padding: 2rem 1.25rem;
-        }
+        .forgot-modal .modal-dialog { margin: 1rem; }
+        .forgot-modal .modal-content { border-radius: 20px; }
+        .forgot-modal .modal-body { padding: 2rem 1.25rem; }
     }
 
     /* ============================================================
        SMALL MOBILE (< 576px)
        ============================================================ */
     @media (max-width: 575.98px) {
-        .auth-brand-panel {
-            padding: 2.5rem 1.5rem 3rem 1.5rem;
-        }
-        .auth-logo {
-            width: 64px;
-            height: 64px;
-            padding: 10px;
-            border-radius: 18px;
-        }
-        .auth-app-name {
-            font-size: 1.6rem;
-        }
-
-        .auth-form-panel {
-            padding: 2rem 1.25rem 1.25rem 1.25rem;
-        }
-
-        .form-heading h1 {
-            font-size: 1.4rem;
-        }
-
-        .input-group-icon .form-control {
-            height: 50px;
-            font-size: 16px;
-        }
-
-        .form-options {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-
-        .btn-login {
-            font-size: 0.9rem;
-        }
-
-        .login-footer {
-            font-size: 0.7rem;
-        }
+        .auth-brand-panel { padding: 2.25rem 1.25rem 2.75rem 1.25rem; }
+        .brand-logo-box { width: 50px; height: 50px; padding: 7px; border-radius: 15px; }
+        .brand-logo-row { gap: 8px; }
+        .auth-app-name { font-size: 1.5rem; }
+        .auth-form-panel { padding: 1.85rem 1.15rem 1.15rem 1.15rem; }
+        .form-heading h1 { font-size: 1.3rem; }
+        .field-control { height: 50px; }
+        .field-input { font-size: 16px; }
+        .form-options { flex-direction: column; align-items: flex-start; gap: 0.7rem; }
+        .btn-login { font-size: 0.88rem; }
+        .login-footer { font-size: 0.68rem; }
     }
 
     /* ============================================================
        LANDSCAPE MOBILE
        ============================================================ */
     @media (max-width: 991.98px) and (orientation: landscape) and (max-height: 500px) {
-        body.auth-page {
-            padding: 1rem;
-            align-items: center;
-            background: var(--ui-bg);
-        }
-        .auth-wrapper {
-            min-height: auto;
-        }
-        .auth-card {
-            min-height: auto;
-            border-radius: var(--ui-radius);
-            box-shadow: var(--ui-shadow);
-        }
-        .auth-card > .row {
-            min-height: auto;
-            flex-direction: row;
-        }
-        .auth-brand-panel {
-            min-height: 100%;
-            padding: 1.5rem;
-            border-radius: 0;
-        }
-        .auth-logo {
-            width: 56px;
-            height: 56px;
-            padding: 8px;
-            margin-bottom: 0.5rem;
-        }
-        .auth-app-name {
-            font-size: 1.4rem;
-        }
-        .auth-app-sub {
-            font-size: 0.75rem;
-        }
-        .auth-tagline {
-            display: none;
-        }
-        .auth-form-panel {
-            padding: 1.5rem;
-            justify-content: center;
-            margin-top: 0;
-            border-radius: 0;
-            box-shadow: none;
-        }
-        .form-heading {
-            margin-bottom: 1rem;
-        }
-        .form-heading h1 {
-            font-size: 1.2rem;
-        }
-        .input-group-icon {
-            margin-bottom: 0.75rem;
-        }
-        .input-group-icon .form-control {
-            height: 44px;
-            font-size: 16px;
-        }
-        .btn-login {
-            height: 44px;
-        }
-        .login-footer {
-            margin-top: 1rem;
-            padding-top: 1rem;
-        }
+        body.auth-page { padding: 1rem; align-items: center; background: var(--ui-bg); }
+        .auth-wrapper { min-height: auto; }
+        .auth-card { min-height: auto; border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); }
+        .auth-card > .row { min-height: auto; flex-direction: row; }
+        .auth-brand-panel { min-height: 100%; padding: 1.5rem; border-radius: 0; }
+        .brand-logo-box { width: 46px; height: 46px; padding: 6px; }
+        .brand-logo-row { margin-bottom: 0.5rem; }
+        .auth-app-name { font-size: 1.3rem; }
+        .auth-app-sub { font-size: 0.72rem; }
+        .auth-tagline { display: none; }
+        .auth-form-panel { padding: 1.5rem; margin-top: 0; border-radius: 0; box-shadow: none; }
+        .form-heading { margin-bottom: 0.9rem; }
+        .form-heading h1 { font-size: 1.15rem; }
+        .field-group { margin-bottom: 0.6rem; }
+        .field-control { height: 42px; }
+        .field-input { font-size: 15px; }
+        .btn-login { height: 42px; }
+        .login-footer { margin-top: 0.85rem; padding-top: 0.85rem; }
+    }
+
+    /* ============================================================
+       ULTRA-WIDE / LAYAR BESAR — jaga proporsi tetap nyaman dibaca
+       ============================================================ */
+    @media (min-width: 1600px) {
+        .auth-wrapper { max-width: 980px; }
     }
 </style>
 
@@ -853,7 +536,27 @@
                  ==================================================== -->
             <div class="col-lg-6">
                 <div class="auth-brand-panel w-100">
-                    <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" class="auth-logo" />
+                    <div class="brand-logo-row">
+                        <div class="brand-logo-box siap-box">
+                            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                                <defs>
+                                    <linearGradient id="siapIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#f2994a"/>
+                                        <stop offset="50%" stop-color="#8fa23f"/>
+                                        <stop offset="100%" stop-color="#1fae6e"/>
+                                    </linearGradient>
+                                </defs>
+                                <rect x="4" y="4" width="192" height="192" rx="44" fill="url(#siapIconGrad)"/>
+                                <g transform="translate(45,51.1) scale(0.191)" fill="#ffffff">
+                                    <path d="M288 0a64 64 0 1 1 0 128 64 64 0 1 1 0-128zm96 312c0 25-12.7 47-32 59.9l0 44.1-128 0 0-44.1C204.7 359 192 337 192 312l0-40c0-53 43-96 96-96s96 43 96 96l0 40zm16 104l0-27.3c19.9-22.5 32-52.2 32-84.7l0-32c0-26.7-7.3-51.6-19.9-73.1 11.1-4.5 23.2-6.9 35.9-6.9 53 0 96 43 96 96l0 32c0 23.7-12.9 44.4-32 55.4l0 40.6-112 0zM64 375.4C44.9 364.4 32 343.7 32 320l0-32c0-53 43-96 96-96 12.7 0 24.8 2.5 35.9 6.9-12.6 21.4-19.9 46.4-19.9 73.1l0 32c0 32.5 12.1 62.1 32 84.7l0 27.3-112 0 0-40.6zM128 32a56 56 0 1 1 0 112 56 56 0 1 1 0-112zm320 0a56 56 0 1 1 0 112 56 56 0 1 1 0-112zM24 464l528 0c13.3 0 24 10.7 24 24s-10.7 24-24 24L24 512c-13.3 0-24-10.7-24-24s10.7-24 24-24z"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <span class="brand-logo-divider"></span>
+                        <div class="brand-logo-box company-box">
+                            <img src="{{ asset('assets/images/icon/icon.png') }}" alt="PT Petrokopindo Cipta Selaras">
+                        </div>
+                    </div>
                     <div class="auth-app-name">SIAP</div>
                     <div class="auth-app-sub">Sistem Informasi Administrasi Rapat</div>
                     <p class="auth-tagline">
@@ -879,35 +582,39 @@
                         @csrf
 
                         <!-- NIK -->
-                        <div class="input-group-icon">
-                            <i class="bi bi-person-badge input-icon"></i>
-                            <input id="nip" type="text"
-                                   class="form-control @error('nip') is-invalid @enderror"
-                                   name="nip" value="{{ old('nip') }}"
-                                   required autocomplete="off" autofocus
-                                   placeholder="NIK Karyawan" aria-label="NIK">
+                        <div class="field-group">
+                            <div class="field-control @error('nip') has-error @enderror">
+                                <i class="bi bi-person-badge field-icon"></i>
+                                <input id="nip" type="text"
+                                       class="field-input"
+                                       name="nip" value="{{ old('nip') }}"
+                                       required autocomplete="off" autofocus
+                                       placeholder="NIK Karyawan" aria-label="NIK">
+                            </div>
                             @error('nip')
-                                <div class="invalid-feedback-custom">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                    {{ $message }}
+                                <div class="alert-modern alert-error field-alert">
+                                    <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+                                    <span>{{ $message }}</span>
                                 </div>
                             @enderror
                         </div>
 
                         <!-- Password -->
-                        <div class="input-group-icon">
-                            <i class="bi bi-lock input-icon"></i>
-                            <input id="password" type="password"
-                                   class="form-control @error('password') is-invalid @enderror"
-                                   name="password" required autocomplete="current-password"
-                                   placeholder="Kata sandi" aria-label="Password">
-                            <button type="button" class="password-toggle-btn" id="togglePasswordBtn" aria-label="Tampilkan atau sembunyikan kata sandi">
-                                <i class="bi bi-eye-slash" id="passwordEyeIcon"></i>
-                            </button>
+                        <div class="field-group">
+                            <div class="field-control @error('password') has-error @enderror">
+                                <i class="bi bi-lock field-icon"></i>
+                                <input id="password" type="password"
+                                       class="field-input"
+                                       name="password" required autocomplete="current-password"
+                                       placeholder="Kata sandi" aria-label="Password">
+                                <button type="button" class="field-toggle-btn" id="togglePasswordBtn" aria-label="Tampilkan atau sembunyikan kata sandi">
+                                    <i class="bi bi-eye-slash" id="passwordEyeIcon"></i>
+                                </button>
+                            </div>
                             @error('password')
-                                <div class="invalid-feedback-custom">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                    {{ $message }}
+                                <div class="alert-modern alert-error field-alert">
+                                    <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+                                    <span>{{ $message }}</span>
                                 </div>
                             @enderror
                         </div>

@@ -52,10 +52,10 @@
     .btn-outline-sm:hover { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
 
     .btn-approve-sm {
-        background: #10b981; color: white;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        background: var(--brand-green); color: white;
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
     }
-    .btn-approve-sm:hover { background: #059669; }
+    .btn-approve-sm:hover { background: var(--brand-green-dark); }
 
     .btn-danger-outline {
         background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); color: #dc2626;
@@ -307,7 +307,7 @@
         background: var(--bg-card);
         border: 3px solid var(--brand-orange);
     }
-    .timeline-item.success::before { border-color: #10b981; }
+    .timeline-item.success::before { border-color: var(--brand-green); }
     .timeline-item.danger::before { border-color: #ef4444; }
     .timeline-item.info::before { border-color: var(--brand-blue); }
     .timeline-icon {
@@ -324,7 +324,7 @@
         color: white;
     }
     .timeline-icon.primary { background: var(--brand-orange); }
-    .timeline-icon.success { background: #10b981; }
+    .timeline-icon.success { background: var(--brand-green); }
     .timeline-icon.danger { background: #ef4444; }
     .timeline-icon.info { background: var(--brand-blue); }
     .timeline-title {
@@ -361,12 +361,43 @@
     }
 </style>
 
+{{-- FIX: aksi approve/tolak/hapus/alihkan bisa redirect balik ke halaman
+     ini (back()), tapi pesan sukses/error-nya sebelumnya tidak pernah
+     ditampilkan di sini. --}}
+@if(session('success'))
+    <div class="alert-modern alert-success">
+        <i class="bi bi-check-circle-fill alert-modern-icon"></i>
+        <span>{{ session('success') }}</span>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <span>{{ session('error') }}</span>
+    </div>
+@endif
+@if($errors->any())
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <div>
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
+    </div>
+@endif
+
 <div class="db-toolbar">
     <a href="{{ route('bookings.index') }}" class="btn-back">
         <i class="bi bi-arrow-left"></i> Kembali
     </a>
     <div class="actions">
-        @if(Auth::user()->role == 1 || (Auth::user()->role == 2 && $booking->status == 0))
+        {{-- FIX: sebelumnya cuma role==2 (Karyawan) yang bisa lihat tombol
+             Edit — Sesdir (role==3) tidak pernah kebagian tombol ini sama
+             sekali walau itu booking pending miliknya sendiri. Disamakan:
+             non-admin boleh edit HANYA booking miliknya sendiri yang masih
+             pending (persis aturan yang sudah ditegakkan di backend). --}}
+        @if(Auth::user()->role == 1 || ($booking->user_id == Auth::id() && $booking->status == 0))
         <a href="{{ route('bookings.edit', $booking->id) }}" class="btn-outline-sm">
             <i class="bi bi-pencil"></i> Edit
         </a>
@@ -386,11 +417,16 @@
         @endif
 
         @if(Auth::user()->role == 1 && $booking->displaced_by_id)
-        <button type="button" class="btn-approve-sm" style="background:#f97316;" data-bs-toggle="modal" data-bs-target="#relocateModal">
+        <button type="button" class="btn-approve-sm" style="background: var(--brand-orange);" data-bs-toggle="modal" data-bs-target="#relocateModal">
             <i class="bi bi-arrow-left-right"></i> Alihkan ke Ruangan Lain
         </button>
         @endif
 
+        {{-- FIX: sebelumnya pemilik booking bisa hapus booking-nya sendiri
+             kapan pun, termasuk yang sudah disetujui admin. Sekarang
+             disamakan dengan aturan Edit — non-admin cuma boleh hapus
+             booking pending miliknya sendiri. --}}
+        @if(Auth::user()->role == 1 || ($booking->user_id == Auth::id() && $booking->status == 0))
         <form action="{{ route('bookings.destroy', $booking->id) }}" method="POST" onsubmit="return confirm('Hapus peminjaman ini?')">
             @csrf
             @method('DELETE')
@@ -398,6 +434,7 @@
                 <i class="bi bi-trash"></i> Hapus
             </button>
         </form>
+        @endif
     </div>
 </div>
 
@@ -455,7 +492,7 @@
                     Silakan alihkan peminjaman ini ke ruangan atau waktu lain.
                 </div>
                 <div class="conflict-alert-actions">
-                    <button type="button" class="btn-approve-sm" style="background:#f97316;" data-bs-toggle="modal" data-bs-target="#relocateModal">
+                    <button type="button" class="btn-approve-sm" style="background: var(--brand-orange);" data-bs-toggle="modal" data-bs-target="#relocateModal">
                         <i class="bi bi-arrow-left-right"></i> Alihkan ke Ruangan Lain
                     </button>
                 </div>

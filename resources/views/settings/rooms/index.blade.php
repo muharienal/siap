@@ -599,6 +599,22 @@
     }
 </style>
 
+{{-- FIX: aksi hapus ruangan (form submit biasa, bukan AJAX) redirect ke
+     sini dengan session('success')/session('error'), tapi sebelumnya
+     tidak pernah ditampilkan. --}}
+@if(session('success'))
+    <div class="alert-modern alert-success">
+        <i class="bi bi-check-circle-fill alert-modern-icon"></i>
+        <span>{{ session('success') }}</span>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <span>{{ session('error') }}</span>
+    </div>
+@endif
+
 <div class="db-toolbar">
     <div>
         <button type="button" class="btn-outline-sm" data-bs-toggle="modal" data-bs-target="#masterFacilityModal">
@@ -697,7 +713,7 @@
                         <div class="form-left-col">
                             <div>
                                 <label class="form-label-modern">Nama Ruangan</label>
-                                <input type="text" name="name" class="modern-input" placeholder="Contoh: Ruang Meeting A" required>
+                                <input type="text" name="name" class="modern-input" placeholder="Contoh: Ruang Rapat Argopuro" required>
                             </div>
                             <div class="row g-3">
                                 <div class="col-7">
@@ -745,7 +761,7 @@
                                 <i class="bi bi-cloud-arrow-up upload-icon"></i>
                                 <div class="upload-text">Click To Upload</div>
                                 <div class="upload-subtext">atau drag & drop file kesini</div>
-                                <div class="upload-subtext" style="margin-top: 5px; font-size: 0.7rem;">JPG, PNG, Max 2MB</div>
+                                <div class="upload-subtext" style="margin-top: 5px; font-size: 0.7rem;">JPG, PNG, Max 10MB</div>
                                 <input type="file" name="photos[]" id="fileInput" multiple accept="image/*" style="display: none;">
                             </div>
                             
@@ -1064,9 +1080,10 @@
         if (!confirm('Yakin ingin menghapus fasilitas ini?')) return;
 
         fetch(routeDelete + id, {
-            method: 'DELETE',
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-HTTP-Method-Override': 'DELETE',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })

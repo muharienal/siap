@@ -1,37 +1,35 @@
 @extends('templates.template')
 
+@section('title', 'Edit Peminjaman')
 @section('page_title', 'Edit Peminjaman')
-@section('page_subtitle', 'Perbarui detail peminjaman ruangan')
 
 @section('content')
 <style>
     .form-content {
-        padding: var(--space-6) var(--space-7);
-        max-width: 1800px; 
-        margin: 0 auto;
         width: 100%;
-        padding-bottom: 100px;
     }
 
-    .form-header {
+    .db-toolbar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--space-5);
-        flex-wrap: wrap;
-        gap: var(--space-3);
+        flex-wrap: nowrap;
+        gap: var(--space-4);
+        margin-bottom: var(--space-4);
     }
-    .form-header h1 { font-size: var(--font-size-2xl); font-weight: 800; color: var(--text-primary); margin: 0; }
 
     .btn-back {
-        height: 42px; padding: 0 var(--space-4);
-        background: var(--bg-card); border: 1px solid var(--border-color);
-        border-radius: var(--radius-sm); color: var(--text-secondary);
-        font-weight: 600; text-decoration: none;
-        display: inline-flex; align-items: center; gap: 6px;
-        transition: all 0.2s;
+        height: 44px; padding: 0 var(--space-5);
+        border-radius: var(--radius-sm);
+        font-weight: 600; font-size: var(--font-size-sm);
+        display: inline-flex; align-items: center; gap: 8px;
+        text-decoration: none; cursor: pointer; transition: all 0.2s;
+        white-space: nowrap;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
     }
-    .btn-back:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
+    .btn-back:hover { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
 
     .form-card {
         background: var(--border-color-light);
@@ -40,40 +38,119 @@
         box-shadow: var(--shadow-card);
         overflow: hidden;
         display: grid;
-        grid-template-columns: 1fr 1fr; 
-        gap: 1px; 
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1px;
     }
 
     .form-section { background: var(--bg-card); padding: var(--space-5); }
     .full-width { grid-column: 1 / -1; }
 
     .section-title {
-        font-size: var(--font-size-md); font-weight: 700;
+        font-size: 1.05rem; font-weight: 700;
         color: var(--text-primary); margin-bottom: var(--space-4);
         display: flex; align-items: center; gap: 8px;
         padding-bottom: var(--space-3);
         border-bottom: 1px solid var(--border-color-light);
     }
-    .section-title i { color: var(--brand-orange); }
+    .section-title i { color: var(--brand-orange); font-size: 1.2rem; }
 
     .form-group { margin-bottom: var(--space-4); }
     .form-group:last-child { margin-bottom: 0; }
 
     .form-label {
-        font-weight: 700; font-size: var(--font-size-sm);
-        color: var(--text-primary); margin-bottom: var(--space-2);
-        display: block;
+        font-weight: 700; font-size: 0.8rem;
+        color: var(--text-secondary); margin-bottom: 6px;
+        display: block; text-transform: uppercase;
+        letter-spacing: 0.4px;
     }
     .form-label .required { color: #ef4444; }
 
     .form-control, .form-select {
-        height: 48px; border-radius: var(--radius-sm);
-        border: 1px solid var(--border-color); font-size: var(--font-size-sm);
+        width: 100%; height: 44px; padding: 0 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color); font-size: 0.9rem;
+        background: var(--bg-input); font-family: inherit; color: var(--text-primary);
+        transition: all 0.2s; outline: none;
     }
     .form-control:focus, .form-select:focus {
         border-color: var(--brand-orange);
-        box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+        background: var(--bg-card);
+        box-shadow: 0 0 0 3px rgba(255,145,66,0.12);
     }
+    textarea.form-control { height: auto; padding: 10px 14px; }
+
+    /* Room picker — disamakan persis dengan halaman Tambah Peminjaman */
+    .room-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: var(--space-4);
+    }
+    .room-card {
+        background: var(--bg-card); border: 2px solid var(--border-color-light);
+        border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+        cursor: pointer;
+        transition: all var(--transition-fast); display: flex; flex-direction: column;
+        text-decoration: none; color: inherit; position: relative;
+    }
+    .room-card:hover {
+        transform: translateY(-3px); box-shadow: var(--shadow-hover);
+        border-color: var(--brand-orange);
+    }
+    .room-card.selected {
+        border-color: var(--brand-orange);
+        background: rgba(255, 145, 66, 0.02);
+    }
+    .room-card input[type="radio"] {
+        position: absolute; opacity: 0; pointer-events: none;
+    }
+    .room-card-image {
+        width: 100%; height: 150px; background: var(--bg-input);
+        position: relative; overflow: hidden;
+        border-top-left-radius: calc(var(--radius-card) - 2px);
+        border-top-right-radius: calc(var(--radius-card) - 2px);
+    }
+    .room-card-image img {
+        width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease;
+    }
+    .room-card:hover .room-card-image img { transform: scale(1.05); }
+    .room-card-image-placeholder {
+        width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        color: var(--text-muted); font-size: 2.2rem; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    }
+    .room-card-body {
+        padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: 6px; flex: 1;
+    }
+    .room-card-title { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.3; }
+    .room-card-meta {
+        display: flex; align-items: center; gap: var(--space-3);
+        font-size: 0.78rem; color: var(--text-secondary); flex-wrap: wrap;
+    }
+    .room-card-meta i { color: var(--text-muted); margin-right: 4px; }
+
+    .facility-badge-wrapper { position: relative; display: inline-block; margin-top: 4px; align-self: flex-start; }
+    .facility-badge {
+        padding: 4px 10px; border-radius: var(--radius-pill);
+        font-size: 11px; font-weight: 600;
+        display: inline-flex; align-items: center; gap: 4px; cursor: default;
+    }
+    .facility-badge.has-facilities { background: rgba(59, 130, 246, 0.08); color: var(--brand-blue); }
+    .facility-badge.no-facilities { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); }
+    .facility-tooltip {
+        position: absolute; bottom: calc(100% + 10px); left: 50%;
+        transform: translateX(-50%) translateY(5px);
+        background: #1e293b; color: white; padding: 12px 16px; border-radius: 10px;
+        font-size: 0.8rem; font-weight: 500; min-width: 180px; max-width: 250px;
+        opacity: 0; visibility: hidden; transition: all 0.25s ease; z-index: 1000;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; text-align: left;
+    }
+    .facility-tooltip::after {
+        content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+        border: 6px solid transparent; border-top-color: #1e293b;
+    }
+    .facility-tooltip ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    .facility-tooltip li { display: flex; align-items: center; gap: 6px; white-space: normal; line-height: 1.3; }
+    .facility-tooltip li::before { content: "•"; color: var(--brand-orange); font-weight: bold; }
+    .facility-badge-wrapper:hover .facility-tooltip { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
 
     .availability-status {
         display: none; padding: var(--space-3); border-radius: var(--radius-sm);
@@ -83,24 +160,6 @@
     .availability-status.available { display: flex; background: rgba(16,185,129,0.1); color: #047857; }
     .availability-status.unavailable { display: flex; background: rgba(239,68,68,0.1); color: #b91c1c; }
     .availability-status.checking { display: flex; background: rgba(59,130,246,0.1); color: #1d4ed8; }
-
-    .facility-list {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: var(--space-2); max-height: none; overflow: visible; border: none;
-    }
-    .facility-item {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: var(--space-3); border: 1px solid var(--border-color-light);
-        border-radius: var(--radius-sm); transition: background 0.15s;
-    }
-    .facility-item:hover { background: var(--bg-hover); }
-    .facility-item.selected { background: rgba(249,115,22,0.03); border-color: var(--brand-orange); }
-    .facility-info { display: flex; align-items: center; gap: var(--space-3); flex: 1; }
-    .facility-check { width: 24px; height: 24px; cursor: pointer; }
-    .facility-name { font-weight: 600; font-size: var(--font-size-sm); }
-    .facility-desc { font-size: 11px; color: var(--text-muted); }
-    .facility-qty { width: 70px; height: 36px; text-align: center; border: 1px solid var(--border-color); border-radius: var(--radius-xs); font-size: var(--font-size-sm); }
-    .facility-qty:disabled { background: var(--bg-body); opacity: 0.5; }
 
     /* Kebutuhan Tambahan (Konsumsi / Lain-lain) */
     .additional-option {
@@ -199,9 +258,7 @@
     .mtp-btn-ok:hover { background: var(--brand-orange-dark); }
 
     @media (max-width: 991.98px) {
-        .form-content { padding: var(--space-4); }
         .form-card { grid-template-columns: 1fr; }
-        .facility-list { grid-template-columns: 1fr; }
         .form-actions { flex-direction: column-reverse; }
         .form-actions button { width: 100%; justify-content: center; }
     }
@@ -217,15 +274,30 @@
 </style>
 
 <div class="form-content">
-    <div class="form-header">
-        <div>
-            <h1>Edit Peminjaman</h1>
-            <p class="text-muted mb-0 mt-1">Perbarui detail peminjaman ruangan</p>
-        </div>
+    <div class="db-toolbar">
         <a href="{{ route('bookings.show', $booking->id) }}" class="btn-back">
             <i class="bi bi-arrow-left"></i> Kembali
         </a>
     </div>
+
+    {{-- FIX: form ini sebelumnya tidak menampilkan error validasi maupun
+         pesan gagal-simpan sama sekali. --}}
+    @if(session('error'))
+        <div class="alert-modern alert-error">
+            <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert-modern alert-error">
+            <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+            <div>
+                @foreach($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     @if($booking->status != 0 && Auth::user()->role != 1)
     <div class="status-info">
@@ -245,17 +317,52 @@
 
             <div class="form-section full-width">
                 <div class="section-title">
-                    <i class="bi bi-door-open"></i> Ruangan
+                    <i class="bi bi-door-open"></i> Pilih Ruangan
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Ruangan <span class="required">*</span></label>
-                    <select name="room_id" class="form-select" required onchange="checkAvailability()">
-                        @foreach($rooms as $room)
-                            <option value="{{ $room->id }}" {{ old('room_id', $booking->room_id) == $room->id ? 'selected' : '' }}>
-                                {{ $room->name }} (Kapasitas: {{ $room->capacity }})
-                            </option>
-                        @endforeach
-                    </select>
+                <div class="room-grid">
+                    @foreach($rooms as $room)
+                        @php
+                            $photos = $room->photos ?? collect();
+                            $hasPhoto = $photos->count() > 0;
+                            $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
+                            $isSelected = old('room_id', $booking->room_id) == $room->id;
+                        @endphp
+                        <label class="room-card {{ $isSelected ? 'selected' : '' }}">
+                            <input type="radio" name="room_id" value="{{ $room->id }}" class="room-radio" {{ $isSelected ? 'checked' : '' }} required onchange="checkAvailability()">
+                            <div class="room-card-image">
+                                @if($hasPhoto)
+                                    <img src="{{ $firstPhoto }}" alt="{{ $room->name }}" loading="lazy">
+                                @else
+                                    <div class="room-card-image-placeholder"><i class="bi bi-image"></i></div>
+                                @endif
+                            </div>
+                            <div class="room-card-body">
+                                <h3 class="room-card-title">{{ $room->name }}</h3>
+                                <div class="room-card-meta">
+                                    <span><i class="bi bi-geo-alt"></i>{{ $room->location }}</span>
+                                    <span><i class="bi bi-people"></i>{{ $room->capacity }} orang</span>
+                                </div>
+                                <div class="facility-badge-wrapper">
+                                    @if($room->facilities->count() > 0)
+                                        <span class="facility-badge has-facilities">
+                                            <i class="bi bi-tools"></i> Ada Fasilitas
+                                        </span>
+                                        <div class="facility-tooltip">
+                                            <ul>
+                                                @foreach($room->facilities as $f)
+                                                    <li>{{ $f->name }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    @else
+                                        <span class="facility-badge no-facilities">
+                                            <i class="bi bi-dash-circle"></i> Tanpa Fasilitas
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </label>
+                    @endforeach
                 </div>
             </div>
 
@@ -297,37 +404,7 @@
                 </div>
             </div>
 
-            <div class="form-section full-width">
-                <div class="section-title">
-                    <i class="bi bi-box-seam"></i> Fasilitas Tambahan
-                </div>
-
-                @if($facilities->count() > 0)
-                    <div class="facility-list">
-                        @foreach($facilities as $facility)
-                            @php
-                                $existingFacility = $bookingFacilities->where('facility_id', $facility->id)->first();
-                                $isChecked = old('facilities') ? in_array($facility->id, old('facilities')) : ($existingFacility ? true : false);
-                                $qty = old('quantities.' . $facility->id, $existingFacility ? $existingFacility->quantity : 1);
-                            @endphp
-                            <div class="facility-item {{ $isChecked ? 'selected' : '' }}">
-                                <div class="facility-info">
-                                    <input type="checkbox" name="facilities[]" value="{{ $facility->id }}" class="facility-check form-check-input" {{ $isChecked ? 'checked' : '' }} onchange="toggleFacility(this)">
-                                    <div>
-                                        <div class="facility-name">{{ $facility->name }}</div>
-                                        <div class="facility-desc">{{ $facility->storage_location }}</div>
-                                    </div>
-                                </div>
-                                <input type="number" name="quantities[]" class="facility-qty form-control" placeholder="Qty" min="1" value="{{ $qty }}" {{ !$isChecked ? 'disabled' : '' }}>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <p class="text-muted text-center py-4">Tidak ada fasilitas tersedia</p>
-                @endif
-            </div>
-
-            <div class="form-section full-width">
+            <div class="form-section">
                 <div class="section-title">
                     <i class="bi bi-tools"></i> Kebutuhan Tambahan
                 </div>
@@ -402,18 +479,6 @@
 </div>
 
 <script>
-    function toggleFacility(checkbox) {
-        const item = checkbox.closest('.facility-item');
-        const qtyInput = item.querySelector('.facility-qty');
-        if (checkbox.checked) {
-            item.classList.add('selected');
-            qtyInput.disabled = false;
-        } else {
-            item.classList.remove('selected');
-            qtyInput.disabled = true;
-        }
-    }
-
     function toggleConsumption(checkbox) {
         document.getElementById('consumptionQty').disabled = !checkbox.checked;
         if (!checkbox.checked) document.getElementById('consumptionQty').value = '';

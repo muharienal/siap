@@ -18,23 +18,12 @@ class RoomController extends Controller
      */
     public function list()
     {
+        // FIX: badge status Tersedia/Terisi dihapus dari tampilan (kartu
+        // ruangan sekarang cuma foto + nama), jadi query booking hari ini
+        // untuk menghitung $roomStatus sudah tidak diperlukan lagi.
         $rooms = Room::with(['photos', 'facilities'])->orderBy('name')->get();
 
-        $now = Carbon::now();
-        $todayBookings = Booking::whereDate('start_time', Carbon::today())
-            ->whereIn('status', [0, 1])
-            ->get();
-
-        $roomStatus = [];
-        foreach ($rooms as $room) {
-            $busy = $todayBookings->contains(function ($b) use ($room, $now) {
-                return $b->room_id === $room->id
-                    && $now->between(Carbon::parse($b->start_time), Carbon::parse($b->end_time));
-            });
-            $roomStatus[$room->id] = $busy ? 'busy' : 'available';
-        }
-
-        return view('pages.room-list', compact('rooms', 'roomStatus'));
+        return view('pages.room-list', compact('rooms'));
     }
 
     /**
@@ -141,8 +130,7 @@ class RoomController extends Controller
             'capacity' => 'required|integer|min:1',
             'location' => 'required|string|max:255',
             'status' => 'required|in:0,1',
-            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'facilities' => 'nullable|array',
+            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
             'facilities.*.active' => 'nullable',
             'facilities.*.quantity' => 'nullable|integer|min:1',
         ]);
@@ -214,7 +202,7 @@ class RoomController extends Controller
             'capacity' => 'required|integer|min:1',
             'location' => 'required|string|max:255',
             'status' => 'required|in:0,1',
-            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'photos.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
         ]);
 
         try {

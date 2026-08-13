@@ -390,6 +390,26 @@
         </a>
     </div>
 
+    {{-- FIX: form ini sebelumnya tidak menampilkan error validasi maupun
+         pesan gagal-simpan sama sekali — user tidak tahu kenapa submit-nya
+         gagal. Sekarang ditampilkan pakai komponen alert acuan. --}}
+    @if(session('error'))
+        <div class="alert-modern alert-error">
+            <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+            <span>{{ session('error') }}</span>
+        </div>
+    @endif
+    @if($errors->any())
+        <div class="alert-modern alert-error">
+            <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+            <div>
+                @foreach($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <form action="{{ route('bookings.store') }}" method="POST" id="bookingForm">
         @csrf
 

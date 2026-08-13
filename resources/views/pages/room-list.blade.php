@@ -1,7 +1,7 @@
 @extends('templates.template')
 
-@section('title', 'Ruang Meeting')
-@section('page_title', 'Ruang Meeting')
+@section('title', 'Ruang Rapat')
+@section('page_title', 'Ruang Rapat')
 
 @section('content')
 <style>
@@ -53,23 +53,11 @@
         width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
         color: var(--text-muted); font-size: 3rem; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     }
-    .room-card-status {
-        position: absolute; top: 12px; right: 12px; padding: 4px 10px;
-        border-radius: var(--radius-pill); font-size: 11px; font-weight: 700;
-        text-transform: uppercase; letter-spacing: 0.3px; backdrop-filter: blur(8px);
-    }
-    .status-available { background: rgba(16, 185, 129, 0.9); color: white; }
-    .status-busy { background: rgba(239, 68, 68, 0.9); color: white; }
 
     .room-card-body {
         padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); flex: 1;
     }
     .room-card-title { font-size: var(--font-size-md); font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.3; }
-    .room-card-meta {
-        display: flex; align-items: center; gap: var(--space-3);
-        font-size: var(--font-size-sm); color: var(--text-secondary); flex-wrap: wrap;
-    }
-    .room-card-meta i { color: var(--text-muted); margin-right: 4px; }
 
     /* Facility Badge with Tooltip */
     .facility-badge-wrapper { position: relative; display: inline-block; margin-top: var(--space-2); align-self: flex-start; }
@@ -119,7 +107,6 @@
 
 <div class="db-toolbar">
     <div></div>
-    <div class="count">{{ $rooms->count() }} ruangan</div>
 </div>
 
 @if($rooms->count() > 0)
@@ -135,16 +122,9 @@
                     @else
                         <div class="room-card-image-placeholder"><i class="bi bi-image"></i></div>
                     @endif
-                    <span class="room-card-status status-{{ $roomStatus[$room->id] }}">
-                        {{ $roomStatus[$room->id] === 'busy' ? 'Terisi' : 'Tersedia' }}
-                    </span>
                 </div>
                 <div class="room-card-body">
                     <h3 class="room-card-title">{{ $room->name }}</h3>
-                    <div class="room-card-meta">
-                        <span><i class="bi bi-geo-alt"></i>{{ $room->location }}</span>
-                        <span><i class="bi bi-people"></i>{{ $room->capacity }} orang</span>
-                    </div>
 
                     <div class="facility-badge-wrapper">
                         @if($room->facilities->count() > 0)

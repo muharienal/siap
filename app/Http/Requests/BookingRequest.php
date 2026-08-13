@@ -55,14 +55,16 @@ class BookingRequest extends FormRequest
                 'required',
                 'date',
                 'after:now',
-                function ($attribute, $value, $fail) {
-                    $this->validateTimeAvailability($attribute, $value, $fail);
-                },
             ],
             'end_time' => [
                 'required',
                 'date', 
                 'after:start_time',
+                // FIX: sebelumnya validateTimeAvailability() dipasang di
+                // KEDUA field (start_time & end_time) — kalau memang ada
+                // bentrok, $fail() terpanggil 2x dengan pesan identik,
+                // makanya pesan "Ruangan sudah dipesan..." muncul dobel.
+                // Cukup dijalankan sekali di sini.
                 function ($attribute, $value, $fail) {
                     $this->validateTimeAvailability($attribute, $value, $fail);
                 },
@@ -133,16 +135,27 @@ class BookingRequest extends FormRequest
             return;
         }
 
+        // FIX: sebelumnya di sini cuma cek status Disetujui (1), padahal
+        // cek ketersediaan live (checkAvailability, indikator hijau di
+        // form) mengecek Pending DAN Disetujui (status 0 & 1). Beda kriteria
+        // ini bisa bikin indikator bilang "tersedia" tapi submit-nya malah
+        // ditolak "sudah dipesan", atau sebaliknya. Disamakan supaya kedua
+        // pengecekan selalu sepakat.
+        //
+        // FIX LEBIH BESAR: query overlap sebelumnya pakai whereBetween di
+        // start_time DAN end_time — whereBetween di Laravel/SQL itu
+        // INKLUSIF di kedua ujungnya. Akibatnya, booking yang berakhir
+        // TEPAT jam 14:00 dianggap "bentrok" dengan booking baru yang
+        // MULAI tepat jam 14:00 juga — padahal itu cuma bersambungan,
+        // bukan tumpang tindih. Diganti rumus overlap standar & benar:
+        // dua rentang waktu tumpang tindih HANYA JIKA
+        // (mulai_lama < selesai_baru) DAN (selesai_lama > mulai_baru).
+        // Rumus ini otomatis memperbolehkan booking yang bersambungan
+        // persis di batas waktu (back-to-back).
         $query = Booking::where('room_id', $roomId)
-            ->where('status', 1) // Only check approved bookings
-            ->where(function ($query) use ($start_time, $end_time) {
-                $query->whereBetween('start_time', [$start_time, $end_time])
-                      ->orWhereBetween('end_time', [$start_time, $end_time])
-                      ->orWhere(function ($q) use ($start_time, $end_time) {
-                          $q->where('start_time', '<=', $start_time)
-                            ->where('end_time', '>=', $end_time);
-                      });
-            });
+            ->whereIn('status', [0, 1])
+            ->where('start_time', '<', $end_time)
+            ->where('end_time', '>', $start_time);
 
         // Sistem konflik prioritas: booking Priority (Sesdir/Admin) boleh
         // menembus bentrok dengan booking Reguler yang sudah ada — booking

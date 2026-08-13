@@ -11,30 +11,37 @@
 @section('content')
 {{-- BLOK INISIALISASI VARIABEL --}}
 @php
-    $totalBookingsToday = 0;
-    $totalPending = 0;
-    $totalApproved = 0;
-    $totalRejected = 0;
-    
-    if (isset($bookingSchedule) && is_array($bookingSchedule)) {
-        foreach ($bookingSchedule as $roomId => $slots) {
-            foreach ($slots as $time => $booking) {
-                if ($booking) {
-                    $totalBookingsToday++;
-                    if ($booking->status == 0) $totalPending++;
-                    elseif ($booking->status == 1) $totalApproved++;
-                    elseif ($booking->status == 2) $totalRejected++;
-                }
-            }
-        }
-    }
-    
+    // FIX: sebelumnya dihitung per SLOT 30 menit yang terisi di
+    // $bookingSchedule, bukan per booking unik — jadi 1 booking berdurasi
+    // 2 jam (4 slot) kehitung 4 kali. Sekarang dihitung dari $dayBookings
+    // (daftar booking asli hari ini), 1 booking = 1 hitungan.
+    $totalBookingsToday = isset($dayBookings) ? $dayBookings->count() : 0;
+    $totalPending = isset($dayBookings) ? $dayBookings->where('status', 0)->count() : 0;
+    $totalApproved = isset($dayBookings) ? $dayBookings->where('status', 1)->count() : 0;
+    $totalRejected = isset($dayBookings) ? $dayBookings->where('status', 2)->count() : 0;
+
+    // FIX: sebelumnya ruangan dianggap "sibuk" kalau punya booking APA
+    // SAJA hari ini (walau jadwalnya masih nanti sore) — bukan cek apakah
+    // ada rapat yang BENAR-BENAR sedang berlangsung SEKARANG. Sekarang
+    // dicek waktu saat ini ada di antara jam mulai-selesai booking yang
+    // sudah disetujui.
+    $rightNow = Carbon::now();
     $totalRoomsToday = isset($allRooms) ? $allRooms->count() : 0;
-    $busyRoomIds = isset($dayBookings) ? $dayBookings->where('status', '!=', 2)->pluck('room_id')->unique() : collect([]);
+    $busyRoomIds = isset($dayBookings)
+        ? $dayBookings->where('status', 1)->filter(function ($b) use ($rightNow) {
+            return $rightNow->between(Carbon::parse($b->start_time), Carbon::parse($b->end_time));
+        })->pluck('room_id')->unique()
+        : collect([]);
     $availableRoomsNow = max(0, $totalRoomsToday - $busyRoomIds->count());
 
     $userName = Auth::user()->full_name ?? Auth::user()->name ?? 'User';
     $selectedRoomValue = (!empty($selectedRoomIds) && !in_array('all', $selectedRoomIds)) ? $selectedRoomIds[0] : '';
+
+    // FIX: booking berstatus Ditolak sebelumnya tetap dirender di kalender
+    // (dengan pola diagonal "terkunci"), padahal ditolak berarti slot itu
+    // sebenarnya KOSONG dan bisa dipesan lagi — bukan sedang dipakai.
+    // Jadi hanya Pending & Disetujui yang ditampilkan di grid/agenda.
+    $visibleBookings = isset($dayBookings) ? $dayBookings->where('status', '!=', 2) : collect([]);
     
     $roomsData = [];
     if (isset($rooms)) {
@@ -62,7 +69,7 @@
     }
     .db-toolbar h1 {
         font-size: var(--font-size-2xl);
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-primary);
         margin: 0;
         letter-spacing: -0.02em;
@@ -192,7 +199,7 @@
     .stat-body { min-width: 0; }
     .stat-value {
         font-size: var(--font-size-2xl);
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-primary);
         line-height: 1.1;
         display: flex;
@@ -705,47 +712,112 @@
         background: var(--bg-card);
         border-right: 2px solid var(--border-color);
     }
+
+    /* ============================================================
+       ROOM HEADER — REDESIGN
+       Foto ditumpuk di atas (bulat, dengan ring tipis), nama & badge
+       kapasitas di bawahnya, semua center-aligned. Layout stacked ini
+       dipilih karena tetap simetris & rapi berapa pun panjang nama
+       ruangannya (dulu, layout foto-di-samping bikin foto "menggantung"
+       tidak sejajar begitu nama ruangan wrap ke 2 baris).
+       ============================================================ */
     .cal-room-header {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 10px;
-        border-right: 1px solid var(--border-color);
+        text-align: center;
+        gap: 8px;
+        padding: 18px 14px 16px;
+        border-right: 1px solid var(--border-color-light);
+        background: var(--bg-card);
+        transition: background var(--transition-fast);
+    }
+    .cal-room-header:hover {
         background: var(--bg-body);
     }
     .cal-room-photo {
         width: 56px; height: 56px;
-        border-radius: var(--radius-sm);
+        border-radius: 50%;
         object-fit: cover;
         cursor: pointer;
-        border: 2px solid transparent;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border: 2px solid var(--bg-card);
+        outline: 2px solid var(--border-color-light);
+        box-shadow: 0 2px 6px rgba(15,23,42,0.08);
         transition: all var(--transition-fast);
         flex-shrink: 0;
     }
-    .cal-room-photo:hover { transform: scale(1.06); border-color: var(--brand-orange); }
+    .cal-room-photo:hover {
+        outline-color: var(--brand-orange);
+        transform: scale(1.06);
+        box-shadow: 0 4px 12px rgba(249,115,22,0.18);
+    }
     .cal-room-photo-placeholder {
+        width: 56px; height: 56px;
+        border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         color: var(--text-muted);
-        font-size: 1.5rem;
-        background: var(--bg-card);
-        border: 1px dashed var(--border-color);
+        font-size: 1.3rem;
+        background: var(--bg-body);
+        outline: 2px solid var(--border-color-light);
         cursor: default;
         flex-shrink: 0;
-        width: 56px; height: 56px;
-        border-radius: var(--radius-sm);
     }
-    .cal-room-info { text-align: left; min-width: 0; }
+    .cal-room-info {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+    }
     .cal-room-name {
         font-weight: 700;
-        font-size: var(--font-size-sm);
+        font-size: 13.5px;
         color: var(--text-primary);
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: -0.01em;
+        text-transform: none;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.3;
+        max-width: 100%;
+    }
+    .cal-room-capacity {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        width: fit-content;
+        font-size: 10.5px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--bg-body);
+        border: 1px solid var(--border-color-light);
+        padding: 2px 9px;
+        border-radius: var(--radius-pill);
+    }
+    .cal-room-header:hover .cal-room-capacity {
+        border-color: var(--border-color);
+    }
+    .cal-room-meta-row {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        max-width: 100%;
+    }
+    .cal-room-location {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        max-width: 100%;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--text-muted);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .cal-room-capacity { font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px; }
+    .cal-room-location i { color: var(--brand-orange); flex-shrink: 0; font-size: 9.5px; }
 
     .cal-grid-body-wrapper { position: relative; min-width: fit-content; }
     .cal-grid-body { display: grid; }
@@ -833,55 +905,65 @@
     .cal-event {
         position: absolute;
         left: 6px; right: 6px;
-        border-radius: 10px;
-        padding: 8px 10px 8px 12px;
+        border-radius: 12px;
+        padding: 9px 11px 9px 13px;
         z-index: 2;
         cursor: pointer;
         overflow: hidden;
         border: 1px solid transparent;
-        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
-        transition: box-shadow 0.18s ease, transform 0.18s ease;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 4px;
+        backdrop-filter: saturate(1.1);
     }
+    .cal-event.is-readonly { cursor: default; }
+    .cal-event.is-readonly:hover { box-shadow: 0 1px 4px rgba(15,23,42,0.05); transform: none; }
     .cal-event::before {
         content: '';
         position: absolute;
         left: 0; top: 0; bottom: 0;
         width: 4px;
-        border-radius: 10px 0 0 10px;
+        border-radius: 12px 0 0 12px;
         background: var(--event-accent, var(--brand-orange));
     }
     .cal-event:hover {
-        box-shadow: 0 10px 24px rgba(15,23,42,0.16);
-        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 12px 28px rgba(15,23,42,0.14);
+        transform: translateY(-2px) scale(1.012);
         z-index: 5;
     }
     .cal-event-top {
         display: flex;
-        align-items: center;
-        gap: 6px;
+        align-items: flex-start;
+        gap: 7px;
         min-width: 0;
     }
     .cal-event-avatar {
-        width: 20px; height: 20px;
+        width: 21px; height: 21px;
         border-radius: 50%;
         flex-shrink: 0;
         display: flex; align-items: center; justify-content: center;
-        font-size: 10px; font-weight: 800;
+        font-size: 10px; font-weight: 700;
         color: #fff;
+        box-shadow: 0 0 0 2px rgba(255,255,255,0.7);
     }
     .cal-event-title {
         font-weight: 700;
         font-size: var(--font-size-sm);
-        white-space: nowrap;
+        color: var(--text-primary);
+        white-space: normal;
         overflow: hidden;
-        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-height: 1.28;
         min-width: 0;
+        letter-spacing: -0.01em;
+        word-break: break-word;
     }
     .cal-event-sub {
-        font-size: var(--font-size-xs);
+        font-size: 11px;
         color: var(--text-secondary);
         white-space: nowrap;
         overflow: hidden;
@@ -889,7 +971,7 @@
         font-weight: 500;
     }
     .cal-event-time {
-        font-size: 10px;
+        font-size: 10.5px;
         color: var(--text-muted);
         font-weight: 600;
         display: flex;
@@ -900,15 +982,21 @@
     .cal-event-status {
         display: inline-flex;
         align-items: center;
-        gap: 3px;
-        font-size: 9px;
-        font-weight: 800;
+        gap: 5px;
+        font-size: 9.5px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
-        padding: 2px 7px;
+        letter-spacing: 0.3px;
+        padding: 3px 8px 3px 6px;
         border-radius: 999px;
         width: fit-content;
         margin-top: auto;
+        background: rgba(255,255,255,0.6);
+    }
+    .cal-event-status::before {
+        content: '';
+        width: 5px; height: 5px; border-radius: 50%;
+        background: currentColor; flex-shrink: 0;
     }
     .cal-event-priority-flag {
         position: absolute;
@@ -992,6 +1080,8 @@
         transition: transform 0.15s ease;
     }
     .agenda-item:active { transform: scale(0.98); }
+    .agenda-item.is-readonly { cursor: default; }
+    .agenda-item.is-readonly:active { transform: none; }
     .agenda-item-time {
         flex-shrink: 0;
         width: 46px;
@@ -1009,13 +1099,19 @@
         font-size: 14px;
         font-weight: 700;
         color: var(--text-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 5px;
+        line-height: 1.3;
     }
+    .agenda-item-title .title-text {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        word-break: break-word;
+    }
+    .agenda-item-title i { margin-top: 3px; flex-shrink: 0; }
     .agenda-item-sub {
         font-size: 12px;
         color: var(--text-secondary);
@@ -1027,16 +1123,26 @@
     }
     .agenda-item-status {
         flex-shrink: 0;
-        font-size: 10px;
-        font-weight: 800;
+        font-size: 9.5px;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        padding: 4px 9px;
+        padding: 4px 9px 4px 7px;
         border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(255,255,255,0.6);
+    }
+    .agenda-item-status::before {
+        content: '';
+        width: 5px; height: 5px; border-radius: 50%;
+        background: currentColor; flex-shrink: 0;
     }
     .agenda-item-booked {
         border-left: 4px solid var(--event-accent, var(--brand-orange));
-        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+        border-radius: 12px;
     }
     .agenda-item-available {
         border: 1.5px dashed var(--brand-green);
@@ -1050,31 +1156,73 @@
     }
     .agenda-item-past .agenda-item-empty-label { color: var(--text-muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
 
-    /* Lightbox */
+    /* ============================================================
+       LIGHTBOX FOTO — desain disamakan dengan halaman Ruang Rapat
+       (publik) & Manajemen Ruang Rapat (admin)
+       ============================================================ */
     .gallery-lightbox {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.92);
+        background: rgba(10, 14, 25, 0.94);
+        backdrop-filter: blur(6px);
         z-index: 9999;
         justify-content: center;
         align-items: center;
         flex-direction: column;
-        animation: fadeIn 0.3s ease;
+        padding: 24px;
+        animation: lightboxFadeIn 0.25s ease;
     }
     .gallery-lightbox.active { display: flex; }
-    .gallery-lightbox .lightbox-content { position: relative; max-width: 90%; max-height: 85%; display: flex; flex-direction: column; align-items: center; }
-    .gallery-lightbox .lightbox-content img { max-width: 85vw; max-height: 75vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-    .gallery-lightbox .close-lightbox { position: absolute; top: -40px; right: -10px; font-size: 2.5rem; color: #fff; background: none; border: none; cursor: pointer; line-height: 1; z-index: 10; }
-    .gallery-lightbox .nav-lightbox { position: absolute; top: 50%; transform: translateY(-50%); font-size: 2rem; color: #fff; background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .gallery-lightbox .nav-lightbox:hover { background: rgba(255,255,255,0.2); }
-    .gallery-lightbox .nav-lightbox.prev { left: 20px; }
-    .gallery-lightbox .nav-lightbox.next { right: 20px; }
-    .gallery-lightbox .lightbox-caption { margin-top: 16px; color: #fff; font-size: var(--font-size-sm); background: rgba(0,0,0,0.3); padding: var(--space-2) var(--space-4); border-radius: var(--radius-pill); max-width: 80%; text-align: center; }
-    .gallery-lightbox .lightbox-counter { margin-top: 8px; color: rgba(255,255,255,0.6); font-size: var(--font-size-sm); }
-    .gallery-lightbox .lightbox-thumbnails { display: flex; gap: 8px; margin-top: 12px; max-width: 80%; overflow-x: auto; padding: 4px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); }
-    .gallery-lightbox .lightbox-thumbnails img { width: 50px; height: 50px; object-fit: cover; border-radius: var(--radius-xs); cursor: pointer; border: 2px solid transparent; }
-    .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); }
+    @keyframes lightboxFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .gallery-lightbox .lightbox-content {
+        position: relative; width: 100%; max-width: 900px;
+        display: flex; flex-direction: column; align-items: center;
+        animation: lightboxScaleIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes lightboxScaleIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+    .gallery-lightbox .lightbox-image-wrap {
+        width: 100%; border-radius: 20px; overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5); background: #0f172a;
+        display: flex; align-items: center; justify-content: center; max-height: 72vh;
+    }
+    .gallery-lightbox .lightbox-image-wrap img { width: 100%; max-height: 72vh; object-fit: contain; display: block; }
+    .gallery-lightbox .close-lightbox {
+        position: absolute; top: -52px; right: 0; width: 40px; height: 40px; border-radius: 50%;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        color: #fff; font-size: 1.2rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+    }
+    .gallery-lightbox .close-lightbox:hover { background: rgba(255,255,255,0.2); }
+    .gallery-lightbox .nav-lightbox {
+        position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        color: #fff; font-size: 1.1rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .gallery-lightbox .nav-lightbox:hover { background: rgba(255,255,255,0.22); transform: translateY(-50%) scale(1.06); }
+    .gallery-lightbox .nav-lightbox.prev { left: -20px; }
+    .gallery-lightbox .nav-lightbox.next { right: -20px; }
+    .gallery-lightbox .lightbox-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
+    .gallery-lightbox .lightbox-caption {
+        color: #fff; font-size: 0.9rem; font-weight: 600;
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+        padding: 7px 18px; border-radius: 999px;
+    }
+    .gallery-lightbox .lightbox-counter { color: rgba(255,255,255,0.5); font-size: 0.78rem; font-weight: 600; }
+    .gallery-lightbox .lightbox-thumbnails { display: flex; gap: 8px; margin-top: 4px; max-width: 100%; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+    .gallery-lightbox .lightbox-thumbnails::-webkit-scrollbar { display: none; }
+    .gallery-lightbox .lightbox-thumbnails img {
+        width: 54px; height: 54px; object-fit: cover; border-radius: 10px; cursor: pointer;
+        border: 2px solid transparent; opacity: 0.55; transition: all 0.2s; flex-shrink: 0;
+    }
+    .gallery-lightbox .lightbox-thumbnails img:hover { opacity: 0.85; }
+    .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); opacity: 1; }
+    @media (max-width: 767.98px) {
+        .gallery-lightbox .nav-lightbox.prev { left: 4px; }
+        .gallery-lightbox .nav-lightbox.next { right: 4px; }
+        .gallery-lightbox .close-lightbox { top: 4px; right: 4px; background: rgba(0,0,0,0.45); }
+    }
 
     /* Loading */
     .db-ajax-loading .schedule-card,
@@ -1100,9 +1248,9 @@
         .db-toolbar .actions .btn-primary-sm { flex: 1; justify-content: center; }
         .schedule-card .card-header .title .date-info { display: none; }
         .cal-time-col, .cal-time-header { min-width: 60px !important; }
-        .cal-room-header, .cal-room-col { min-width: 180px !important; }
+        .cal-room-header, .cal-room-col { min-width: 150px !important; }
         .cal-room-photo, .cal-room-photo-placeholder { width: 48px; height: 48px; }
-        .cal-room-name { font-size: var(--font-size-xs); }
+        .cal-room-name { font-size: 12.5px; }
         .schedule-card .card-body { max-height: 500px; }
     }
 
@@ -1118,8 +1266,8 @@
         .stat-card { padding: var(--space-4); gap: var(--space-3); }
         .stat-card .stat-icon { width: 44px; height: 44px; font-size: 1.2rem; }
         .stat-card .stat-value { font-size: var(--font-size-xl); }
-        .cal-room-header, .cal-room-col { min-width: 150px !important; }
-        .cal-room-photo, .cal-room-photo-placeholder { width: 40px; height: 40px; }
+        .cal-room-header, .cal-room-col { min-width: 130px !important; }
+        .cal-room-photo, .cal-room-photo-placeholder { width: 42px; height: 42px; }
         .cal-event-title, .cal-event-sub { font-size: 11px; }
         .schedule-legend { gap: var(--space-3); padding: var(--space-3); }
         .db-toolbar h1 { font-size: var(--font-size-xl); }
@@ -1225,7 +1373,7 @@
                     labels: {!! json_encode($roomUsageStats->pluck('name')) !!},
                     datasets: [{
                         data: {!! json_encode($roomUsageStats->pluck('approved_count')) !!},
-                        backgroundColor: '#f97316',
+                        backgroundColor: '#FF9142',
                         borderRadius: 6,
                         maxBarThickness: 36
                     }]
@@ -1413,7 +1561,10 @@
                         @endif
                         <div class="cal-room-info">
                             <div class="cal-room-name">{{ $room->name }}</div>
-                            <div class="cal-room-capacity"><i class="bi bi-people"></i> Kapasitas {{ $room->capacity }}</div>
+                            <div class="cal-room-meta-row">
+                                <span class="cal-room-capacity"><i class="bi bi-people-fill"></i> {{ $room->capacity }} orang</span>
+                                <span class="cal-room-location"><i class="bi bi-geo-alt-fill"></i> {{ $room->location }}</span>
+                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -1458,8 +1609,8 @@
                                     @endif
                                 @endforeach
 
-                                @if(isset($dayBookings))
-                                    @foreach($dayBookings->where('room_id', $room->id) as $booking)
+                                @if(isset($visibleBookings))
+                                    @foreach($visibleBookings->where('room_id', $room->id) as $booking)
                                         @php
                                             $bStart = Carbon::parse($booking->start_time);
                                             $bEnd = Carbon::parse($booking->end_time);
@@ -1471,11 +1622,21 @@
                                             $bookerName = $booking->user->full_name ?? 'Unknown';
                                             $initial = strtoupper(mb_substr($bookerName, 0, 1));
                                             $isCompact = $heightPx < 52;
+                                            // FIX: dulu semua kotak jadwal bisa diklik dan mengarah ke
+                                            // halaman detail, walau ujung-ujungnya kena 403 kalau bukan
+                                            // booking sendiri. Sekarang klik cuma aktif untuk booking
+                                            // milik sendiri atau kalau yang lihat admin — booking orang
+                                            // lain tetap kelihatan (untuk koordinasi jadwal ruangan),
+                                            // tapi memang tidak bisa diklik sama sekali.
+                                            $canOpen = Auth::user()->role == 1 || $booking->user_id == Auth::id();
                                         @endphp
-                                        <div class="cal-event {{ $isCompact ? 'is-compact' : '' }}" role="button" tabindex="0"
-                                             onclick="showBookingDetails({{ $booking->id }})"
-                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $booking->id }});}"
-                                             aria-label="Detail booking {{ $booking->purpose }}"
+                                        <div class="cal-event {{ $isCompact ? 'is-compact' : '' }} {{ !$canOpen ? 'is-readonly' : '' }}"
+                                             @if($canOpen)
+                                                 role="button" tabindex="0"
+                                                 onclick="showBookingDetails({{ $booking->id }})"
+                                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $booking->id }});}"
+                                                 aria-label="Detail booking {{ $booking->purpose }}"
+                                             @endif
                                              title="{{ $booking->purpose }} — {{ $bookerName }} ({{ $colors['label'] }})"
                                              style="top: {{ $topPx }}px; height: {{ $heightPx }}px; background: {{ $colors['bg'] }}; --event-accent: {{ $colors['border'] }};">
                                             @if($booking->booking_type === 'Priority' && Auth::user()->role == 1)
@@ -1485,9 +1646,9 @@
                                             @endif
                                             <div class="cal-event-top">
                                                 <span class="cal-event-avatar" style="background: {{ $colors['border'] }};">{{ $initial }}</span>
-                                                <span class="cal-event-title" style="color: {{ $colors['text'] }};">{{ Str::limit($booking->purpose, 24) }}</span>
+                                                <span class="cal-event-title" style="color: {{ $colors['text'] }};">{{ Str::limit($booking->purpose, 60) }}</span>
                                             </div>
-                                            <div class="cal-event-sub">{{ $bookerName }}</div>
+                                            <div class="cal-event-sub"><i class="bi bi-person-fill" style="font-size:9px;opacity:0.6;margin-right:3px;"></i>{{ $bookerName }}</div>
                                             <div class="cal-event-time"><i class="bi bi-clock"></i> {{ $bStart->format('H:i') }}–{{ $bEnd->format('H:i') }}</div>
                                             <span class="cal-event-status" style="color: {{ $colors['text'] }}; background: {{ $colors['chipBg'] }};">{{ $colors['label'] }}</span>
                                         </div>
@@ -1523,7 +1684,7 @@
                         @if($isWeekend)
                             <div class="agenda-empty"><i class="bi bi-calendar-x"></i> Libur — tidak ada jadwal hari ini</div>
                         @else
-                            @php $roomBookings = $dayBookings->where('room_id', $room->id)->sortBy('start_time'); @endphp
+                            @php $roomBookings = $visibleBookings->where('room_id', $room->id)->sortBy('start_time'); @endphp
                             <div class="agenda-list">
                                 @foreach($timeSlots as $timeSlot)
                                     @php
@@ -1544,16 +1705,20 @@
                                             $bEnd = Carbon::parse($slotBooking->end_time);
                                             $colors = $statusColors[$slotBooking->status] ?? $statusColors[0];
                                             $bookerName = $slotBooking->user->full_name ?? 'Unknown';
+                                            $canOpenSlot = Auth::user()->role == 1 || $slotBooking->user_id == Auth::id();
                                         @endphp
-                                        <div class="agenda-item agenda-item-booked" role="button" tabindex="0"
-                                             onclick="showBookingDetails({{ $slotBooking->id }})"
-                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $slotBooking->id }});}"
+                                        <div class="agenda-item agenda-item-booked {{ !$canOpenSlot ? 'is-readonly' : '' }}"
+                                             @if($canOpenSlot)
+                                                 role="button" tabindex="0"
+                                                 onclick="showBookingDetails({{ $slotBooking->id }})"
+                                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $slotBooking->id }});}"
+                                             @endif
                                              style="--event-accent: {{ $colors['border'] }}; background: {{ $colors['bg'] }};">
                                             <div class="agenda-item-time">{{ $bStart->format('H:i') }}<span>{{ $bEnd->format('H:i') }}</span></div>
                                             <div class="agenda-item-body">
                                                 <div class="agenda-item-title">
                                                     @if($slotBooking->booking_type === 'Priority' && Auth::user()->role == 1)<i class="bi bi-star-fill" style="color:#f97316;"></i>@endif
-                                                    {{ Str::limit($slotBooking->purpose, 42) }}
+                                                    <span class="title-text">{{ Str::limit($slotBooking->purpose, 80) }}</span>
                                                 </div>
                                                 <div class="agenda-item-sub"><i class="bi bi-person"></i> {{ $bookerName }}</div>
                                             </div>
@@ -1590,7 +1755,6 @@
         <span class="legend-item"><span class="dot available"></span> Tersedia</span>
         <span class="legend-item"><span class="dot approved"></span> Disetujui</span>
         <span class="legend-item"><span class="dot pending"></span> Pending</span>
-        <span class="legend-item"><span class="dot rejected"></span> Ditolak</span>
         <span class="legend-item"><span class="dot past"></span> Waktu Lewat</span>
         @if($isToday && !$isWeekend)
             <span class="legend-item"><span class="dot current"></span> Waktu sekarang</span>
@@ -1640,16 +1804,20 @@
     </div>
 </div>
 
-<!-- LIGHTBOX -->
+{{-- LIGHTBOX FOTO --}}
 <div class="gallery-lightbox" id="lightbox">
     <div class="lightbox-content">
-        <button class="close-lightbox" onclick="closeLightbox()" aria-label="Tutup">&times;</button>
-        <button class="nav-lightbox prev" onclick="navigateLightbox(-1)" aria-label="Sebelumnya">&#10094;</button>
-        <button class="nav-lightbox next" onclick="navigateLightbox(1)" aria-label="Selanjutnya">&#10095;</button>
-        <img id="lightboxImage" src="" alt="Foto Ruangan">
-        <div class="lightbox-caption" id="lightboxCaption"></div>
-        <div class="lightbox-counter" id="lightboxCounter"></div>
-        <div class="lightbox-thumbnails" id="lightboxThumbnails"></div>
+        <button class="close-lightbox" onclick="closeLightbox()" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+        <button class="nav-lightbox prev" id="lightboxPrev" onclick="navigateLightbox(-1)" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <button class="nav-lightbox next" id="lightboxNext" onclick="navigateLightbox(1)" aria-label="Selanjutnya"><i class="bi bi-chevron-right"></i></button>
+        <div class="lightbox-image-wrap">
+            <img id="lightboxImage" src="" alt="Foto Ruangan">
+        </div>
+        <div class="lightbox-footer">
+            <div class="lightbox-caption" id="lightboxCaption"></div>
+            <div class="lightbox-counter" id="lightboxCounter"></div>
+            <div class="lightbox-thumbnails" id="lightboxThumbnails"></div>
+        </div>
     </div>
 </div>
 
@@ -1672,39 +1840,45 @@
     setInterval(updateLiveDateTime, 1000);
     updateLiveDateTime();
 
-    // GALERI LIGHTBOX
+    // GALERI LIGHTBOX — desain disamakan dengan halaman Ruang Rapat & Manajemen Ruang Rapat
     var roomsData = [];
     try { roomsData = JSON.parse(document.getElementById('roomsDataJson').textContent); } catch (e) { roomsData = []; }
     var currentPhotoIndex = 0;
     var currentPhotos = [];
+    var currentRoomName = '';
 
     window.openGallery = function (roomId) {
         var room = roomsData.find(function (r) { return r.id == roomId; });
         if (!room || !room.photos || room.photos.length === 0) return;
         currentPhotos = room.photos;
         currentPhotoIndex = 0;
-        updateLightbox(room.name);
+        currentRoomName = room.name || '';
+        updateLightbox();
         document.getElementById('lightbox').classList.add('active');
         document.body.style.overflow = 'hidden';
     };
 
-    function updateLightbox(roomName) {
-        var img = document.getElementById('lightboxImage');
-        var caption = document.getElementById('lightboxCaption');
-        var counter = document.getElementById('lightboxCounter');
+    function updateLightbox() {
+        document.getElementById('lightboxImage').src = currentPhotos[currentPhotoIndex];
+        document.getElementById('lightboxImage').alt = currentRoomName || 'Foto Ruangan';
+        document.getElementById('lightboxCaption').textContent = currentRoomName;
+        document.getElementById('lightboxCounter').textContent = (currentPhotoIndex + 1) + ' dari ' + currentPhotos.length;
+
+        var multi = currentPhotos.length > 1;
+        document.getElementById('lightboxPrev').style.display = multi ? 'flex' : 'none';
+        document.getElementById('lightboxNext').style.display = multi ? 'flex' : 'none';
+
         var thumbs = document.getElementById('lightboxThumbnails');
-        var photo = currentPhotos[currentPhotoIndex];
-        if (photo) { img.src = photo; img.alt = roomName || 'Foto Ruangan'; }
-        caption.textContent = (roomName || '') + ' - ' + (currentPhotoIndex + 1) + '/' + currentPhotos.length;
-        counter.textContent = (currentPhotoIndex + 1) + ' dari ' + currentPhotos.length;
         thumbs.innerHTML = '';
-        currentPhotos.forEach(function (p, idx) {
-            var thumb = document.createElement('img');
-            thumb.src = p; thumb.alt = 'Thumbnail ' + (idx + 1);
-            thumb.className = idx === currentPhotoIndex ? 'active' : '';
-            thumb.onclick = function () { currentPhotoIndex = idx; updateLightbox(roomName); };
-            thumbs.appendChild(thumb);
-        });
+        if (multi) {
+            currentPhotos.forEach(function (p, idx) {
+                var thumb = document.createElement('img');
+                thumb.src = p; thumb.alt = 'Thumbnail ' + (idx + 1);
+                thumb.className = idx === currentPhotoIndex ? 'active' : '';
+                thumb.onclick = function () { currentPhotoIndex = idx; updateLightbox(); };
+                thumbs.appendChild(thumb);
+            });
+        }
     }
 
     window.closeLightbox = function () {
@@ -1723,6 +1897,9 @@
         if (e.key === 'Escape') closeLightbox();
         else if (e.key === 'ArrowLeft') navigateLightbox(-1);
         else if (e.key === 'ArrowRight') navigateLightbox(1);
+    });
+    document.getElementById('lightbox').addEventListener('click', function (e) {
+        if (e.target === this) closeLightbox();
     });
 
     // AJAX LOADER
@@ -1907,7 +2084,6 @@
             });
             var si = hours.indexOf(t.h);
             if (si !== -1) { var ha = ((si - offset) * step - 90) * Math.PI / 180; setHand(C + 35 * Math.cos(ha), C + 35 * Math.sin(ha)); }
-            document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' ? 'Pilih Jam Mulai (07-16)' : 'Pilih Jam Selesai (07-16)';
         } else {
             [0, 30].forEach(function (m, i) {
                 var a = (i * 180 - 90) * Math.PI / 180;
@@ -1921,7 +2097,6 @@
             });
             var sm = [0, 30].indexOf(t.m);
             if (sm !== -1) { var ma = (sm * 180 - 90) * Math.PI / 180; setHand(C + 35 * Math.cos(ma), C + 35 * Math.sin(ma)); }
-            document.getElementById('mtpModeHint').textContent = mtpState.activeField === 'start' ? 'Pilih Menit Mulai (00/30)' : 'Pilih Menit Selesai (00/30)';
         }
     }
     function setHand(x, y) { document.getElementById('mtpHand').setAttribute('x2', x); document.getElementById('mtpHand').setAttribute('y2', y); }

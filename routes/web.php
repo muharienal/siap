@@ -91,6 +91,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        // Digital Signage (tampilan TV depan ruangan)
+        Route::get('/signage', [App\Http\Controllers\SignageController::class, 'index'])->name('signage.index');
+        Route::post('/signage-all', [App\Http\Controllers\SignageController::class, 'saveAll'])->name('signage.save-all');
+        Route::post('/signage-all/regenerate', [App\Http\Controllers\SignageController::class, 'regenerateAllToken'])->name('signage.regenerate-all');
+        Route::post('/signage/{room}', [App\Http\Controllers\SignageController::class, 'save'])->name('signage.save');
+        Route::post('/signage/{room}/regenerate', [App\Http\Controllers\SignageController::class, 'regenerateToken'])->name('signage.regenerate');
     });
 
     // ========== END SETTINGS ==========
@@ -100,14 +107,22 @@ Route::middleware(['auth'])->group(function () {
     Route::post('complaints/{complaint}/respond', [App\Http\Controllers\ComplaintController::class, 'respond'])->name('complaints.respond');
 
     // Booking routes
-    Route::resource('bookings', App\Http\Controllers\BookingController::class);
+    // FIX: rute literal (export, room-schedule) HARUS didaftarkan SEBELUM
+    // Route::resource('bookings', ...) — resource itu otomatis membuat
+    // GET /bookings/{booking} (halaman detail) yang sifatnya wildcard, dan
+    // Laravel mencocokkan rute berdasarkan urutan pendaftaran. Kalau
+    // resource didaftarkan lebih dulu, "export"/"room-schedule" akan
+    // "ketangkap" sebagai {booking} (dianggap ID), lalu gagal dicari di
+    // database → 404. Ini sebabnya tombol Export selama ini tidak berfungsi.
     Route::post('bookings/check-availability', [App\Http\Controllers\BookingController::class, 'checkAvailability'])->name('bookings.check-availability');
     Route::get('bookings/room-schedule', [App\Http\Controllers\BookingController::class, 'roomDaySchedule'])->name('bookings.room-schedule');
+    Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
+    Route::get('bookings/export', [App\Http\Controllers\BookingController::class, 'export'])->name('bookings.export');
+
+    Route::resource('bookings', App\Http\Controllers\BookingController::class);
     Route::patch('bookings/{booking}/approve', [App\Http\Controllers\BookingController::class, 'approve'])->name('bookings.approve');
     Route::patch('bookings/{booking}/reject', [App\Http\Controllers\BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('bookings/{booking}/relocate', [App\Http\Controllers\BookingController::class, 'relocate'])->name('bookings.relocate');
-    Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
-    Route::get('bookings/export', [App\Http\Controllers\BookingController::class, 'export'])->name('bookings.export');
 
     // Notification routes
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
@@ -121,3 +136,6 @@ Route::middleware(['auth'])->group(function () {
 Route::get('booking/meet/{code}', [App\Http\Controllers\BookingController::class, 'attendMeeting'])->name('attendance.meet');
 Route::post('booking/meet/{code}', [App\Http\Controllers\BookingController::class, 'submitAttendance'])->name('attendance.submit');
 Route::get('attendance/success/{code}', [App\Http\Controllers\BookingController::class, 'attendanceSuccess'])->name('attendance.success');
+
+// Digital Signage — halaman TV publik, tanpa login, diakses lewat token rahasia
+Route::get('signage/{token}', [App\Http\Controllers\SignageController::class, 'show'])->name('signage.show');

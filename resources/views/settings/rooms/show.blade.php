@@ -340,7 +340,85 @@
         .d-flex.gap-2 { flex-direction: column; }
         .d-flex.gap-2 > * { width: 100%; }
     }
+    /* ============================================================
+       LIGHTBOX FOTO — konsisten dengan halaman Ruang Rapat (publik)
+       ============================================================ */
+    .gallery-lightbox {
+        display: none; position: fixed; inset: 0;
+        background: rgba(10, 14, 25, 0.94); backdrop-filter: blur(6px);
+        z-index: 9999; align-items: center; justify-content: center;
+        flex-direction: column; padding: 24px;
+        animation: lightboxFadeIn 0.25s ease;
+    }
+    .gallery-lightbox.active { display: flex; }
+    @keyframes lightboxFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .gallery-lightbox .lightbox-content {
+        position: relative; width: 100%; max-width: 900px;
+        display: flex; flex-direction: column; align-items: center;
+        animation: lightboxScaleIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes lightboxScaleIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+    .gallery-lightbox .lightbox-image-wrap {
+        width: 100%; border-radius: 20px; overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.5); background: #0f172a;
+        display: flex; align-items: center; justify-content: center; max-height: 72vh;
+    }
+    .gallery-lightbox .lightbox-image-wrap img { width: 100%; max-height: 72vh; object-fit: contain; display: block; }
+    .gallery-lightbox .close-lightbox {
+        position: absolute; top: -52px; right: 0; width: 40px; height: 40px; border-radius: 50%;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        color: #fff; font-size: 1.2rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+    }
+    .gallery-lightbox .close-lightbox:hover { background: rgba(255,255,255,0.2); }
+    .gallery-lightbox .nav-lightbox {
+        position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        color: #fff; font-size: 1.1rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .gallery-lightbox .nav-lightbox:hover { background: rgba(255,255,255,0.22); transform: translateY(-50%) scale(1.06); }
+    .gallery-lightbox .nav-lightbox.prev { left: -20px; }
+    .gallery-lightbox .nav-lightbox.next { right: -20px; }
+    .gallery-lightbox .lightbox-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
+    .gallery-lightbox .lightbox-caption {
+        color: #fff; font-size: 0.9rem; font-weight: 600;
+        background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+        padding: 7px 18px; border-radius: 999px;
+    }
+    .gallery-lightbox .lightbox-counter { color: rgba(255,255,255,0.5); font-size: 0.78rem; font-weight: 600; }
+    .gallery-lightbox .lightbox-thumbnails { display: flex; gap: 8px; margin-top: 4px; max-width: 100%; overflow-x: auto; padding: 6px; scrollbar-width: none; }
+    .gallery-lightbox .lightbox-thumbnails::-webkit-scrollbar { display: none; }
+    .gallery-lightbox .lightbox-thumbnails img {
+        width: 54px; height: 54px; object-fit: cover; border-radius: 10px; cursor: pointer;
+        border: 2px solid transparent; opacity: 0.55; transition: all 0.2s; flex-shrink: 0;
+    }
+    .gallery-lightbox .lightbox-thumbnails img:hover { opacity: 0.85; }
+    .gallery-lightbox .lightbox-thumbnails img.active { border-color: var(--brand-orange); opacity: 1; }
+    @media (max-width: 767.98px) {
+        .gallery-lightbox .nav-lightbox.prev { left: 4px; }
+        .gallery-lightbox .nav-lightbox.next { right: 4px; }
+        .gallery-lightbox .close-lightbox { top: 4px; right: 4px; background: rgba(0,0,0,0.45); }
+    }
+
+    .gallery-item img { cursor: pointer; }
 </style>
+
+{{-- FIX: fallback non-AJAX pada update() redirect ke sini dengan
+     session('success')/session('error'), tapi sebelumnya tidak pernah
+     ditampilkan. --}}
+@if(session('success'))
+    <div class="alert-modern alert-success">
+        <i class="bi bi-check-circle-fill alert-modern-icon"></i>
+        <span>{{ session('success') }}</span>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <span>{{ session('error') }}</span>
+    </div>
+@endif
 
 <div class="db-toolbar">
     <a href="{{ route('settings.rooms.index') }}" class="btn-back">
@@ -363,7 +441,6 @@
 <div class="room-hero-card">
     <div class="room-hero-text">
         <h1 class="room-title">{{ $room->name }}</h1>
-        <p class="room-hero-description">{{ $room->location }} &middot; Kapasitas {{ $room->capacity }} orang</p>
     </div>
 </div>
 
@@ -390,7 +467,7 @@
                              It is now a plain button wired to deletePhoto() via fetch(),
                              consistent with every other AJAX action in this page. --}}
                         <div class="gallery-item" data-photo-id="{{ $photo->id }}">
-                            <img src="{{ $photo->photo_url }}" alt="Foto {{ $room->name }}">
+                            <img src="{{ $photo->photo_url }}" alt="Foto {{ $room->name }}" onclick="openLightbox({{ $loop->index }})">
                             <button type="button" class="delete-photo-btn" title="Hapus Foto" onclick="deletePhoto({{ $photo->id }}, this)">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -532,7 +609,7 @@
                 <div class="upload-zone" id="dropzoneUpload" onclick="document.getElementById('fileInputUpload').click()">
                     <i class="bi bi-cloud-arrow-up upload-icon"></i>
                     <div class="upload-text">Click To Upload</div>
-                    <div class="upload-subtext">atau drag & drop file kesini (JPG, PNG, Max 2MB)</div>
+                    <div class="upload-subtext">atau drag & drop file kesini (JPG, PNG, Max 10MB)</div>
                     <input type="file" name="photos[]" id="fileInputUpload" multiple accept="image/*" style="display: none;">
                 </div>
                 <div class="uploaded-files-list" id="uploadedFilesListUpload"></div>
@@ -691,10 +768,18 @@
 
         btnEl.disabled = true;
 
+        // FIX: sebelumnya pakai method: 'DELETE' murni — banyak konfigurasi
+        // server produksi (shared hosting, proxy, mod_security) memblokir
+        // HTTP method DELETE asli sebelum sempat sampai ke Laravel, jadi
+        // yang balik malah halaman error HTML dari server, bukan JSON dari
+        // aplikasi (muncul sebagai "Unexpected token '<'" karena JS gagal
+        // parse HTML sebagai JSON). Diganti POST + header override method,
+        // cara standar Laravel yang didukung praktis semua hosting.
         fetch(routeDeletePhoto, {
-            method: 'DELETE',
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-HTTP-Method-Override': 'DELETE',
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -702,6 +787,14 @@
             body: JSON.stringify({ photo_id: photoId })
         })
         .then(r => {
+            const contentType = r.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                // Server tidak balas JSON sama sekali (misal error 500/419
+                // dari web server, bukan dari aplikasi) — jangan coba parse
+                // JSON (bakal error teknis membingungkan), tampilkan pesan
+                // yang jelas ke user saja.
+                throw { message: 'Server tidak merespons dengan benar (kode ' + r.status + '). Coba muat ulang halaman lalu ulangi.' };
+            }
             if (!r.ok) return r.json().then(err => { throw err; });
             return r.json();
         })
@@ -967,9 +1060,10 @@
             for (const orig of originalFacilities) {
                 if (!tempFacilities.some(t => t.id === orig.id)) {
                     let res = await fetch(facilityDetachUrl(orig.id), {
-                        method: 'DELETE',
+                        method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-HTTP-Method-Override': 'DELETE',
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
                         }
@@ -1005,9 +1099,10 @@
                 } else if (orig.quantity !== temp.quantity) {
                     // Update qty
                     let res = await fetch(facilityUpdateUrl(temp.id), {
-                        method: 'PUT',
+                        method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-HTTP-Method-Override': 'PUT',
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json',
                             'Content-Type': 'application/json'
@@ -1036,5 +1131,84 @@
             saveBtn.innerHTML = '<i class="bi bi-save me-1"></i> Simpan Perubahan';
         }
     }
+
+    // ============================================================
+    // LIGHTBOX FOTO — konsisten dengan halaman Ruang Rapat (publik)
+    // ============================================================
+    (function () {
+        var photos = [];
+        var roomName = @json($room->name);
+        var idx = 0;
+
+        window.openLightbox = function (startIndex) {
+            // Dibaca langsung dari DOM (bukan array statis) supaya tetap
+            // akurat walau ada foto yang baru dihapus tanpa reload halaman.
+            var imgs = document.querySelectorAll('#galleryGrid .gallery-item img');
+            photos = Array.prototype.map.call(imgs, function (img) { return img.src; });
+            if (!photos.length) return;
+            idx = Math.min(startIndex || 0, photos.length - 1);
+            renderLightbox();
+            document.getElementById('lightbox').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        };
+
+        function renderLightbox() {
+            document.getElementById('lightboxImage').src = photos[idx];
+            document.getElementById('lightboxCaption').textContent = roomName;
+            document.getElementById('lightboxCounter').textContent = (idx + 1) + ' dari ' + photos.length;
+
+            var multi = photos.length > 1;
+            document.getElementById('lightboxPrev').style.display = multi ? 'flex' : 'none';
+            document.getElementById('lightboxNext').style.display = multi ? 'flex' : 'none';
+
+            var thumbs = document.getElementById('lightboxThumbnails');
+            thumbs.innerHTML = '';
+            if (multi) {
+                photos.forEach(function (p, i) {
+                    var t = document.createElement('img');
+                    t.src = p; t.className = i === idx ? 'active' : '';
+                    t.onclick = function () { idx = i; renderLightbox(); };
+                    thumbs.appendChild(t);
+                });
+            }
+        }
+
+        window.closeLightbox = function () {
+            document.getElementById('lightbox').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        window.navigateLightbox = function (dir) {
+            var n = idx + dir;
+            if (n < 0 || n >= photos.length) return;
+            idx = n; renderLightbox();
+        };
+        document.addEventListener('keydown', function (e) {
+            var lb = document.getElementById('lightbox');
+            if (!lb || !lb.classList.contains('active')) return;
+            if (e.key === 'Escape') closeLightbox();
+            else if (e.key === 'ArrowLeft') navigateLightbox(-1);
+            else if (e.key === 'ArrowRight') navigateLightbox(1);
+        });
+        document.getElementById('lightbox').addEventListener('click', function (e) {
+            if (e.target === this) closeLightbox();
+        });
+    })();
 </script>
+
+{{-- LIGHTBOX FOTO --}}
+<div class="gallery-lightbox" id="lightbox">
+    <div class="lightbox-content">
+        <button class="close-lightbox" onclick="closeLightbox()" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+        <button class="nav-lightbox prev" id="lightboxPrev" onclick="navigateLightbox(-1)" aria-label="Sebelumnya"><i class="bi bi-chevron-left"></i></button>
+        <button class="nav-lightbox next" id="lightboxNext" onclick="navigateLightbox(1)" aria-label="Selanjutnya"><i class="bi bi-chevron-right"></i></button>
+        <div class="lightbox-image-wrap">
+            <img id="lightboxImage" src="" alt="Foto Ruangan">
+        </div>
+        <div class="lightbox-footer">
+            <div class="lightbox-caption" id="lightboxCaption"></div>
+            <div class="lightbox-counter" id="lightboxCounter"></div>
+            <div class="lightbox-thumbnails" id="lightboxThumbnails"></div>
+        </div>
+    </div>
+</div>
 @endsection

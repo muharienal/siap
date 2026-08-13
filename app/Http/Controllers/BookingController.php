@@ -247,14 +247,13 @@ class BookingController extends Controller
             ->where('id', '!=', $priorityBooking->id)
             ->where('booking_type', 'Regular')
             ->whereIn('status', [0, 1]) // pending & approved sama-sama bisa bentrok
-            ->where(function ($q) use ($priorityBooking) {
-                $q->whereBetween('start_time', [$priorityBooking->start_time, $priorityBooking->end_time])
-                  ->orWhereBetween('end_time', [$priorityBooking->start_time, $priorityBooking->end_time])
-                  ->orWhere(function ($q2) use ($priorityBooking) {
-                      $q2->where('start_time', '<=', $priorityBooking->start_time)
-                         ->where('end_time', '>=', $priorityBooking->end_time);
-                  });
-            })
+            // FIX: whereBetween di kedua ujung bersifat inklusif, jadi
+            // booking yang cuma bersambungan tepat di batas waktu (bukan
+            // benar-benar tumpang tindih) ikut kena tandai bentrok. Diganti
+            // rumus overlap standar (lihat BookingRequest::validateTimeAvailability
+            // untuk penjelasan lengkap).
+            ->where('start_time', '<', $priorityBooking->end_time)
+            ->where('end_time', '>', $priorityBooking->start_time)
             ->get();
 
         foreach ($conflicts as $conflict) {
@@ -270,6 +269,14 @@ class BookingController extends Controller
      */
     public function show(Booking $booking)
     {
+        // FIX: sebelumnya method ini tidak punya pengecekan otorisasi sama
+        // sekali — user mana pun yang login bisa buka detail booking siapa
+        // saja cukup lewat URL /bookings/{id}, termasuk lihat kode absensi
+        // & QR-nya. Disamakan dengan pola yang sudah benar di edit()/destroy().
+        if (Auth::user()->role != 1 && $booking->user_id != Auth::id()) {
+            abort(403, 'Anda hanya bisa melihat detail peminjaman milik Anda sendiri.');
+        }
+
         // FIX: Hapus 'complaints' dari array load karena relasi tersebut tidak ada / dihapus
         $booking->load([
             'room.photos',
@@ -304,11 +311,13 @@ class BookingController extends Controller
                 ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah.');
         }
 
-        $facilities = Facility::orderBy('name')->get();
+        // FIX: checklist fasilitas fisik (Microphone, Videotron, dll) dihapus
+        // dari form edit supaya konsisten dengan form Tambah Peminjaman yang
+        // memang tidak punya fitur ini — jadi $facilities/$bookingFacilities
+        // tidak perlu di-query lagi di sini.
         $rooms = Room::with('photos')->orderBy('name')->get();
-        $bookingFacilities = $booking->bookingFacilities()->with('facility')->get();
 
-        return view('bookings.edit', compact('booking', 'facilities', 'rooms', 'bookingFacilities'));
+        return view('bookings.edit', compact('booking', 'rooms'));
     }
 
     /**
@@ -406,6 +415,21 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        // FIX: sebelumnya user biasa bisa menghapus booking miliknya sendiri
+        // kapan pun, termasuk yang sudah disetujui admin. Sekarang disamakan
+        // dengan aturan edit(): booking yang sudah diproses (disetujui/
+        // ditolak) cuma boleh dihapus admin.
+        if ($booking->status != 0 && Auth::user()->role != 1) {
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Booking yang sudah disetujui/ditolak tidak dapat dihapus. Hubungi admin.'
+                ], 403);
+            }
+            return redirect()->route('bookings.index')
+                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat dihapus. Hubungi admin.');
+        }
+
         try {
             // Kalau booking ini menyebabkan booking lain "bentrok", beri tahu
             // pemiliknya dulu sebelum dihapus (kolom displaced_by_id akan
@@ -483,17 +507,18 @@ class BookingController extends Controller
             }
 
             // Overlap check
+            // FIX: rumus lama pakai trik tambah/kurang 1 detik untuk hindari
+            // false-positive di batas waktu — rapuh dan gampang meleset.
+            // Diganti rumus overlap standar: dua rentang waktu tumpang
+            // tindih HANYA JIKA (mulai_lama < selesai_baru) DAN
+            // (selesai_lama > mulai_baru). Disamakan persis dengan
+            // BookingRequest::validateTimeAvailability() supaya cek
+            // ketersediaan live dan validasi submit selalu sepakat.
             $excludeBookingId = $request->exclude_booking_id;
             $query = Booking::where('room_id', $roomId)
                 ->whereIn('status', [0, 1])
-                ->where(function ($q) use ($startTime, $endTime) {
-                    $q->whereBetween('start_time', [$startTime, $endTime->copy()->subSecond()])
-                      ->orWhereBetween('end_time', [$startTime->copy()->addSecond(), $endTime])
-                      ->orWhere(function ($q2) use ($startTime, $endTime) {
-                          $q2->where('start_time', '<=', $startTime)
-                             ->where('end_time', '>=', $endTime);
-                      });
-                });
+                ->where('start_time', '<', $endTime)
+                ->where('end_time', '>', $startTime);
 
             if ($excludeBookingId) {
                 $query->where('id', '!=', $excludeBookingId);
@@ -636,17 +661,14 @@ class BookingController extends Controller
             DB::beginTransaction();
 
             // Pastikan slot pengganti benar-benar kosong (kecuali booking ini sendiri)
+            // FIX: sama seperti dua tempat lain — whereBetween inklusif di
+            // kedua ujung bikin slot yang cuma bersambungan tepat di batas
+            // waktu ikut dianggap bentrok. Diganti rumus overlap standar.
             $conflict = Booking::where('room_id', $request->room_id)
                 ->where('id', '!=', $booking->id)
                 ->whereIn('status', [0, 1])
-                ->where(function ($q) use ($request) {
-                    $q->whereBetween('start_time', [$request->start_time, $request->end_time])
-                      ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                      ->orWhere(function ($q2) use ($request) {
-                          $q2->where('start_time', '<=', $request->start_time)
-                             ->where('end_time', '>=', $request->end_time);
-                      });
-                })
+                ->where('start_time', '<', $request->end_time)
+                ->where('end_time', '>', $request->start_time)
                 ->exists();
 
             if ($conflict) {

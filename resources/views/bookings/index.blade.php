@@ -676,7 +676,7 @@
         gap: 4px;
         white-space: nowrap;
     }
-    .type-priority { background: rgba(249, 115, 22, 0.12); color: #ea580c; }
+    .type-priority { background: rgba(255, 145, 66, 0.12); color: #F2751A; }
     .type-regular { background: rgba(100, 116, 139, 0.12); color: #475569; }
 
     /* Status Badges */
@@ -748,7 +748,7 @@
     .action-btn.view:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
     .action-btn.edit:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
     .action-btn.delete:hover { border-color: #ef4444; color: #ef4444; }
-    .action-btn.approve:hover { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.05); }
+    .action-btn.approve:hover { border-color: #22C55E; color: #22C55E; background: rgba(34,197,94,0.05); }
 
     /* Mobile Cards */
     .booking-cards { display: none; flex-direction: column; gap: var(--space-3); padding: var(--space-3); }
@@ -762,7 +762,7 @@
     }
     .booking-card:active { transform: scale(0.99); }
     .booking-card.status-pending { border-left-color: #f59e0b; }
-    .booking-card.status-approved { border-left-color: #10b981; }
+    .booking-card.status-approved { border-left-color: #22C55E; }
     .booking-card.status-rejected { border-left-color: #ef4444; }
 
     .booking-card-header {
@@ -864,6 +864,23 @@
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.2s; }
 </style>
+
+{{-- FIX: controller mengirim session('success')/session('error') di banyak
+     aksi (approve, tolak, hapus, alihkan, dll) tapi sebelumnya tidak ada
+     halaman yang menampilkannya — pesan hilang begitu saja tanpa terlihat
+     user. Sekarang ditampilkan pakai komponen alert acuan. --}}
+@if(session('success'))
+    <div class="alert-modern alert-success">
+        <i class="bi bi-check-circle-fill alert-modern-icon"></i>
+        <span>{{ session('success') }}</span>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <span>{{ session('error') }}</span>
+    </div>
+@endif
 
 <div class="db-toolbar">
     <div>
