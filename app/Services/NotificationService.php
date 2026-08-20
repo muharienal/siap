@@ -23,6 +23,9 @@ class NotificationService
         
         if ($newStatus == '1') {
             $message .= " Anda dapat menggunakan ruangan pada " . $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') . ".";
+            if ($booking->approval_note) {
+                $message .= " Catatan admin: " . $booking->approval_note;
+            }
         } elseif ($newStatus == '2') {
             $message .= " Mohon ajukan peminjaman ulang dengan waktu atau ruangan yang berbeda.";
             if ($booking->rejection_reason) {
@@ -132,17 +135,55 @@ class NotificationService
     }
 
     /**
-     * Notifikasi ke karyawan saat bookingnya berhasil dialihkan admin ke
-     * ruangan/waktu lain. Netral — tidak menyebut "prioritas".
+     * Notifikasi ke karyawan saat admin MENGUSULKAN pengalihan booking-nya
+     * ke ruangan/waktu lain — bukan pemberitahuan "sudah selesai", karena
+     * sekarang peminjam harus konfirmasi (setuju/tolak) usulan ini dulu.
+     * Netral — tidak menyebut "prioritas".
      */
-    public function notifyRelocated(Booking $booking, string $oldRoomName, $oldStartTime, string $note)
+    public function notifyRelocationProposed(Booking $booking, string $oldRoomName, $oldStartTime, $oldEndTime, string $note)
     {
-        $message = "Peminjaman ruangan Anda telah dialihkan oleh admin dari {$oldRoomName} (" .
-                   \Carbon\Carbon::parse($oldStartTime)->format('d M Y, H:i') . ") ke {$booking->room->name} (" .
-                   $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') .
-                   "). Catatan admin: \"{$note}\"";
+        $timeChanged = !\Carbon\Carbon::parse($oldStartTime)->eq($booking->start_time)
+            || !\Carbon\Carbon::parse($oldEndTime)->eq($booking->end_time);
+
+        $message = "Admin mengusulkan pengalihan peminjaman Anda dari {$oldRoomName} (" .
+                   \Carbon\Carbon::parse($oldStartTime)->format('d M Y, H:i') . '-' . \Carbon\Carbon::parse($oldEndTime)->format('H:i') .
+                   ") ke {$booking->room->name} (" .
+                   $booking->start_time->format('d M Y, H:i') . '-' . $booking->end_time->format('H:i') .
+                   ($timeChanged ? '' : ', jam tidak berubah') .
+                   "). Catatan admin: \"{$note}\". Mohon konfirmasi setuju atau tolak di halaman detail peminjaman.";
 
         $this->createNotification($booking->user_id, $message, $booking->id);
+    }
+
+    /**
+     * Notifikasi ke semua admin saat peminjam MENYETUJUI usulan pengalihan.
+     */
+    public function notifyRelocationConfirmed(Booking $booking)
+    {
+        $bookerName = $booking->user->full_name ?? 'Peminjam';
+        $message = "{$bookerName} menyetujui pengalihan ke {$booking->room->name} pada " .
+                   $booking->start_time->format('d M Y, H:i') . '-' . $booking->end_time->format('H:i') . '.';
+
+        $admins = User::where('role', 1)->where('is_active', true)->get();
+        foreach ($admins as $admin) {
+            $this->createNotification($admin->id, $message, $booking->id);
+        }
+    }
+
+    /**
+     * Notifikasi ke semua admin saat peminjam MENOLAK usulan pengalihan —
+     * booking otomatis berstatus Ditolak, peminjam perlu mengajukan ulang
+     * kalau masih butuh ruangan.
+     */
+    public function notifyRelocationDeclined(Booking $booking)
+    {
+        $bookerName = $booking->user->full_name ?? 'Peminjam';
+        $message = "{$bookerName} menolak pengalihan ke {$booking->room->name}. Booking otomatis ditolak — peminjam perlu mengajukan ulang bila masih membutuhkan ruangan.";
+
+        $admins = User::where('role', 1)->where('is_active', true)->get();
+        foreach ($admins as $admin) {
+            $this->createNotification($admin->id, $message, $booking->id);
+        }
     }
 
     /**

@@ -24,6 +24,24 @@ class LoginController extends Controller
         return 'nip';
     }
 
+    /**
+     * FIX: browser (terutama lewat tombol Back atau saat tab lama dibuka
+     * ulang) kadang menyajikan halaman login dari cache/bfcache alih-alih
+     * memuat ulang dari server — halaman versi cache itu membawa token
+     * CSRF LAMA yang sudah tidak cocok dengan sesi saat ini, jadi begitu
+     * disubmit langsung gagal (token mismatch / "419"). Header di bawah
+     * ini memberi tahu browser untuk selalu memuat ulang halaman login
+     * dari server, bukan dari cache, supaya token yang dipakai selalu
+     * yang terbaru.
+     */
+    public function showLoginForm()
+    {
+        return response()
+            ->view('auth.login')
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
+    }
+
     protected function validateLogin(Request $request)
     {
         $request->validate([

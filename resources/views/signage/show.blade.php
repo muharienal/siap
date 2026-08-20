@@ -5,40 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ $room->name }} &middot; Digital Signage</title>
     <link rel="icon" href="{{ asset('assets/images/icon/icon.png') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-orange: #f97316;
-            --brand-orange-dark: #ea580c;
-            --brand-green: #10b981;
-            --brand-green-dark: #059669;
+            --brand-orange: #FF9142;
+            --brand-orange-dark: #F2751A;
+            --brand-green: #22C55E;
+            --brand-green-dark: #16A34A;
             --brand-gradient: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-green) 100%);
+            --red: #ef4444;
+
+            /* ===== TEMA TERANG (default) ===== */
             --text-primary: #0f172a;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
             --bg-body: #f4f6f9;
             --bg-card: #ffffff;
             --border-color: #e7ebf1;
-            --red: #ef4444;
+            --shadow-soft: 0 4px 20px rgba(15,23,42,0.05);
         }
+
+        /* ===== TEMA GELAP ===== */
+        body.theme-dark {
+            --text-primary: #f1f5f9;
+            --text-secondary: #a8b3c7;
+            --text-muted: #6b7690;
+            --bg-body: #0a0e17;
+            --bg-card: #151b2b;
+            --border-color: #262f47;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             width: 100%; height: 100%; overflow: hidden;
             font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
             background: var(--bg-body); color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
         body::before {
             content: ''; position: fixed; top: -20%; right: -12%; width: 55vw; height: 55vw;
-            background: radial-gradient(circle, rgba(249,115,22,0.06), transparent 70%);
+            background: radial-gradient(circle, rgba(255,145,66,0.06), transparent 70%);
             z-index: 0; pointer-events: none;
         }
         body::after {
             content: ''; position: fixed; bottom: -18%; left: -10%; width: 45vw; height: 45vw;
-            background: radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%);
+            background: radial-gradient(circle, rgba(34,197,94,0.07), transparent 70%);
             z-index: 0; pointer-events: none;
         }
+        body.theme-dark::before { background: radial-gradient(circle, rgba(255,145,66,0.09), transparent 70%); }
+        body.theme-dark::after { background: radial-gradient(circle, rgba(34,197,94,0.1), transparent 70%); }
 
         .signage-wrapper {
             position: relative; z-index: 1;
@@ -53,16 +71,16 @@
             display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
             background: var(--bg-card); border-radius: clamp(18px, 1.6vw, 26px);
             padding: clamp(16px, 1.8vw, 26px) clamp(20px, 2.2vw, 32px);
-            box-shadow: 0 4px 20px rgba(15,23,42,0.05); border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft); border: 1px solid var(--border-color);
         }
         .signage-brand-row { display: flex; align-items: center; gap: 18px; }
         .signage-logo-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .signage-logo {
             width: clamp(48px, 4.2vw, 68px); height: clamp(48px, 4.2vw, 68px); border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(16,185,129,0.25); flex-shrink: 0; overflow: hidden;
+            box-shadow: 0 4px 16px rgba(34,197,94,0.25); flex-shrink: 0; overflow: hidden;
         }
         .signage-logo svg { display: block; width: 100%; height: 100%; }
-        .signage-logo.company { background: #fff; border: 1px solid var(--border-color); box-shadow: 0 4px 16px rgba(15,23,42,0.08); padding: 8px; }
+        .signage-logo.company { background: #fff; border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); padding: 8px; }
         .signage-logo.company img { width: 100%; height: 100%; object-fit: contain; }
         .signage-logo-divider { font-size: clamp(16px, 1.6vw, 22px); color: var(--text-muted); font-weight: 300; }
         .signage-room-info h1 {
@@ -93,7 +111,7 @@
             box-shadow: 0 16px 44px -12px rgba(15,23,42,0.16);
         }
         .signage-status-main.available { background: var(--brand-gradient); }
-        .signage-status-main.occupied { background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); }
+        .signage-status-main.occupied { background: linear-gradient(135deg, #ef4444 0%, var(--brand-orange) 100%); }
 
         .status-ring {
             width: clamp(72px, 8vw, 118px); height: clamp(72px, 8vw, 118px); border-radius: 50%;
@@ -102,6 +120,10 @@
             background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4); color: #fff;
         }
 
+        /* FIX (redaksi disingkat & disamakan): "SEDANG DIGUNAKAN" (2 kata,
+           cukup panjang) diganti "AKTIF" — sama persis dengan istilah yang
+           dipakai di Papan Semua Ruangan, supaya orang yang biasa lihat
+           kedua tampilan ini tidak bingung karena istilahnya beda-beda. */
         .status-label {
             font-size: clamp(28px, 4.6vw, 66px); font-weight: 800; letter-spacing: -0.01em; line-height: 1; color: #fff;
         }
@@ -130,7 +152,7 @@
         .signage-upcoming {
             flex: 1; background: var(--bg-card); border: 1px solid var(--border-color);
             border-radius: clamp(16px, 1.5vw, 24px); padding: clamp(16px, 1.7vw, 24px); min-width: 0;
-            box-shadow: 0 4px 20px rgba(15,23,42,0.05);
+            box-shadow: var(--shadow-soft);
         }
         .upcoming-title {
             font-size: clamp(11.5px, 0.95vw, 14.5px); font-weight: 800; color: var(--text-muted);
@@ -160,10 +182,13 @@
             flex-shrink: 0; background: var(--bg-card); border: 1px solid var(--border-color);
             border-radius: clamp(16px, 1.5vw, 24px); padding: clamp(14px, 1.6vw, 20px);
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 0 4px 20px rgba(15,23,42,0.05);
+            box-shadow: var(--shadow-soft);
         }
-        .qr-box { width: clamp(80px, 8.5vw, 130px); height: clamp(80px, 8.5vw, 130px); background: #fff; border-radius: 12px; padding: 6px; border: 1px solid var(--border-color); }
-        .qr-box img, .qr-box canvas { width: 100%; height: 100%; }
+        /* FIX (skan lebih mudah): kotak diperbesar & padding lebih longgar,
+           dan kepadatan modul QR-nya sendiri diturunkan lewat correctLevel
+           di script (Low, bukan High) — lihat catatan di bagian script. */
+        .qr-box { width: clamp(90px, 9vw, 140px); height: clamp(90px, 9vw, 140px); background: #fff; border-radius: 14px; padding: 9px; border: 1px solid var(--border-color); }
+        .qr-box img, .qr-box canvas { width: 100%; height: 100%; image-rendering: pixelated; }
         .qr-caption { font-size: clamp(10px, 0.85vw, 13px); color: var(--text-muted); font-weight: 600; text-align: center; max-width: 140px; }
 
         /* ===== PORTRAIT ===== */
@@ -181,7 +206,7 @@
         }
     </style>
 </head>
-<body class="signage-{{ $display->orientation }}">
+<body class="signage-{{ $display->orientation }} {{ $display->theme === 'dark' ? 'theme-dark' : '' }}">
 
     <div class="offline-banner" id="offlineBanner"><i class="bi bi-wifi-off"></i> Koneksi terputus. Mencoba menyambung kembali...</div>
 
@@ -204,6 +229,7 @@
                             </g>
                         </svg>
                     </div>
+                    <span class="signage-logo-divider">&times;</span>
                     <div class="signage-logo company">
                         <img src="{{ asset('assets/images/icon/icon.png') }}" alt="PT Petrokopindo Cipta Selaras">
                     </div>
@@ -223,47 +249,10 @@
             </div>
         </header>
 
-        <main class="signage-status-main {{ $currentBooking ? 'occupied' : 'available' }}">
-            @if($currentBooking)
-                @php
-                    $bStart = \Carbon\Carbon::parse($currentBooking->start_time);
-                    $bEnd = \Carbon\Carbon::parse($currentBooking->end_time);
-                    $totalMin = max(1, $bStart->diffInMinutes($bEnd));
-                    $elapsedMin = max(0, $bStart->diffInMinutes($now));
-                    $progressPct = min(100, max(0, round(($elapsedMin / $totalMin) * 100)));
-                @endphp
-                <div class="status-ring"><i class="bi bi-x-lg"></i></div>
-                <div class="status-label">SEDANG DIGUNAKAN</div>
-                <div class="current-meeting">
-                    <div class="meeting-title">{{ $currentBooking->purpose }}</div>
-                    <div class="meeting-organizer"><i class="bi bi-person-fill"></i> {{ $currentBooking->user->full_name ?? 'Unknown' }}</div>
-                    <div class="meeting-time">{{ $bStart->format('H:i') }} &ndash; {{ $bEnd->format('H:i') }} WIB</div>
-                    <div class="meeting-progress"><div class="meeting-progress-bar" style="width: {{ $progressPct }}%;"></div></div>
-                </div>
-            @else
-                <div class="status-ring"><i class="bi bi-check-lg"></i></div>
-                <div class="status-label">TERSEDIA</div>
-                <div class="status-sub">Ruangan siap digunakan sekarang</div>
-            @endif
-        </main>
+        @include('signage.partials._main-status', ['currentBooking' => $currentBooking, 'now' => $now])
 
         <footer class="signage-footer">
-            @if($display->show_upcoming)
-                <div class="signage-upcoming">
-                    <div class="upcoming-title"><i class="bi bi-clock-history"></i> Jadwal Berikutnya Hari Ini</div>
-                    <div class="upcoming-list">
-                        @forelse($upcomingBookings as $b)
-                            <div class="upcoming-item">
-                                <div class="upcoming-time">{{ \Carbon\Carbon::parse($b->start_time)->format('H:i') }}&ndash;{{ \Carbon\Carbon::parse($b->end_time)->format('H:i') }}</div>
-                                <div class="upcoming-purpose">{{ $b->purpose }}</div>
-                                <div class="upcoming-organizer">{{ $b->user->full_name ?? 'Unknown' }}</div>
-                            </div>
-                        @empty
-                            <div class="upcoming-empty">Tidak ada jadwal lain hari ini.</div>
-                        @endforelse
-                    </div>
-                </div>
-            @endif
+            @include('signage.partials._upcoming', ['display' => $display, 'upcomingBookings' => $upcomingBookings])
 
             @if($display->show_qr)
                 <div class="signage-qr">
@@ -290,23 +279,52 @@
         @if($display->show_qr)
         var qrContainer = document.getElementById('qrContainer');
         if (qrContainer) {
+            // FIX: correctLevel diturunkan dari H (High) ke L (Low), sama
+            // seperti Papan Semua Ruangan — pola QR jadi lebih longgar/
+            // sederhana sehingga lebih gampang discan di layar TV yang
+            // kurang tajam.
             new QRCode(qrContainer, {
                 text: "{{ route('bookings.create') }}?room={{ $room->id }}",
-                width: 130, height: 130,
-                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H
+                width: 220, height: 220,
+                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L
             });
         }
         @endif
 
-        setTimeout(function () {
-            window.location.reload();
-        }, {{ $display->refresh_seconds }} * 1000);
+        // ============================================================
+        // LIVE UPDATE — sebelumnya papan TV ini reload penuh tiap
+        // {{ $display->refresh_seconds }} detik (menyebabkan layar
+        // "kedip" putih tiap kali refresh, terlihat jelas di TV).
+        // Sekarang pakai polling AJAX ringan: cuma status ruangan +
+        // jadwal berikutnya yang ditukar, jam & QR tidak ikut kedip.
+        // ============================================================
+        var SIGNAGE_LIVE_URL = "{{ route('signage.show', $display->display_token) }}";
+        function pollSignageLive() {
+            fetch(SIGNAGE_LIVE_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data) return;
+                    var mainEl = document.getElementById('signageMainStatus');
+                    var upcomingEl = document.getElementById('signageUpcomingWrap');
+                    if (mainEl && data.main) mainEl.outerHTML = data.main;
+                    if (upcomingEl && data.upcoming) upcomingEl.outerHTML = data.upcoming;
+                    document.getElementById('offlineBanner').style.display = 'none';
+                })
+                .catch(function () {
+                    // Gagal terhubung — tampilkan pita "koneksi terputus" yang
+                    // memang sudah ada di halaman ini, jangan diamkan begitu
+                    // saja karena ini layar publik tanpa operator di depannya.
+                    document.getElementById('offlineBanner').style.display = 'block';
+                });
+        }
+        setInterval(pollSignageLive, {{ max(10, (int) $display->refresh_seconds) }} * 1000);
 
         window.addEventListener('offline', function () {
             document.getElementById('offlineBanner').style.display = 'block';
         });
         window.addEventListener('online', function () {
             document.getElementById('offlineBanner').style.display = 'none';
+            pollSignageLive();
         });
     </script>
 </body>

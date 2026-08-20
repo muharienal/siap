@@ -1,15 +1,15 @@
 @extends('layouts.auth')
 
-@section('title', 'Error Absensi')
+@section('title', 'Error Presensi')
 
 @section('content')
 <style>
     :root {
-        --brand-orange: #f97316;
-        --brand-orange-dark: #ea580c;
-        --brand-green: #10b981;
-        --brand-green-dark: #059669;
-        --brand-gradient: linear-gradient(145deg, var(--brand-orange) 0%, var(--brand-green) 100%);
+        --brand-orange: #FF9142;
+        --brand-orange-dark: #F2751A;
+        --brand-green: #22C55E;
+        --brand-green-dark: #16A34A;
+        --brand-gradient: linear-gradient(160deg, var(--brand-orange) 0%, var(--brand-green) 100%);
 
         --ui-bg: #f1f5f9;
         --ui-card-bg: #ffffff;
@@ -29,13 +29,15 @@
         font-family: var(--font-family);
     }
 
-    .auth-wrapper {
+    /* Nama class sengaja unik (bukan .auth-wrapper) supaya tidak bentrok
+       dengan div pembungkus milik layouts/auth.blade.php. */
+    .attend-status-wrapper {
         width: 100%;
         max-width: 1000px;
         margin: 0 auto;
     }
 
-    .auth-card {
+    .attend-status-card {
         border: none;
         border-radius: var(--ui-radius);
         overflow: hidden;
@@ -44,7 +46,7 @@
         width: 100%;
     }
 
-    .auth-brand-panel {
+    .attend-status-brand {
         background: var(--brand-gradient);
         padding: 3.5rem 2.5rem;
         height: 100%;
@@ -59,26 +61,26 @@
         overflow: hidden;
     }
 
-    .auth-brand-panel::before {
+    .attend-status-brand::before {
         content: '';
         position: absolute;
         inset: 0;
         background-image:
-            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 60%),
-            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 50%);
+            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10) 0%, transparent 60%),
+            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 50%);
         pointer-events: none;
     }
 
-    .auth-brand-panel > * {
+    .attend-status-brand > * {
         position: relative;
         z-index: 2;
     }
 
-    .auth-logo {
+    .attend-logo {
         width: 90px;
         height: 90px;
         object-fit: contain;
-        background: rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.16);
         backdrop-filter: blur(6px);
         padding: 16px;
         border-radius: 24px;
@@ -86,23 +88,23 @@
         margin-bottom: 1.5rem;
     }
 
-    .auth-brand-panel h2 {
+    .attend-status-brand h2 {
         font-size: 1.9rem;
         font-weight: 800;
         letter-spacing: -0.02em;
         margin-bottom: 0.75rem;
     }
 
-    .auth-brand-panel p {
+    .attend-status-brand p {
         font-size: 0.95rem;
         line-height: 1.6;
-        opacity: 0.9;
+        opacity: 0.92;
         max-width: 320px;
         margin: 0 auto;
-        font-weight: 300;
+        font-weight: 400;
     }
 
-    .auth-form-panel {
+    .attend-status-content {
         padding: 3rem 2.8rem;
         display: flex;
         flex-direction: column;
@@ -110,21 +112,24 @@
         background: var(--ui-card-bg);
     }
 
-    .auth-mobile-logo {
+    .attend-mobile-logo {
         display: none;
         text-align: center;
         margin-bottom: 1.5rem;
     }
-    .auth-mobile-logo img {
+    .attend-mobile-logo img {
         width: 64px;
         height: 64px;
         object-fit: contain;
     }
 
-    .status-icon {
-        font-size: 3.5rem;
-        margin-bottom: 1rem;
+    .status-icon-ring {
+        width: 84px; height: 84px; border-radius: 50%;
+        background: rgba(245,158,11,0.14);
+        display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 1.25rem auto;
     }
+    .status-icon-ring i { font-size: 2.3rem; color: #b45309; }
 
     .status-title {
         font-size: 1.6rem;
@@ -136,7 +141,7 @@
 
     .status-alert {
         background: rgba(245, 158, 11, 0.08);
-        border: 1px solid rgba(245, 158, 11, 0.18);
+        border: 1px solid rgba(245, 158, 11, 0.2);
         color: #b45309;
         padding: 0.9rem 1.1rem;
         border-radius: var(--ui-radius-sm);
@@ -162,7 +167,7 @@
         font-size: 0.9rem;
     }
     .meeting-summary i {
-        color: var(--ui-text-muted);
+        color: var(--brand-orange-dark);
     }
 
     .btn-login {
@@ -184,7 +189,7 @@
     .btn-login:hover {
         color: #fff;
         transform: translateY(-1px);
-        box-shadow: 0 10px 25px -8px rgba(249, 115, 22, 0.4);
+        box-shadow: 0 10px 25px -8px rgba(255, 145, 66, 0.4);
     }
 
     .btn-secondary-link {
@@ -202,44 +207,45 @@
         background: none;
         margin-top: 0.75rem;
         text-decoration: none;
-        transition: background 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
     .btn-secondary-link:hover {
         background: var(--ui-bg);
         color: var(--ui-text-secondary);
+        border-color: #cbd5e1;
     }
 
     @media (max-width: 991.98px) {
-        .auth-mobile-logo { display: block; }
+        .attend-mobile-logo { display: block; }
     }
 </style>
 
-<div class="auth-wrapper">
-    <div class="auth-card">
+<div class="attend-status-wrapper">
+    <div class="attend-status-card">
         <div class="row g-0">
             <!-- SISI KIRI -->
             <div class="col-lg-6 d-none d-lg-flex">
-                <div class="auth-brand-panel w-100">
-                    <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" class="auth-logo" />
+                <div class="attend-status-brand w-100">
+                    <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" class="attend-logo" />
                     <h2>Oops! Ada Masalah</h2>
-                    <p>Terjadi kendala saat memproses absensi Anda. Silakan hubungi penyelenggara jika masalah ini terus berlanjut.</p>
+                    <p>Terjadi kendala saat memproses presensi Anda. Silakan hubungi penyelenggara jika masalah ini terus berlanjut.</p>
                 </div>
             </div>
 
             <!-- SISI KANAN -->
             <div class="col-lg-6">
-                <div class="auth-form-panel">
+                <div class="attend-status-content">
 
-                    <div class="auth-mobile-logo">
+                    <div class="attend-mobile-logo">
                         <img src="{{ asset('assets/images/icon/icon.png') }}" alt="SIAP Logo" />
                     </div>
 
                     <div class="text-center">
-                        <div class="status-icon">
-                            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                        <div class="status-icon-ring">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
                         </div>
 
-                        <h1 class="status-title text-warning">Absensi Tidak Dapat Diproses</h1>
+                        <h1 class="status-title" style="color: #b45309;">Presensi Tidak Dapat Diproses</h1>
 
                         <div class="status-alert">
                             {{ $message ?? 'Terjadi kesalahan yang tidak diketahui.' }}

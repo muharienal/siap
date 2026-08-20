@@ -44,10 +44,10 @@
     .btn-back:hover { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
 
     .btn-primary-sm {
-        background: var(--brand-gradient); border: none; color: white;
+        background: var(--brand-orange); border: none; color: white;
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
-    .btn-primary-sm:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25); }
+    .btn-primary-sm:hover { background: var(--brand-orange-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25); }
 
     .btn-outline-sm {
         background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-secondary);
@@ -266,8 +266,8 @@
 
     .btn-modal-cancel { height: 42px; padding: 0 20px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s; }
     .btn-modal-cancel:hover { background: var(--bg-hover); }
-    .btn-modal-submit { height: 42px; padding: 0 24px; border-radius: var(--radius-sm); border: none; background: var(--brand-gradient); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(249,115,22,0.2); display: inline-flex; align-items: center; gap: 6px; }
-    .btn-modal-submit:hover { box-shadow: 0 6px 16px rgba(16,185,129,0.25); transform: translateY(-1px); }
+    .btn-modal-submit { height: 42px; padding: 0 24px; border-radius: var(--radius-sm); border: none; background: var(--brand-green); color: white; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(34,197,94,0.2); display: inline-flex; align-items: center; gap: 6px; }
+    .btn-modal-submit:hover { background: var(--brand-green-dark); box-shadow: 0 6px 16px rgba(34,197,94,0.25); transform: translateY(-1px); }
     .btn-modal-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .upload-zone { border: 2px dashed var(--border-color); background: var(--bg-input); border-radius: var(--radius-sm); padding: 2rem 1rem; text-align: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
@@ -482,40 +482,7 @@
             </div>
         </div>
 
-        <div class="section-card">
-            <div class="section-title">
-                <span><i class="bi bi-info-circle"></i> Informasi Dasar</span>
-            </div>
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="info-item-icon icon-blue"><i class="bi bi-people-fill"></i></div>
-                    <div class="info-item-text">
-                        <span class="info-item-label">Kapasitas</span>
-                        <span class="info-item-value">{{ $room->capacity }} Orang</span>
-                    </div>
-                </div>
-                <div class="info-item">
-                    <div class="info-item-icon icon-orange"><i class="bi bi-geo-alt-fill"></i></div>
-                    <div class="info-item-text">
-                        <span class="info-item-label">Lokasi</span>
-                        <span class="info-item-value">{{ $room->location }}</span>
-                    </div>
-                </div>
-                <div class="info-item">
-                    <div class="info-item-icon {{ $room->status == 1 ? 'icon-green' : 'icon-red' }}">
-                        <i class="bi {{ $room->status == 1 ? 'bi-check-circle-fill' : 'bi-x-circle-fill' }}"></i>
-                    </div>
-                    <div class="info-item-text">
-                        <span class="info-item-label">Status</span>
-                        @if($room->status == 1)
-                            <span class="status-pill active"><span class="dot"></span> Aktif</span>
-                        @else
-                            <span class="status-pill inactive"><span class="dot"></span> Nonaktif</span>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
+        @include('settings.rooms.partials._room-info-card', ['room' => $room])
     </div>
 
     {{-- Kolom Kanan: Fasilitas Ruangan --}}
@@ -527,26 +494,7 @@
                     Kelola
                 </button>
             </div>
-            <div id="roomFacilitiesList">
-                @if($room->facilities->count() > 0)
-                    @foreach($room->facilities as $f)
-                        <div class="facility-list-item">
-                            <div class="facility-info">
-                                <div class="facility-icon"><i class="bi bi-box"></i></div>
-                                <div>
-                                    <div class="facility-name">{{ $f->name }}</div>
-                                    <div class="facility-qty">Jumlah: {{ $f->pivot->quantity }} unit</div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
-                @else
-                    <div class="no-photos" style="padding: 1.5rem;">
-                        <i class="bi bi-inbox d-block fs-4 mb-2"></i>
-                        Belum ada fasilitas terpasang.
-                    </div>
-                @endif
-            </div>
+            @include('settings.rooms.partials._facilities-list', ['room' => $room])
         </div>
     </div>
 </div>
@@ -1048,6 +996,25 @@
 
     // Fungsi Simpan Perubahan: Bandingkan temp dengan original, lalu kirim ke server
     async function saveFacilityChanges() {
+        // FIX: sebelumnya kalau user sudah pilih fasilitas + isi jumlah di
+        // kolom "Tambah Fasilitas" tapi LUPA klik tombol "+" dulu, lalu
+        // langsung klik "Simpan Perubahan" — isian itu hilang begitu saja
+        // tanpa pemberitahuan apa pun. Sistem cuma membandingkan daftar
+        // temp (masih kosong) dengan daftar asli (juga kosong), tidak
+        // menemukan perubahan, jadi tetap melaporkan "Berhasil!" padahal
+        // yang diisi user tidak pernah benar-benar tersimpan. Sekarang
+        // isian yang masih menggantung di kolom itu otomatis dimasukkan
+        // dulu sebelum proses simpan berjalan.
+        var pendingSelect = document.getElementById('addFacilitySelect');
+        var pendingQty = document.getElementById('addFacilityQty');
+        if (pendingSelect && pendingSelect.value) {
+            var pendingId = parseInt(pendingSelect.value);
+            var qtyVal = parseInt(pendingQty.value);
+            if (pendingId && qtyVal >= 1 && !tempFacilities.some(f => f.id === pendingId)) {
+                addFacilityTemp();
+            }
+        }
+
         const saveBtn = document.getElementById('saveFacilityBtn');
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Menyimpan...';
@@ -1068,9 +1035,10 @@
                             'Accept': 'application/json'
                         }
                     });
-                    if (!res.ok) {
+                    let data = res.ok ? await res.json().catch(() => ({ success: false })) : { success: false };
+                    if (!res.ok || !data.success) {
                         hasError = true;
-                        errorDetails.push(`Hapus "${orig.name}": HTTP ${res.status}`);
+                        errorDetails.push(`Hapus "${orig.name}": ${data.message || ('HTTP ' + res.status)}`);
                     }
                 }
             }
@@ -1092,9 +1060,10 @@
                         },
                         body: JSON.stringify({ facility_id: temp.id, quantity: temp.quantity })
                     });
-                    if (!res.ok) {
+                    let data = res.ok ? await res.json().catch(() => ({ success: false })) : { success: false };
+                    if (!res.ok || !data.success) {
                         hasError = true;
-                        errorDetails.push(`Tambah "${temp.name}": HTTP ${res.status}`);
+                        errorDetails.push(`Tambah "${temp.name}": ${data.message || ('HTTP ' + res.status)}`);
                     }
                 } else if (orig.quantity !== temp.quantity) {
                     // Update qty
@@ -1109,9 +1078,10 @@
                         },
                         body: JSON.stringify({ quantity: temp.quantity })
                     });
-                    if (!res.ok) {
+                    let data = res.ok ? await res.json().catch(() => ({ success: false })) : { success: false };
+                    if (!res.ok || !data.success) {
                         hasError = true;
-                        errorDetails.push(`Update "${temp.name}": HTTP ${res.status}`);
+                        errorDetails.push(`Update "${temp.name}": ${data.message || ('HTTP ' + res.status)}`);
                     }
                 }
             }
@@ -1191,6 +1161,36 @@
         });
         document.getElementById('lightbox').addEventListener('click', function (e) {
             if (e.target === this) closeLightbox();
+        });
+    })();
+</script>
+
+<script>
+    // ============================================================
+    // LIVE UPDATE — polling berkala (bukan WebSocket). Info dasar &
+    // daftar fasilitas ruangan di-refresh otomatis kalau ada admin
+    // lain yang mengubahnya, tanpa reload manual. Jeda otomatis
+    // kalau modal (edit ruangan/kelola fasilitas/lightbox) terbuka.
+    // ============================================================
+    (function () {
+        var lastSignature = 'initial';
+
+        createLivePoller({
+            url: window.location.pathname,
+            interval: 20000,
+            shouldPause: function () {
+                return document.querySelector('.modal.show') !== null ||
+                    document.getElementById('lightbox')?.classList.contains('active');
+            },
+            onUpdate: function (data) {
+                if (data.signature === lastSignature) return;
+                lastSignature = data.signature;
+
+                var infoEl = document.getElementById('roomInfoCard');
+                var facEl = document.getElementById('roomFacilitiesList');
+                if (infoEl && data.info) infoEl.outerHTML = data.info;
+                if (facEl && data.facilities) facEl.outerHTML = data.facilities;
+            }
         });
     })();
 </script>

@@ -3,6 +3,24 @@
 @section('title', 'Edit Peminjaman')
 @section('page_title', 'Edit Peminjaman')
 
+@php
+    // FIX: sebelumnya closure PHP multi-statement dipasang LANGSUNG di
+    // dalam @json(...) — parser directive Blade tidak bisa menangani
+    // ekspresi sekompleks itu dengan benar (memotong argumen di tengah
+    // jalan), hasilnya file PHP terkompilasi jadi rusak sintaksnya
+    // (ParseError "Unclosed '['"). Dihitung dulu di sini sebagai
+    // variabel biasa, baru di-@json()-kan sebagai satu variabel tunggal.
+    $roomsLookupData = $rooms->mapWithKeys(function ($r) {
+        $photos = $r->photos ?? collect();
+        return [$r->id => [
+            'name' => $r->name,
+            'location' => $r->location,
+            'capacity' => $r->capacity,
+            'photo' => $photos->count() > 0 ? $photos->first()->photo_url : null,
+        ]];
+    });
+@endphp
+
 @section('content')
 <style>
     .form-content {
@@ -97,12 +115,33 @@
         border-color: var(--brand-orange);
     }
     .room-card.selected {
-        border-color: var(--brand-orange);
-        background: rgba(255, 145, 66, 0.02);
+        border-color: var(--brand-green);
+        background: rgba(34, 197, 94, 0.03);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1), var(--shadow-hover);
     }
     .room-card input[type="radio"] {
         position: absolute; opacity: 0; pointer-events: none;
     }
+
+    /* Badge centang — muncul di pojok kanan-atas foto saat kartu dipilih */
+    .room-card-check {
+        position: absolute; top: 10px; right: 10px; z-index: 3;
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--brand-green); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.95rem; box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 4px 10px rgba(0,0,0,0.2);
+        opacity: 0; transform: scale(0.4);
+        transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        pointer-events: none;
+    }
+    .room-card.selected .room-card-check { opacity: 1; transform: scale(1); }
+
+    .room-card-image::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0.28) 0%, transparent 35%);
+        opacity: 0; transition: opacity 0.22s ease; pointer-events: none;
+    }
+    .room-card.selected .room-card-image::after { opacity: 1; }
     .room-card-image {
         width: 100%; height: 150px; background: var(--bg-input);
         position: relative; overflow: hidden;
@@ -181,9 +220,13 @@
     textarea.additional-input { height: auto; padding: 8px 12px; resize: vertical; }
 
     .form-actions { background: var(--bg-body); display: flex; gap: var(--space-3); justify-content: flex-end; padding: var(--space-5); }
-    .btn-submit { height: 48px; padding: 0 var(--space-6); background: var(--brand-gradient); border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: white; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
-    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,0.2); }
-    .btn-cancel { height: 48px; padding: 0 var(--space-5); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: all 0.2s; }
+    /* Disamakan dengan halaman acuan (Tambah Peminjaman): tinggi 44px
+       (bukan 48px) dan hijau solid = aksi konfirmasi/submit (bukan
+       gradasi oranye-hijau). */
+    .btn-submit { height: 44px; padding: 0 var(--space-6); background: var(--brand-green); border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: white; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(34,197,94,0.2); }
+    .btn-submit:hover:not(:disabled) { background: var(--brand-green-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(34,197,94,0.25); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-cancel { height: 44px; padding: 0 var(--space-5); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-weight: 600; font-size: var(--font-size-sm); color: var(--text-secondary); display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: all 0.2s; }
     .btn-cancel:hover { border-color: var(--text-muted); }
 
     .status-info {
@@ -270,7 +313,72 @@
         .mtp-field { padding: 8px 12px; }
         .mtp-clock { width: 240px; height: 240px; }
         .mtp-footer { padding: 12px 20px 20px; }
+    }    /* ============================================================
+       MODAL KONFIRMASI — ringkasan perubahan sebelum benar-benar
+       disimpan. Desain sama persis dengan halaman Tambah Peminjaman
+       supaya konsisten.
+       ============================================================ */
+    .confirm-modal .modal-content {
+        border: none; border-radius: 22px; overflow: hidden;
+        box-shadow: 0 30px 70px rgba(16,24,43,0.22);
     }
+    .confirm-modal .modal-header {
+        background: var(--bg-card); color: var(--text-primary); border-bottom: 1px solid var(--border-color-light);
+        padding: 1.25rem 1.75rem; position: relative;
+    }
+    .confirm-modal .modal-header .modal-title {
+        font-weight: 700; font-size: 1.15rem; color: var(--text-primary); display: flex; align-items: center; gap: 10px;
+    }
+    .confirm-modal .modal-header .modal-title i { color: var(--brand-orange); }
+    .confirm-modal .modal-header .btn-close {
+        opacity: 0.6; transition: opacity 0.2s;
+    }
+    .confirm-modal .modal-header .btn-close:hover { opacity: 1; }
+    .confirm-modal .modal-body { padding: 1.75rem; max-height: 65vh; overflow-y: auto; }
+    .confirm-modal .modal-footer { padding: 1.1rem 1.75rem; border-top: 1px solid var(--border-color-light); gap: 10px; }
+
+    .confirm-room-card {
+        display: flex; align-items: center; gap: 14px;
+        background: var(--bg-body); border-radius: 16px; padding: 12px;
+        margin-bottom: 1.25rem; border: 1px solid var(--border-color-light);
+    }
+    .confirm-room-card img {
+        width: 64px; height: 64px; border-radius: 12px; object-fit: cover; flex-shrink: 0;
+    }
+    .confirm-room-card-placeholder {
+        width: 64px; height: 64px; border-radius: 12px; flex-shrink: 0;
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.4rem;
+    }
+    .confirm-room-name { font-weight: 700; font-size: 1.02rem; color: var(--text-primary); line-height: 1.3; }
+    .confirm-room-meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .confirm-row {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 11px 0; border-bottom: 1px solid var(--border-color-light);
+    }
+    .confirm-row:last-child { border-bottom: none; }
+    .confirm-row-icon {
+        width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+        background: rgba(255,145,66,0.1); color: var(--brand-orange-dark);
+        display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
+    }
+    .confirm-row-label { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+    .confirm-row-value { font-size: 0.92rem; font-weight: 500; color: var(--text-primary); margin-top: 2px; line-height: 1.4; word-break: break-word; }
+
+    .confirm-purpose-quote {
+        background: var(--bg-body); border-left: 3px solid var(--brand-orange);
+        border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; color: var(--text-primary);
+        line-height: 1.55; font-style: italic; margin-top: 2px;
+    }
+
+    .confirm-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .confirm-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(34,197,94,0.1); color: var(--brand-green-dark);
+        font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    }
+    .confirm-empty-note { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
 </style>
 
 <div class="form-content">
@@ -335,6 +443,7 @@
                                 @else
                                     <div class="room-card-image-placeholder"><i class="bi bi-image"></i></div>
                                 @endif
+                                <span class="room-card-check"><i class="bi bi-check-lg"></i></span>
                             </div>
                             <div class="room-card-body">
                                 <h3 class="room-card-title">{{ $room->name }}</h3>
@@ -373,7 +482,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Tanggal <span class="required">*</span></label>
-                    <input type="date" name="start_date" class="form-control" value="{{ old('start_date', \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d')) }}" required onchange="checkAvailability()">
+                    <input type="date" name="start_date" id="bookingDate" class="form-control" value="{{ old('start_date', \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d')) }}" required onchange="checkAvailability()">
                 </div>
 
                 <div class="form-group">
@@ -428,13 +537,69 @@
 
             <div class="form-actions full-width">
                 <a href="{{ route('bookings.show', $booking->id) }}" class="btn-cancel">Batal</a>
-                <button type="submit" class="btn-submit" id="submitBtn">
+                <button type="button" class="btn-submit" id="submitBtn" onclick="handleSubmitClick()">
                     <i class="bi bi-save"></i> Simpan Perubahan
                 </button>
             </div>
 
         </div>
     </form>
+</div>
+
+<!-- MODAL KONFIRMASI PERUBAHAN -->
+<div class="modal fade confirm-modal" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalLabel"><i class="bi bi-clipboard-check"></i> Konfirmasi Perubahan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-room-card" id="confirmRoomCard">
+                    <!-- diisi JS -->
+                </div>
+
+                <div class="confirm-row">
+                    <div class="confirm-row-icon"><i class="bi bi-calendar3"></i></div>
+                    <div>
+                        <div class="confirm-row-label">Tanggal</div>
+                        <div class="confirm-row-value" id="confirmDate">-</div>
+                    </div>
+                </div>
+                <div class="confirm-row">
+                    <div class="confirm-row-icon"><i class="bi bi-clock"></i></div>
+                    <div>
+                        <div class="confirm-row-label">Jam</div>
+                        <div class="confirm-row-value" id="confirmTime">-</div>
+                    </div>
+                </div>
+                <div class="confirm-row">
+                    <div class="confirm-row-icon"><i class="bi bi-card-text"></i></div>
+                    <div style="min-width:0; flex:1;">
+                        <div class="confirm-row-label">Keperluan / Agenda</div>
+                        <div class="confirm-purpose-quote" id="confirmPurpose">-</div>
+                    </div>
+                </div>
+                <div class="confirm-row">
+                    <div class="confirm-row-icon"><i class="bi bi-tools"></i></div>
+                    <div>
+                        <div class="confirm-row-label">Kebutuhan Tambahan</div>
+                        <div class="confirm-badges" id="confirmFacilities">
+                            <span class="confirm-empty-note">Tidak ada permintaan tambahan</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">
+                    <i class="bi bi-pencil"></i> Periksa Lagi
+                </button>
+                <button type="button" class="btn-submit" id="confirmSubmitBtn">
+                    <i class="bi bi-save"></i> Ya, Simpan Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- MATERIAL TIME PICKER MODAL --}}
@@ -489,10 +654,34 @@
     }
 
     let availabilityTimer;
+
+    // FIX: sebelumnya klik kartu ruangan TIDAK mengubah tampilan sama
+    // sekali — radio-nya sebenarnya tetap berpindah (perilaku bawaan
+    // <label> membungkus <input type="radio">), tapi tidak ada JS yang
+    // menukar class "selected" (border hijau + centang) ke kartu yang baru
+    // diklik, jadi kartu lama tetap terlihat seperti yang terpilih
+    // selamanya. Kesannya jadi seperti "tidak bisa diklik" padahal
+    // sebenarnya nilainya sudah berubah, cuma tidak ada umpan balik
+    // visual. Disamakan dengan mekanisme yang sudah benar di halaman
+    // Tambah Peminjaman.
+    document.querySelectorAll('.room-radio').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.room-card').forEach(opt => opt.classList.remove('selected'));
+            this.closest('.room-card').classList.add('selected');
+        });
+    });
+
     function checkAvailability() {
         clearTimeout(availabilityTimer);
 
-        const roomId = document.querySelector('select[name="room_id"]')?.value;
+        // FIX: sebelumnya mencari `select[name="room_id"]` — elemen itu
+        // TIDAK PERNAH ADA di halaman ini (ruangan dipilih lewat kartu
+        // radio, bukan dropdown), jadi roomId selalu null dan baris
+        // `if (!roomId ...) return;` di bawah membuat cek ketersediaan
+        // TIDAK PERNAH benar-benar jalan sama sekali. Sekarang ambil dari
+        // radio yang sedang tercentang, sama seperti halaman Tambah
+        // Peminjaman.
+        const roomId = document.querySelector('.room-radio:checked')?.value;
         const date = document.querySelector('input[name="start_date"]')?.value;
         const startTime = document.getElementById('bookingStartTime')?.value;
         const endTime = document.getElementById('bookingEndTime')?.value;
@@ -791,20 +980,27 @@
         if (e.key === 'Escape' && mtpState.open) closeTimePicker(true);
     });
 
-    document.getElementById('bookingForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    // ============================================================
+    // FORM SUBMIT (AJAX) — sekarang dipicu dari tombol "Ya, Simpan
+    // Perubahan" di modal konfirmasi.
+    // ============================================================
+    function submitBookingForm() {
+        var form = document.getElementById('bookingForm');
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Menyimpan...';
 
-        fetch(this.action, {
+        fetch(form.action, {
             method: 'POST',
-            body: new FormData(this),
+            body: new FormData(form),
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                if (typeof showBlockingOverlay === 'function') {
+                    showBlockingOverlay('Menyimpan perubahan...');
+                }
                 window.location.href = data.redirect;
             } else {
                 alert(data.message);
@@ -813,8 +1009,68 @@
             }
         })
         .catch(err => {
-            this.submit();
+            form.submit();
         });
+    }
+
+    // ============================================================
+    // MODAL KONFIRMASI PERUBAHAN
+    // ============================================================
+    var roomsLookup = @json($roomsLookupData);
+
+    function handleSubmitClick() {
+        var form = document.getElementById('bookingForm');
+        if (!form.reportValidity()) return;
+
+        populateConfirmModal();
+        var modalEl = document.getElementById('confirmModal');
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function populateConfirmModal() {
+        var roomRadio = document.querySelector('input[name="room_id"]:checked');
+        var roomCard = document.getElementById('confirmRoomCard');
+        if (roomRadio && roomsLookup[roomRadio.value]) {
+            var r = roomsLookup[roomRadio.value];
+            roomCard.innerHTML = (r.photo
+                ? '<img src="' + r.photo + '" alt="' + r.name + '">'
+                : '<div class="confirm-room-card-placeholder"><i class="bi bi-image"></i></div>'
+            ) + '<div><div class="confirm-room-name">' + r.name + '</div>' +
+                '<div class="confirm-room-meta"><span><i class="bi bi-geo-alt"></i> ' + r.location + '</span>' +
+                '<span><i class="bi bi-people"></i> ' + r.capacity + ' orang</span></div></div>';
+        }
+
+        var dateVal = document.getElementById('bookingDate').value;
+        if (dateVal) {
+            var d = new Date(dateVal + 'T00:00:00');
+            document.getElementById('confirmDate').textContent = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        var startVal = document.getElementById('bookingStartTime').value;
+        var endVal = document.getElementById('bookingEndTime').value;
+        document.getElementById('confirmTime').textContent = startVal + ' – ' + endVal + ' WIB';
+
+        var purposeVal = document.querySelector('textarea[name="purpose"]').value.trim();
+        document.getElementById('confirmPurpose').textContent = purposeVal || '-';
+
+        var badges = [];
+        var needsConsumption = document.getElementById('needsConsumption').checked;
+        var consumptionQty = document.getElementById('consumptionQty').value;
+        if (needsConsumption) {
+            badges.push('<span class="confirm-badge"><i class="bi bi-cup-hot"></i> Konsumsi' + (consumptionQty ? ' &middot; ' + consumptionQty + ' orang' : '') + '</span>');
+        }
+        var needsOther = document.getElementById('needsOther').checked;
+        var otherNotes = document.getElementById('otherNotes').value.trim();
+        if (needsOther) {
+            badges.push('<span class="confirm-badge"><i class="bi bi-sticky"></i> ' + (otherNotes || 'Lain-lain') + '</span>');
+        }
+        document.getElementById('confirmFacilities').innerHTML = badges.length
+            ? badges.join('')
+            : '<span class="confirm-empty-note">Tidak ada permintaan tambahan</span>';
+    }
+
+    document.getElementById('confirmSubmitBtn').addEventListener('click', function () {
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        submitBookingForm();
     });
 </script>
 @endsection

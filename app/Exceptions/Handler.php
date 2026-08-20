@@ -34,5 +34,25 @@ class Handler extends ExceptionHandler
 
             return response()->json($response, 403);
         });
+
+        // FIX: sebelumnya sesi/token CSRF yang sudah kedaluwarsa (mis. form
+        // login dibiarkan terbuka lama sebelum disubmit, atau ada tab lama
+        // yang di-reload) menampilkan halaman error 419 mentah bawaan
+        // Laravel — bikin bingung ("kok pas login malah error?"). Sekarang
+        // diarahkan balik ke halaman sebelumnya (biasanya form login) dengan
+        // pesan yang jelas, dan tidak dianggap error tak tertangani untuk
+        // request yang memang mengharapkan JSON (mis. polling live-update).
+        $this->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi Anda telah berakhir.',
+                ], 419);
+            }
+
+            return redirect()->back()
+                ->withInput($request->except(['password', 'password_confirmation', 'current_password']))
+                ->with('error', 'Sesi Anda telah berakhir (terlalu lama tidak aktif). Silakan coba lagi.');
+        });
     }
 }

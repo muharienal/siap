@@ -39,7 +39,7 @@
 
     .btn-primary-sm {
         height: 44px; padding: 0 var(--space-5);
-        background: var(--brand-gradient); border: none;
+        background: var(--brand-orange); border: none;
         border-radius: var(--radius-sm); font-weight: 600;
         font-size: var(--font-size-sm); color: var(--text-inverse);
         transition: all var(--transition-fast); cursor: pointer;
@@ -47,8 +47,8 @@
         text-decoration: none; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
     .btn-primary-sm:hover {
-        background: var(--brand-gradient-hover); transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25); color: var(--text-inverse);
+        background: var(--brand-orange-dark); transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25); color: var(--text-inverse);
     }
 
     .btn-outline-sm {
@@ -304,18 +304,19 @@
         padding: 0 24px;
         border-radius: var(--radius-sm);
         border: none;
-        background: var(--brand-gradient);
+        background: var(--brand-green);
         color: white;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(249,115,22,0.2);
+        box-shadow: 0 4px 12px rgba(34,197,94,0.2);
         display: inline-flex;
         align-items: center;
         gap: 6px;
     }
     .btn-modal-submit:hover {
-        box-shadow: 0 6px 16px rgba(16,185,129,0.25);
+        background: var(--brand-green-dark);
+        box-shadow: 0 6px 16px rgba(34,197,94,0.25);
         transform: translateY(-1px);
     }
     .btn-modal-submit:disabled {
@@ -628,72 +629,7 @@
     </div>
 </div>
 
-<div id="roomGridContainer">
-    @if($rooms->count() > 0)
-        <div class="room-grid" id="roomGrid">
-            @foreach($rooms as $room)
-                <a href="{{ route('settings.rooms.show', $room->id) }}" class="room-card" style="text-decoration: none; color: inherit;">
-                    <div class="room-card-image">
-                        @php
-                            $validPhoto = $room->photos->first(function($p) { return $p->photo_url !== null; });
-                        @endphp
-                        @if($validPhoto)
-                            <img src="{{ $validPhoto->photo_url }}" alt="{{ $room->name }}">
-                        @else
-                            <div class="room-card-image-placeholder"><i class="bi bi-image"></i></div>
-                        @endif
-                        <span class="room-card-status {{ $room->status == 1 ? 'status-active' : 'status-inactive' }}">
-                            {{ $room->status == 1 ? 'Aktif' : 'Nonaktif' }}
-                        </span>
-                    </div>
-                    <div class="room-card-body">
-                        <h3 class="room-card-title">{{ $room->name }}</h3>
-                        <div class="room-card-meta">
-                            <span><i class="bi bi-geo-alt"></i>{{ $room->location }}</span>
-                            <span><i class="bi bi-people"></i>{{ $room->capacity }} orang</span>
-                        </div>
-                        
-                        {{-- FACILITY BADGE WITH TOOLTIP --}}
-                        <div class="facility-badge-wrapper">
-                            @if($room->facilities->count() > 0)
-                                <span class="facility-badge has-facilities">
-                                    <i class="bi bi-tools"></i> Ada Fasilitas
-                                </span>
-                                <div class="facility-tooltip">
-                                    <ul>
-                                        @foreach($room->facilities as $f)
-                                            <li>{{ $f->name }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @else
-                                <span class="facility-badge no-facilities">
-                                    <i class="bi bi-dash-circle"></i> Tanpa Fasilitas
-                                </span>
-                            @endif
-                        </div>
-
-                        <div class="room-card-footer">
-                            <div class="room-card-stats">
-                                <i class="bi bi-images"></i> {{ $room->photos->filter(function($p) { return $p->photo_url !== null; })->count() }} foto
-                            </div>
-                            <span class="btn-view-detail">Lihat Detail <i class="bi bi-arrow-right"></i></span>
-                        </div>
-                    </div>
-                </a>
-            @endforeach
-        </div>
-    @else
-        <div class="empty-state">
-            <i class="bi bi-door-open"></i>
-            <h4>Belum ada ruangan</h4>
-            <p>Mulai tambahkan ruangan rapat pertama Anda</p>
-            <button type="button" class="btn-primary-sm" data-bs-toggle="modal" data-bs-target="#addRoomModal" style="display: inline-flex;">
-                <i class="bi bi-plus-lg"></i> Tambah Ruangan
-            </button>
-        </div>
-    @endif
-</div>
+@include('settings.rooms.partials._room-grid', ['rooms' => $rooms])
 
 {{-- ========================================== --}}
 {{-- MODAL: TAMBAH RUANGAN BARU (2 KOLOM + FASILITAS) --}}
@@ -1157,5 +1093,28 @@
 
     // Init
     renderFacilityList();
+
+    // ============================================================
+    // LIVE UPDATE — polling berkala (bukan WebSocket). Grid ruangan
+    // di-refresh otomatis kalau ada perubahan dari admin lain
+    // (status aktif/nonaktif, foto, fasilitas), tanpa reload manual.
+    // Jeda otomatis kalau modal tambah/edit ruangan sedang terbuka.
+    // ============================================================
+    (function () {
+        var lastSignature = 'initial';
+
+        createLivePoller({
+            url: window.location.pathname,
+            interval: 20000,
+            shouldPause: function () { return document.querySelector('.modal.show') !== null; },
+            onUpdate: function (data) {
+                if (data.signature === lastSignature) return;
+                lastSignature = data.signature;
+
+                var el = document.getElementById('roomGridContainer');
+                if (el) el.outerHTML = data.grid;
+            }
+        });
+    })();
 </script>
 @endsection

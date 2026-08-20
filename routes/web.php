@@ -35,6 +35,7 @@ Route::middleware(['auth'])->group(function () {
     // Ruang Meeting (halaman publik untuk karyawan lihat & pilih ruangan)
     Route::get('/rooms', [RoomController::class, 'list'])->name('rooms.list');
     Route::get('/rooms/{room}', [RoomController::class, 'show'])->name('rooms.show');
+    Route::get('/rooms/{room}/live-schedule', [RoomController::class, 'liveSchedule'])->name('rooms.live-schedule');
 
     // ========== SETTINGS MANUAL ROUTES ==========
     // Settings index redirect
@@ -43,7 +44,13 @@ Route::middleware(['auth'])->group(function () {
     })->name('settings.index');
 
     // Ruangan & Fasilitas
-    Route::prefix('settings')->name('settings.')->group(function () {
+    // FIX (bug keamanan kritis): seluruh grup /settings sekarang wajib
+    // lewat middleware 'admin' (role==1) — sebelumnya cuma 'auth' biasa,
+    // siapa pun yang login bisa akses Manajemen Ruang Rapat, Fasilitas,
+    // Divisi, Bidang, Pengguna, dan Digital Signage config langsung lewat
+    // URL, termasuk membuat/menghapus pengguna lain. Lihat penjelasan
+    // lengkap di app/Http/Middleware/EnsureUserIsAdmin.php.
+    Route::prefix('settings')->name('settings.')->middleware(['admin'])->group(function () {
         // Manajemen Ruangan
         Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
         Route::get('/rooms/create', [RoomController::class, 'create'])->name('rooms.create');
@@ -115,14 +122,19 @@ Route::middleware(['auth'])->group(function () {
     // "ketangkap" sebagai {booking} (dianggap ID), lalu gagal dicari di
     // database → 404. Ini sebabnya tombol Export selama ini tidak berfungsi.
     Route::post('bookings/check-availability', [App\Http\Controllers\BookingController::class, 'checkAvailability'])->name('bookings.check-availability');
+    Route::post('bookings/available-rooms', [App\Http\Controllers\BookingController::class, 'availableRooms'])->name('bookings.available-rooms');
     Route::get('bookings/room-schedule', [App\Http\Controllers\BookingController::class, 'roomDaySchedule'])->name('bookings.room-schedule');
     Route::post('bookings/bulk-action', [App\Http\Controllers\BookingController::class, 'bulkAction'])->name('bookings.bulk-action');
     Route::get('bookings/export', [App\Http\Controllers\BookingController::class, 'export'])->name('bookings.export');
 
+    Route::get('bookings/{booking}/live', [App\Http\Controllers\BookingController::class, 'live'])->name('bookings.live');
     Route::resource('bookings', App\Http\Controllers\BookingController::class);
     Route::patch('bookings/{booking}/approve', [App\Http\Controllers\BookingController::class, 'approve'])->name('bookings.approve');
     Route::patch('bookings/{booking}/reject', [App\Http\Controllers\BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('bookings/{booking}/relocate', [App\Http\Controllers\BookingController::class, 'relocate'])->name('bookings.relocate');
+    Route::patch('bookings/{booking}/confirm-relocation', [App\Http\Controllers\BookingController::class, 'confirmRelocation'])->name('bookings.confirm-relocation');
+    Route::post('bookings/{booking}/decline-relocation', [App\Http\Controllers\BookingController::class, 'declineRelocation'])->name('bookings.decline-relocation');
+    Route::get('bookings/{booking}/attendance/export', [App\Http\Controllers\BookingController::class, 'exportAttendance'])->name('bookings.attendance.export');
 
     // Notification routes
     Route::get('notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');

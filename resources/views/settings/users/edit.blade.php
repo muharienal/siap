@@ -33,11 +33,9 @@
         margin: 0 0 1.25rem 0; padding-bottom: 0.75rem;
         border-bottom: 1px solid var(--border-color-light);
         display: flex; align-items: center; gap: 8px;
+        text-transform: none !important;
     }
-    .section-title i {
-        width: 28px; height: 28px; border-radius: 8px; background: rgba(249, 115, 22, 0.1);
-        color: var(--brand-orange); display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem;
-    }
+    .section-title i { color: var(--brand-orange); font-size: 1.2rem; }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
     .form-group { margin-bottom: var(--space-4); }
@@ -58,18 +56,17 @@
         cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
     }
     .btn-cancel:hover { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
+    /* Tombol aksi utama disamakan dengan halaman acuan (Tambah
+       Peminjaman): hijau solid = aksi konfirmasi/submit, bukan gradasi
+       oranye-hijau — supaya makna warnanya konsisten di seluruh
+       aplikasi. */
     .btn-submit {
-        height: 44px; padding: 0 var(--space-6); border-radius: var(--radius-sm); border: none; background: var(--brand-gradient);
+        height: 44px; padding: 0 var(--space-6); border-radius: var(--radius-sm); border: none; background: var(--brand-green);
         color: white; font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(249,115,22,0.2); display: inline-flex; align-items: center; gap: 8px;
+        box-shadow: 0 4px 12px rgba(34,197,94,0.2); display: inline-flex; align-items: center; gap: 8px;
     }
-    .btn-submit:hover { box-shadow: 0 6px 16px rgba(16,185,129,0.25); transform: translateY(-1px); }
-
-    .alert-danger {
-        background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); color: #dc2626;
-        padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); margin-bottom: var(--space-4);
-    }
-    .alert-danger ul { margin: 0; padding-left: var(--space-4); }
+    .btn-submit:hover:not(:disabled) { background: var(--brand-green-dark); box-shadow: 0 6px 16px rgba(34,197,94,0.25); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     @media (max-width: 767.98px) {
         .form-grid { grid-template-columns: 1fr; }
@@ -85,8 +82,13 @@
 </div>
 
 @if($errors->any())
-    <div class="alert-danger">
-        <ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+    <div class="alert-modern alert-error">
+        <i class="bi bi-exclamation-circle-fill alert-modern-icon"></i>
+        <div>
+            @foreach($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+        </div>
     </div>
 @endif
 

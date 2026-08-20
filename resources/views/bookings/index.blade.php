@@ -39,10 +39,13 @@
         flex-shrink: 0;
     }
 
+    /* Solid oranye (bukan gradasi lagi) — disamakan dengan palet
+       btn-modal-primary yang sudah didefinisikan sebelumnya, supaya
+       makna & tampilan warna tombol konsisten di seluruh aplikasi. */
     .btn-primary-sm {
         height: 44px;
         padding: 0 var(--space-5);
-        background: var(--brand-gradient);
+        background: var(--brand-orange);
         border: none;
         border-radius: var(--radius-sm);
         font-weight: 600;
@@ -57,9 +60,9 @@
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
     .btn-primary-sm:hover {
-        background: var(--brand-gradient-hover);
+        background: var(--brand-orange-dark);
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+        box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25);
         color: var(--text-inverse);
     }
 
@@ -90,7 +93,7 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: var(--space-4);
-        margin-bottom: var(--space-6);
+        margin-bottom: var(--space-5);
     }
     .stat-card {
         background: var(--bg-card);
@@ -119,7 +122,7 @@
     .stat-body { min-width: 0; }
     .stat-value {
         font-size: var(--font-size-2xl);
-        font-weight: 800;
+        font-weight: 700;
         color: var(--text-primary);
         line-height: 1.1;
         display: flex;
@@ -163,7 +166,7 @@
     .btn-today {
         height: 44px;
         padding: 0 var(--space-4);
-        background: var(--brand-gradient);
+        background: var(--brand-orange);
         color: var(--text-inverse);
         font-weight: 600;
         font-size: var(--font-size-sm);
@@ -174,7 +177,7 @@
         white-space: nowrap;
         box-shadow: none;
     }
-    .btn-today:hover { filter: brightness(1.05); }
+    .btn-today:hover { background: var(--brand-orange-dark); }
     .date-nav-btn {
         width: 44px;
         background: transparent;
@@ -676,7 +679,10 @@
         gap: 4px;
         white-space: nowrap;
     }
-    .type-priority { background: rgba(255, 145, 66, 0.12); color: #F2751A; }
+    {{-- Warna "Priority" (ungu) disamakan dengan badge Priority di halaman
+         Detail Peminjaman & kalender Dashboard — sebelumnya oranye di sini,
+         beda sendiri dari 2 tempat lain yang sudah pakai ungu. --}}
+    .type-priority { background: rgba(139, 92, 246, 0.12); color: #7c3aed; }
     .type-regular { background: rgba(100, 116, 139, 0.12); color: #475569; }
 
     /* Status Badges */
@@ -863,6 +869,72 @@
     .stat-card:nth-child(2) { animation-delay: 0.1s; }
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.2s; }
+
+    /* ============================================================
+       SECTION TABEL PER-STATUS — tiga tabel independen (Pending/
+       Disetujui/Ditolak) menggantikan tabel gabungan + Riwayat
+       Peminjaman yang lama. Tiap section punya heading + filter
+       sendiri, tapi strukturnya seragam lewat perulangan di HTML.
+
+       FIX: sebelumnya judul mengambang bebas TANPA card sama sekali,
+       lalu filter jadi card sendiri, lalu tabel jadi card terpisah
+       lagi — 3 blok visual lepas-lepas per section, terlihat
+       berantakan/membingungkan (tidak jelas mana yang satu kesatuan).
+       Sekarang ketiganya (judul + filter + tabel) digabung jadi SATU
+       card besar per status, dengan pembatas garis tipis antar bagian
+       di dalamnya — pola yang sama seperti card lain di aplikasi ini.
+       ============================================================ */
+    .status-table-section {
+        margin-top: var(--space-5);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color-light);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+    }
+    .status-table-section:first-of-type { margin-top: 0; }
+
+    .status-table-heading {
+        display: flex; align-items: center; gap: 10px;
+        font-size: 1.1rem; font-weight: 700; color: var(--text-primary);
+        padding: var(--space-5) var(--space-5) var(--space-4);
+    }
+    .status-table-heading .heading-icon {
+        width: 32px; height: 32px; border-radius: 9px;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0;
+    }
+    .status-table-heading.pending .heading-icon  { background: var(--status-pending-bg, rgba(245,158,11,0.12)); color: var(--status-pending-text, #b45309); }
+    .status-table-heading.approved .heading-icon { background: rgba(16,185,129,0.1); color: var(--brand-green-dark); }
+    .status-table-heading.rejected .heading-icon { background: var(--status-rejected-bg, rgba(239,68,68,0.08)); color: var(--status-rejected-text, #b91c1c); }
+    .status-table-count {
+        font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
+        background: var(--bg-body); border: 1px solid var(--border-color-light);
+        padding: 2px 10px; border-radius: 999px; margin-left: 2px;
+    }
+
+    /* Filter di dalam card TIDAK lagi jadi kartu sendiri (dulu punya
+       bg/border/shadow sendiri) — sekarang jadi satu strip menyatu di
+       dalam card besar, dipisah garis tipis atas-bawah saja. */
+    .status-table-section .db-controls {
+        background: var(--bg-card);
+        border: none; border-radius: 0; box-shadow: none;
+        margin: 0; padding: var(--space-4) var(--space-5);
+        border-top: 1px solid var(--border-color-light);
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .status-table-section .list-context-hint {
+        margin: var(--space-4) var(--space-5) 0;
+        background: transparent; padding: 0;
+    }
+
+    /* Tabel/kartu mobile juga tidak lagi jadi kartu sendiri — menyatu
+       flush di dalam card besar (batas luarnya sudah ditangani card
+       induk). */
+    .status-table-section .booking-list-wrapper {
+        background: transparent; border: none; border-radius: 0; box-shadow: none;
+        margin: var(--space-4) 0 var(--space-5);
+    }
 </style>
 
 {{-- FIX: controller mengirim session('success')/session('error') di banyak
@@ -884,7 +956,7 @@
 
 <div class="db-toolbar">
     <div>
-        <a href="{{ route('bookings.export', request()->query()) }}" class="btn-outline-sm">
+        <a href="{{ route('bookings.export') }}" class="btn-outline-sm">
             <i class="bi bi-download"></i> Export
         </a>
     </div>
@@ -895,358 +967,127 @@
     </div>
 </div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon blue"><i class="bi bi-clipboard-data"></i></div>
-        <div class="stat-body">
-            <div class="stat-value">{{ $stats['total'] ?? 0 }}</div>
-            <div class="stat-label">Total Booking</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
-        <div class="stat-body">
-            <div class="stat-value">{{ $stats['pending'] ?? 0 }}</div>
-            <div class="stat-label">Menunggu Persetujuan</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
-        <div class="stat-body">
-            <div class="stat-value">{{ $stats['approved'] ?? 0 }}</div>
-            <div class="stat-label">Disetujui</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
-        <div class="stat-body">
-            <div class="stat-value">{{ $stats['rejected'] ?? 0 }}</div>
-            <div class="stat-label">Ditolak</div>
-        </div>
-    </div>
-</div>
+@include('bookings.partials._stats', ['stats' => $stats])
 
-<form action="{{ route('bookings.index') }}" method="GET" id="filterForm">
-    <div class="db-controls">
-        <div class="db-filter-group">
-            <label for="dateSelector">Tanggal</label>
-            <div class="date-navigator" role="group" aria-label="Navigasi Tanggal">
-                <button type="button" class="btn-today" onclick="resetToToday()" title="Hari Ini">
-                    <i class="bi bi-calendar-date"></i> Hari Ini
-                </button>
-                <button type="button" class="date-nav-btn" onclick="shiftDate(-1)" aria-label="Tanggal sebelumnya">
-                    <i class="bi bi-chevron-left"></i>
-                </button>
-                <label class="date-display">
-                    <input type="date" id="dateSelector" name="date" value="{{ request('date') }}" onchange="document.getElementById('filterForm').submit()" autocomplete="off" aria-label="Pilih tanggal">
-                </label>
-                <button type="button" class="date-nav-btn" onclick="shiftDate(1)" aria-label="Tanggal berikutnya">
-                    <i class="bi bi-chevron-right"></i>
+{{-- ============================================================
+     TIGA TABEL INDEPENDEN — Pending, Disetujui, Ditolak.
+     Menggantikan 1 tabel gabungan (difilter dropdown Status) +
+     tabel "Riwayat Peminjaman" terpisah yang lama. Ketiga tabel di
+     bawah dibangun dari satu perulangan supaya strukturnya konsisten
+     (tidak ada risiko 3 salinan HTML manual saling berbeda seiring
+     waktu) — sumber datanya beda ($pendingBookings/$approvedBookings/
+     $rejectedBookings), tapi markup & filternya identik.
+
+     CATATAN: filter "Status" yang dulu ada di tabel gabungan SENGAJA
+     tidak ikut direplikasi di sini — karena tabel di bawah ini sudah
+     tetap terkunci ke satu status masing-masing, dropdown Status di
+     dalamnya justru akan kontradiktif (mis. pilih "Ditolak" di tabel
+     Pending tidak akan pernah menampilkan apa pun). Filter lain
+     (Tanggal, Jam Kerja, Ruangan, Reset) tetap identik dengan tabel
+     lama.
+     ============================================================ --}}
+@php
+    $statusTables = [
+        [
+            'prefix' => 'pending', 'label' => 'Menunggu Persetujuan', 'icon' => 'bi-hourglass-split',
+            'heading_class' => 'pending', 'bookings' => $pendingBookings, 'hasDateFilter' => $pendingHasDateFilter,
+            'showBulk' => Auth::user()->role == 1,
+        ],
+        [
+            'prefix' => 'approved', 'label' => 'Disetujui', 'icon' => 'bi-check-circle',
+            'heading_class' => 'approved', 'bookings' => $approvedBookings, 'hasDateFilter' => $approvedHasDateFilter,
+            'showBulk' => false,
+        ],
+        [
+            'prefix' => 'rejected', 'label' => 'Ditolak', 'icon' => 'bi-x-circle',
+            'heading_class' => 'rejected', 'bookings' => $rejectedBookings, 'hasDateFilter' => $rejectedHasDateFilter,
+            'showBulk' => false,
+        ],
+    ];
+@endphp
+
+@foreach($statusTables as $t)
+<div class="status-table-section">
+    <div class="status-table-heading {{ $t['heading_class'] }}">
+        <span class="heading-icon"><i class="bi {{ $t['icon'] }}"></i></span>
+        Peminjaman {{ $t['label'] }}
+        <span class="status-table-count">{{ $t['bookings']->total() }}</span>
+    </div>
+
+    <form action="{{ route('bookings.index') }}" method="GET" id="{{ $t['prefix'] }}FilterForm">
+        {{-- Bawa serta filter & halaman tabel LAIN (kalau ada) supaya tidak
+             ke-reset saat form tabel ini disubmit — ketiganya independen. --}}
+        @foreach($statusTables as $other)
+            @continue($other['prefix'] === $t['prefix'])
+            @foreach(['date', 'room', 'start_time', 'end_time', 'page'] as $suffix)
+                @php $paramName = $other['prefix'] . '_' . $suffix; @endphp
+                @if(request()->filled($paramName))
+                    <input type="hidden" name="{{ $paramName }}" value="{{ request($paramName) }}">
+                @endif
+            @endforeach
+        @endforeach
+
+        <div class="db-controls">
+            <div class="db-filter-group">
+                <label for="{{ $t['prefix'] }}DateSelector">Tanggal</label>
+                <div class="date-navigator" role="group" aria-label="Navigasi Tanggal">
+                    <button type="button" class="btn-today" onclick="resetToToday('{{ $t['prefix'] }}')" title="Hari Ini">
+                        <i class="bi bi-calendar-date"></i> Hari Ini
+                    </button>
+                    <button type="button" class="date-nav-btn" onclick="shiftDate(-1, '{{ $t['prefix'] }}')" aria-label="Tanggal sebelumnya">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <label class="date-display">
+                        <input type="date" id="{{ $t['prefix'] }}DateSelector" name="{{ $t['prefix'] }}_date"
+                               value="{{ request($t['prefix'] . '_date') }}"
+                               onchange="document.getElementById('{{ $t['prefix'] }}FilterForm').submit()"
+                               autocomplete="off" aria-label="Pilih tanggal">
+                    </label>
+                    <button type="button" class="date-nav-btn" onclick="shiftDate(1, '{{ $t['prefix'] }}')" aria-label="Tanggal berikutnya">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="db-divider"></div>
+
+            <div class="db-filter-group">
+                <label for="{{ $t['prefix'] }}TimeTrigger">Jam Kerja</label>
+                <button type="button" class="time-trigger" id="{{ $t['prefix'] }}TimeTrigger" onclick="openTimePicker('{{ $t['prefix'] }}')" aria-haspopup="dialog" aria-expanded="false">
+                    <i class="bi bi-clock"></i>
+                    <span id="{{ $t['prefix'] }}TimeTriggerLabel">{{ request($t['prefix'] . '_start_time', '07:00') }} - {{ request($t['prefix'] . '_end_time', '16:00') }}</span>
+                    <i class="bi bi-chevron-down chevron"></i>
                 </button>
             </div>
-        </div>
 
-        <div class="db-divider"></div>
+            <div class="db-divider"></div>
 
-        <div class="db-filter-group" id="timePickerWrapper">
-            <label for="timeTrigger">Jam Kerja</label>
-            <button type="button" class="time-trigger" id="timeTrigger" onclick="openTimePicker()" aria-haspopup="dialog" aria-expanded="false">
-                <i class="bi bi-clock"></i>
-                <span id="timeTriggerLabel">{{ request('start_time', '07:00') }} - {{ request('end_time', '16:00') }}</span>
-                <i class="bi bi-chevron-down chevron"></i>
+            <div class="db-filter-group">
+                <label for="{{ $t['prefix'] }}RoomFilter">Ruangan</label>
+                <select id="{{ $t['prefix'] }}RoomFilter" class="db-select" name="{{ $t['prefix'] }}_room" onchange="document.getElementById('{{ $t['prefix'] }}FilterForm').submit()">
+                    <option value="">Semua Ruangan</option>
+                    @foreach($rooms as $room)
+                        <option value="{{ $room->id }}" {{ request($t['prefix'] . '_room') == $room->id ? 'selected' : '' }}>{{ $room->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="filter-spacer"></div>
+
+            <button type="button" class="btn-reset-filter" onclick="resetFilters('{{ $t['prefix'] }}')">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
             </button>
         </div>
+    </form>
 
-        <div class="db-divider"></div>
-
-        <div class="db-filter-group">
-            <label for="roomFilter">Ruangan</label>
-            <select id="roomFilter" class="db-select" name="room" onchange="document.getElementById('filterForm').submit()">
-                <option value="">Semua Ruangan</option>
-                @foreach($rooms as $room)
-                    <option value="{{ $room->id }}" {{ request('room') == $room->id ? 'selected' : '' }}>{{ $room->name }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="db-divider"></div>
-
-        <div class="db-filter-group">
-            <label for="statusFilterSelect">Status</label>
-            <select id="statusFilterSelect" class="db-select" name="status" onchange="document.getElementById('filterForm').submit()">
-                <option value="">Semua Status</option>
-                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Disetujui</option>
-                <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Ditolak</option>
-            </select>
-        </div>
-
-        <div class="filter-spacer"></div>
-
-        <button type="button" class="btn-reset-filter" onclick="resetFilters()">
-            <i class="bi bi-arrow-counterclockwise"></i> Reset Filter
-        </button>
-    </div>
-</form>
-
-@if(Auth::user()->role == 1)
-<div class="bulk-action-bar" id="bulkActionBar">
-    <div class="selected-count">
-        <i class="bi bi-check2-square"></i> <span id="selectedCount">0</span> booking dipilih
-    </div>
-    <div class="actions">
-        <button type="button" class="bulk-btn" onclick="bulkAction('approve')">
-            <i class="bi bi-check-circle"></i> Setujui Semua
-        </button>
-        <button type="button" class="bulk-btn danger" onclick="bulkAction('reject')">
-            <i class="bi bi-x-circle"></i> Tolak Semua
-        </button>
-        <button type="button" class="bulk-btn" onclick="clearSelection()">
-            <i class="bi bi-x"></i> Batal
-        </button>
-    </div>
+    @include('bookings.partials._main-list', [
+        'bookings' => $t['bookings'],
+        'hasDateFilter' => $t['hasDateFilter'],
+        'prefix' => $t['prefix'],
+        'showBulk' => $t['showBulk'],
+    ])
 </div>
-@endif
-
-<div class="list-context-hint">
-    @if(request()->filled('date'))
-        <i class="bi bi-funnel"></i>
-        Menampilkan peminjaman untuk <strong>{{ \Carbon\Carbon::parse(request('date'))->locale('id')->isoFormat('dddd, D MMMM Y') }}</strong>
-    @elseif($hasDateFilter)
-        <i class="bi bi-funnel"></i>
-        Menampilkan peminjaman sesuai rentang tanggal yang dipilih
-    @else
-        <i class="bi bi-calendar-week"></i>
-        Menampilkan <strong>seluruh peminjaman hari ini &amp; mendatang</strong>, diurutkan dari yang paling dekat waktunya
-    @endif
-</div>
-
-<div class="booking-list-wrapper">
-    @if($bookings->isEmpty())
-        <div class="empty-state">
-            <i class="bi bi-inbox"></i>
-            <h4>Tidak ada peminjaman ditemukan</h4>
-            <p>@if(request()->hasAny(['status', 'room', 'date', 'start_time', 'end_time'])) Coba ubah filter pencarian Anda @else Mulai buat peminjaman baru untuk ruangan yang Anda butuhkan @endif</p>
-        </div>
-    @else
-        {{-- Desktop Table --}}
-        <div class="booking-table-wrap">
-            <table class="booking-table" id="bookingTable">
-                <thead>
-                    <tr>
-                        @if(Auth::user()->role == 1)
-                        <th class="checkbox-cell">
-                            <input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll(this)">
-                        </th>
-                        @endif
-                        <th>Ruangan</th>
-                        <th>Tanggal & Waktu</th>
-                        <th>Peminjam</th>
-                        @if(Auth::user()->role == 1)
-                        <th>Jenis</th>
-                        @endif
-                        <th>Keperluan</th>
-                        <th>Status</th>
-                        <th>Catatan</th>
-                        <th class="text-end">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($bookings as $booking)
-                        @php
-                            $statusClass = $booking->status == 0 ? 'pending' : ($booking->status == 1 ? 'approved' : 'rejected');
-                            $statusLabel = $booking->status == 0 ? 'Pending' : ($booking->status == 1 ? 'Disetujui' : 'Ditolak');
-                            $typeClass = $booking->booking_type == 'Priority' ? 'priority' : 'regular';
-                            $typeLabel = $booking->booking_type == 'Priority' ? 'Priority' : 'Reguler';
-                            $roomPhoto = $booking->room->photos->isNotEmpty() ? $booking->room->photos->first()->photo_url : null;
-
-                            // Badge hari relatif (Hari Ini / Besok / Lusa / X Hari Lagi)
-                            // supaya user langsung tahu kapan booking ini tanpa mikir tanggal.
-                            $bookingDate = \Carbon\Carbon::parse($booking->start_time)->startOfDay();
-                            $todayDate = \Carbon\Carbon::today();
-                            $diffDays = $todayDate->diffInDays($bookingDate);
-                            if ($bookingDate->lt($todayDate)) $diffDays = -$diffDays;
-
-                            if ($diffDays === 0) {
-                                $dayBadge = ['label' => 'Hari Ini', 'class' => 'today'];
-                            } elseif ($diffDays === 1) {
-                                $dayBadge = ['label' => 'Besok', 'class' => 'soon'];
-                            } elseif ($diffDays === 2) {
-                                $dayBadge = ['label' => 'Lusa', 'class' => 'soon'];
-                            } elseif ($diffDays > 2 && $diffDays <= 14) {
-                                $dayBadge = ['label' => $diffDays . ' Hari Lagi', 'class' => 'upcoming'];
-                            } elseif ($diffDays < 0) {
-                                $dayBadge = ['label' => abs($diffDays) . ' Hari Lalu', 'class' => 'past'];
-                            } else {
-                                $dayBadge = null;
-                            }
-                        @endphp
-                        <tr class="booking-row" data-id="{{ $booking->id }}">
-                            @if(Auth::user()->role == 1)
-                            <td class="checkbox-cell">
-                                <input type="checkbox" class="form-check-input booking-checkbox" value="{{ $booking->id }}" onchange="updateBulkBar()" {{ $booking->status != 0 ? 'disabled' : '' }}>
-                            </td>
-                            @endif
-                            <td class="room-cell">
-                                <div class="room-info-cell">
-                                    <div class="room-thumbnail">
-                                        @if($roomPhoto)
-                                            <img src="{{ $roomPhoto }}" alt="{{ $booking->room->name }}">
-                                        @else
-                                            <i class="bi bi-door-open"></i>
-                                        @endif
-                                    </div>
-                                    <div>
-                                        <div>{{ $booking->room->name }}</div>
-                                        <small class="text-muted">Kapasitas {{ $booking->room->capacity }}</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                @if($dayBadge)
-                                    <span class="day-badge {{ $dayBadge['class'] }}">{{ $dayBadge['label'] }}</span><br>
-                                @endif
-                                <div class="fw-semibold">{{ \Carbon\Carbon::parse($booking->start_time)->locale('id')->isoFormat('D MMM Y') }}</div>
-                                <small class="text-muted">
-                                    <i class="bi bi-clock"></i>
-                                    {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }}
-                                </small>
-                            </td>
-                            <td>
-                                <div>{{ $booking->user->full_name ?? 'Unknown' }}</div>
-                                <small class="text-muted">{{ $booking->user->nip ?? '-' }}</small>
-                            </td>
-                            @if(Auth::user()->role == 1)
-                            <td>
-                                <span class="type-badge type-{{ $typeClass }}">
-                                    <i class="bi bi-{{ $booking->booking_type == 'Priority' ? 'star-fill' : 'circle' }}"></i>
-                                    {{ $typeLabel }}
-                                </span>
-                            </td>
-                            @endif
-                            <td class="purpose-cell" title="{{ $booking->purpose }}">{{ $booking->purpose }}</td>
-                            <td>
-                                <span class="status-badge status-{{ $statusClass }}">
-                                    <i class="bi bi-circle-fill" style="font-size: 6px;"></i> {{ $statusLabel }}
-                                </span>
-                                @if($booking->displaced_by_id && Auth::user()->role == 1)
-                                    <br>
-                                    <span class="conflict-badge">
-                                        <i class="bi bi-exclamation-triangle-fill"></i> Bentrok
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="reason-cell" data-reason="{{ $booking->rejection_reason ?? '-' }}">
-                                {{ $booking->rejection_reason ? Str::limit($booking->rejection_reason, 30) : '-' }}
-                            </td>
-                            <td class="text-end">
-                                <div class="d-flex gap-1 justify-content-end">
-                                    <a href="{{ route('bookings.show', $booking->id) }}" class="action-btn view" title="Pratinjau">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Mobile Cards --}}
-        <div class="booking-cards">
-            @foreach($bookings as $booking)
-                @php
-                    $statusClass = $booking->status == 0 ? 'pending' : ($booking->status == 1 ? 'approved' : 'rejected');
-                    $statusLabel = $booking->status == 0 ? 'Pending' : ($booking->status == 1 ? 'Disetujui' : 'Ditolak');
-                    $typeClass = $booking->booking_type == 'Priority' ? 'priority' : 'regular';
-                    $typeLabel = $booking->booking_type == 'Priority' ? 'Priority' : 'Reguler';
-                    $roomPhoto = $booking->room->photos->isNotEmpty() ? $booking->room->photos->first()->photo_url : null;
-
-                    $bookingDate = \Carbon\Carbon::parse($booking->start_time)->startOfDay();
-                    $todayDate = \Carbon\Carbon::today();
-                    $diffDays = $todayDate->diffInDays($bookingDate);
-                    if ($bookingDate->lt($todayDate)) $diffDays = -$diffDays;
-
-                    if ($diffDays === 0) {
-                        $dayBadge = ['label' => 'Hari Ini', 'class' => 'today'];
-                    } elseif ($diffDays === 1) {
-                        $dayBadge = ['label' => 'Besok', 'class' => 'soon'];
-                    } elseif ($diffDays === 2) {
-                        $dayBadge = ['label' => 'Lusa', 'class' => 'soon'];
-                    } elseif ($diffDays > 2 && $diffDays <= 14) {
-                        $dayBadge = ['label' => $diffDays . ' Hari Lagi', 'class' => 'upcoming'];
-                    } elseif ($diffDays < 0) {
-                        $dayBadge = ['label' => abs($diffDays) . ' Hari Lalu', 'class' => 'past'];
-                    } else {
-                        $dayBadge = null;
-                    }
-                @endphp
-                <div class="booking-card status-{{ $statusClass }}">
-                    <div class="booking-card-header">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="room-thumbnail">
-                                @if($roomPhoto)
-                                    <img src="{{ $roomPhoto }}" alt="{{ $booking->room->name }}">
-                                @else
-                                    <i class="bi bi-door-open"></i>
-                                @endif
-                            </div>
-                            <div>
-                                <div class="booking-card-title">{{ $booking->room->name }}</div>
-                                @if($dayBadge)
-                                    <span class="day-badge {{ $dayBadge['class'] }}">{{ $dayBadge['label'] }}</span>
-                                @endif
-                                <div class="booking-card-time">
-                                    <i class="bi bi-calendar3"></i> {{ \Carbon\Carbon::parse($booking->start_time)->locale('id')->isoFormat('D MMM Y') }}
-                                    <i class="bi bi-clock ms-2"></i> {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex flex-column align-items-end gap-1">
-                            <span class="status-badge status-{{ $statusClass }}">{{ $statusLabel }}</span>
-                            @if($booking->displaced_by_id && Auth::user()->role == 1)
-                                <span class="conflict-badge" style="margin-top:0;">
-                                    <i class="bi bi-exclamation-triangle-fill"></i> Bentrok
-                                </span>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="booking-card-body">
-                        <div class="booking-card-meta">
-                            @if(Auth::user()->role == 1)
-                            <span class="type-badge type-{{ $typeClass }}">
-                                <i class="bi bi-{{ $booking->booking_type == 'Priority' ? 'star-fill' : 'circle' }}"></i>
-                                {{ $typeLabel }}
-                            </span>
-                            @endif
-                            <small class="text-muted">
-                                <i class="bi bi-person"></i> {{ $booking->user->full_name ?? 'Unknown' }}
-                            </small>
-                        </div>
-                        <div class="mb-1"><strong>Tujuan:</strong> {{ Str::limit($booking->purpose, 80) }}</div>
-                        @if($booking->rejection_reason)
-                        <div class="text-danger small mt-2">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            <strong>Alasan Ditolak:</strong> {{ $booking->rejection_reason }}
-                        </div>
-                        @endif
-                    </div>
-                    <div class="booking-card-actions">
-                        <a href="{{ route('bookings.show', $booking->id) }}" class="btn btn-outline-primary btn-sm flex-fill">
-                            <i class="bi bi-eye"></i> Pratinjau
-                        </a>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @endif
-</div>
-
-@if($bookings->hasPages())
-<div class="d-flex justify-content-center mt-5">
-    {{ $bookings->appends(request()->query())->links() }}
-</div>
-@endif
+@endforeach
 
 <!-- MATERIAL TIME PICKER -->
 <div class="mtp-overlay" id="mtpOverlay" onclick="if(event.target===this)closeTimePicker()">
@@ -1289,32 +1130,40 @@
 </div>
 
 <script>
-    // Filter Form Functions
-    function shiftDate(days) {
-        var input = document.getElementById('dateSelector');
+    // Filter Form Functions — sekarang menerima "prefix" karena ada TIGA
+    // form filter independen di halaman ini (pending/approved/rejected),
+    // bukan cuma satu seperti sebelumnya.
+    function shiftDate(days, prefix) {
+        var input = document.getElementById(prefix + 'DateSelector');
         var base = input && input.value ? new Date(input.value) : new Date();
         base.setDate(base.getDate() + days);
         var y = base.getFullYear();
         var m = String(base.getMonth() + 1).padStart(2, '0');
         var d = String(base.getDate()).padStart(2, '0');
         input.value = y + '-' + m + '-' + d;
-        document.getElementById('filterForm').submit();
+        document.getElementById(prefix + 'FilterForm').submit();
     }
 
-    function resetToToday() {
+    function resetToToday(prefix) {
         var now = new Date();
         var y = now.getFullYear();
         var m = String(now.getMonth() + 1).padStart(2, '0');
         var d = String(now.getDate()).padStart(2, '0');
-        var dateInput = document.getElementById('dateSelector');
+        var dateInput = document.getElementById(prefix + 'DateSelector');
         if (dateInput) {
             dateInput.value = y + '-' + m + '-' + d;
-            document.getElementById('filterForm').submit();
+            document.getElementById(prefix + 'FilterForm').submit();
         }
     }
 
-    function resetFilters() {
-        window.location.href = '{{ route('bookings.index') }}';
+    // Reset HANYA filter tabel ini (prefix-nya) — filter 2 tabel status
+    // lain di URL yang sama TIDAK ikut hilang, supaya benar-benar independen.
+    function resetFilters(prefix) {
+        var url = new URL(window.location.href);
+        ['date', 'room', 'start_time', 'end_time', 'page'].forEach(function (suffix) {
+            url.searchParams.delete(prefix + '_' + suffix);
+        });
+        window.location.href = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
     }
 
     // Bulk Action Functions
@@ -1388,16 +1237,23 @@
     }
 
     // Material Time Picker Script
+    // Satu modal dipakai bersama oleh SEMUA tabel (elemen dekoratif ini
+    // memang tidak benar-benar memfilter apa pun di server — cuma
+    // tersimpan di URL & ditampilkan balik, sama seperti perilaku
+    // sebelumnya), tapi perlu tahu tabel mana yang sedang memakainya
+    // supaya label & form yang benar yang diperbarui.
     var MTP_WORK_START = 7, MTP_WORK_END = 16;
     var mtpState = { open: false, activeField: 'start', mode: 'hour', start: { h: 7, m: 0 }, end: { h: 16, m: 0 } };
+    var mtpActivePrefix = null;
 
     function pad2(n) { return String(n).padStart(2, '0'); }
     function minsOf(t) { return t.h * 60 + t.m; }
     function isValidOperational(t) { var m = minsOf(t); return m >= MTP_WORK_START * 60 && m <= MTP_WORK_END * 60; }
     function parseLabel(str) { var p = String(str).trim().split('-'); var s = p[0] ? p[0].trim().split(':') : ['07','00']; var e = p[1] ? p[1].trim().split(':') : ['16','00']; return { start: { h: parseInt(s[0], 10) || 7, m: parseInt(s[1], 10) || 0 }, end: { h: parseInt(e[0], 10) || 16, m: parseInt(e[1], 10) || 0 } }; }
 
-    window.openTimePicker = function () {
-        var labelEl = document.getElementById('timeTriggerLabel');
+    window.openTimePicker = function (prefix) {
+        mtpActivePrefix = prefix;
+        var labelEl = document.getElementById(prefix + 'TimeTriggerLabel');
         var parsed = parseLabel(labelEl.textContent);
         mtpState.start = parsed.start;
         mtpState.end = parsed.end;
@@ -1493,27 +1349,82 @@
     window.applyTimePicker = function () {
         if (!isValidOperational(mtpState.start) || !isValidOperational(mtpState.end)) { showMtpError('Waktu harus dalam rentang 07:00–16:00.'); return; }
         if (minsOf(mtpState.start) >= minsOf(mtpState.end)) { showMtpError('Jam mulai harus lebih awal dari jam selesai.'); return; }
+        if (!mtpActivePrefix) { closeTimePicker(); return; }
+
         var sl = pad2(mtpState.start.h) + ':' + pad2(mtpState.start.m);
         var el = pad2(mtpState.end.h) + ':' + pad2(mtpState.end.m);
-        
-        document.getElementById('timeTriggerLabel').textContent = sl + ' - ' + el;
+
+        document.getElementById(mtpActivePrefix + 'TimeTriggerLabel').textContent = sl + ' - ' + el;
         closeTimePicker();
-        
-        var form = document.getElementById('filterForm');
+
+        var form = document.getElementById(mtpActivePrefix + 'FilterForm');
+
+        // Hapus hidden input lama dulu (kalau ada dari kali sebelumnya
+        // picker ini dipakai) supaya tidak menumpuk duplikat tiap kali
+        // dibuka-tutup berkali-kali.
+        var oldStart = form.querySelector('input[name="' + mtpActivePrefix + '_start_time"]');
+        if (oldStart) oldStart.remove();
+        var oldEnd = form.querySelector('input[name="' + mtpActivePrefix + '_end_time"]');
+        if (oldEnd) oldEnd.remove();
+
         var startInput = document.createElement('input');
         startInput.type = 'hidden';
-        startInput.name = 'start_time';
+        startInput.name = mtpActivePrefix + '_start_time';
         startInput.value = sl;
         form.appendChild(startInput);
 
         var endInput = document.createElement('input');
         endInput.type = 'hidden';
-        endInput.name = 'end_time';
+        endInput.name = mtpActivePrefix + '_end_time';
         endInput.value = el;
         form.appendChild(endInput);
 
         form.submit();
     };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && mtpState.open) closeTimePicker(); });
+</script>
+
+{{-- ============================================================
+     LIVE UPDATE — polling berkala (bukan WebSocket, server belum
+     punya infrastrukturnya). Kartu statistik & KETIGA tabel status
+     (Pending/Disetujui/Ditolak) di-refresh otomatis tiap beberapa
+     detik, masing-masing memakai filter sendiri yang sedang aktif di
+     layar, supaya hasilnya selalu konsisten dengan apa yang sedang
+     dilihat. Form filter tidak ikut di-refresh (supaya tidak
+     mengganggu interaksi yang sedang berlangsung).
+     ============================================================ --}}
+<script>
+(function () {
+    var lastSignature = 'initial';
+
+    function isAnyModalOpen() {
+        return document.querySelector('.modal.show') !== null || document.getElementById('bulkActionBar')?.classList.contains('show');
+    }
+
+    function hasCheckedBoxes() {
+        return document.querySelectorAll('.booking-checkbox:checked').length > 0;
+    }
+
+    createLivePoller({
+        url: window.location.pathname + window.location.search,
+        interval: 15000,
+        // Jangan tukar DOM kalau admin sedang menyeleksi checkbox untuk aksi
+        // massal — supaya seleksinya tidak hilang tiba-tiba.
+        shouldPause: function () { return isAnyModalOpen() || hasCheckedBoxes(); },
+        onUpdate: function (data) {
+            if (data.signature === lastSignature) return;
+            lastSignature = data.signature;
+
+            var statsEl = document.getElementById('liveStatsGrid');
+            if (statsEl) statsEl.outerHTML = data.stats;
+
+            var map = { pending: data.pending_results, approved: data.approved_results, rejected: data.rejected_results };
+            Object.keys(map).forEach(function (prefix) {
+                var el = document.getElementById(prefix + 'ResultsArea');
+                if (el && map[prefix]) el.outerHTML = map[prefix];
+            });
+        }
+    });
+})();
 </script>
 @endsection

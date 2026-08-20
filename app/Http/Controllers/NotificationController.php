@@ -29,6 +29,14 @@ class NotificationController extends Controller
         $notifications = $this->notificationService->getUserNotifications(Auth::id(), 50, $unreadOnly);
         $unreadCount = $this->notificationService->getUnreadCount(Auth::id());
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'list' => view('notifications.partials._list', compact('notifications', 'filter'))->render(),
+                'unread_count' => $unreadCount,
+                'signature' => md5($notifications->pluck('id')->implode(',') . '|' . $notifications->pluck('is_read')->implode(',')),
+            ]);
+        }
+
         return view('notifications.index', compact('notifications', 'unreadCount', 'filter'));
     }
 

@@ -82,7 +82,7 @@ class DashboardController extends Controller
             }
         }
 
-        $dayBookings = Booking::with(['user', 'room'])
+        $dayBookings = Booking::with(['user.position', 'room'])
             ->whereDate('start_time', $selectedDate)
             ->whereIn('status', [0, 1, 2])
             ->when(!empty($selectedRoomIds) && !in_array('all', $selectedRoomIds), function ($query) use ($selectedRoomIds) {
@@ -139,6 +139,45 @@ class DashboardController extends Controller
                     return $photo->photo_url;
                 })->toArray(),
             ];
+        }
+
+        // Live-refresh (polling dari JS) — dashboard.blade.php menghitung
+        // $visibleBookings sendiri di dalam file (bukan dari controller),
+        // jadi untuk respons AJAX ini dihitung ulang sekali di sini supaya
+        // partial-nya bisa dirender berdiri sendiri.
+        //
+        // FIX (bug krusial): sebelumnya kondisinya "$request->ajax() ||
+        // $request->wantsJson()" — ajax() cuma mengecek header
+        // X-Requested-With:XMLHttpRequest, dan navigasi tanggal/filter di
+        // halaman ini (fungsi loadDashboard() lewat tombol "<"/">", date
+        // picker, dropdown Ruangan/Status) JUGA mengirim header itu, tapi
+        // mengharapkan HTML LENGKAP kembali (dia mem-parsing HTML itu untuk
+        // mengambil .db-stats-grid/.schedule-card via querySelector).
+        // Akibatnya: setiap kali pindah tanggal, controller ini malah
+        // membalas JSON ringkas (punya polling) alih-alih HTML — DOMParser
+        // di loadDashboard() gagal menemukan elemen yang dicari, jadi
+        // konten tidak pernah ditukar, PADAHAL URL address bar sudah
+        // terlanjur berubah (history.pushState jalan duluan sebelum fetch
+        // selesai) — persis gejala "klik pindah tanggal, URL berubah, isi
+        // halaman diam saja". Sekarang cuma request yang BENAR-BENAR minta
+        // JSON (wantsJson(), dicek dari header Accept) yang dibalas JSON —
+        // itu cuma dikirim oleh polling live-update (lihat createLivePoller
+        // di bagian bawah file ini), bukan oleh loadDashboard().
+        if ($request->wantsJson()) {
+            $visibleBookings = $dayBookings->where('status', '!=', 2);
+
+            return response()->json([
+                'schedule' => view('pages.partials._schedule-body', [
+                    'timeSlots' => $timeSlots,
+                    'rooms' => $rooms,
+                    'isWeekend' => $isWeekend,
+                    'isToday' => $isToday,
+                    'selectedDate' => $selectedDate,
+                    'visibleBookings' => $visibleBookings,
+                    'statusFilter' => $statusFilter,
+                ])->render(),
+                'signature' => md5($dayBookings->pluck('id')->implode(',') . '|' . optional($dayBookings->max('updated_at'))->timestamp),
+            ]);
         }
 
         return view('pages.dashboard', compact(

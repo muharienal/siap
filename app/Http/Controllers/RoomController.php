@@ -23,6 +23,13 @@ class RoomController extends Controller
         // untuk menghitung $roomStatus sudah tidak diperlukan lagi.
         $rooms = Room::with(['photos', 'facilities'])->orderBy('name')->get();
 
+        if (request()->wantsJson()) {
+            return response()->json([
+                'grid' => view('pages.partials._room-list-grid', compact('rooms'))->render(),
+                'signature' => md5($rooms->pluck('id')->implode(',') . '|' . optional($rooms->max('updated_at'))->timestamp),
+            ]);
+        }
+
         return view('pages.room-list', compact('rooms'));
     }
 
@@ -71,6 +78,44 @@ class RoomController extends Controller
     }
 
     /**
+     * Live-refresh (polling) khusus untuk kartu "Jadwal Hari Ini" di
+     * halaman detail ruangan (karyawan) — supaya kalau ada booking baru
+     * disetujui admin, jadwalnya langsung kelihatan tanpa reload.
+     */
+    public function liveSchedule(Room $room)
+    {
+        $today = Carbon::today();
+
+        $timeSlots = [];
+        $slot = Carbon::createFromTime(7, 0, 0);
+        $end = Carbon::createFromTime(16, 0, 0);
+        while ($slot->lte($end)) {
+            $timeSlots[] = $slot->format('H:i');
+            $slot->addMinutes(30);
+        }
+
+        $todayBookings = Booking::where('room_id', $room->id)
+            ->whereDate('start_time', $today)
+            ->whereIn('status', [0, 1])
+            ->orderBy('start_time')
+            ->get();
+
+        $schedule = [];
+        foreach ($timeSlots as $time) {
+            $slotStart = Carbon::parse($today->format('Y-m-d') . ' ' . $time);
+            $booking = $todayBookings->first(function ($b) use ($slotStart) {
+                return $slotStart->gte(Carbon::parse($b->start_time)) && $slotStart->lt(Carbon::parse($b->end_time));
+            });
+            $schedule[$time] = $booking;
+        }
+
+        return response()->json([
+            'schedule' => view('pages.partials._room-today-schedule', compact('schedule', 'today'))->render(),
+            'signature' => md5($todayBookings->pluck('id')->implode(',') . '|' . optional($todayBookings->max('updated_at'))->timestamp),
+        ]);
+    }
+
+    /**
      * Halaman detail ruangan (SETTINGS/ADMIN): Untuk melihat detail, edit, dan hapus.
      */
     public function showSettings(Room $room)
@@ -81,6 +126,16 @@ class RoomController extends Controller
             'id', 
             $room->facilities->pluck('id')
         )->orderBy('name')->get();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'info' => view('settings.rooms.partials._room-info-card', compact('room'))->render(),
+                'facilities' => view('settings.rooms.partials._facilities-list', compact('room'))->render(),
+                'signature' => md5($room->updated_at . '|' . $room->facilities->map(function ($f) {
+                    return $f->id . ':' . $f->pivot->quantity;
+                })->implode(',')),
+            ]);
+        }
 
         return view('settings.rooms.show', compact('room', 'availableFacilities'));
     }
@@ -113,6 +168,13 @@ class RoomController extends Controller
                 'delete_url' => route('settings.rooms.destroy', $room->id),
             ];
         });
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'grid' => view('settings.rooms.partials._room-grid', compact('rooms'))->render(),
+                'signature' => md5($rooms->pluck('id')->implode(',') . '|' . optional($rooms->max('updated_at'))->timestamp),
+            ]);
+        }
 
         return view('settings.rooms.index', compact('rooms', 'roomsData', 'facilities'));
     }
@@ -258,6 +320,23 @@ class RoomController extends Controller
 
     public function destroy(Room $room)
     {
+        // FIX (bug krusial — potensi kehilangan data diam-diam): kolom
+        // bookings.room_id memakai ON DELETE CASCADE — artinya menghapus
+        // ruangan akan OTOMATIS DAN DIAM-DIAM menghapus SEMUA riwayat
+        // booking ruangan itu juga (termasuk yang sudah Disetujui/selesai),
+        // tanpa peringatan apa pun. Ini bertentangan langsung dengan aturan
+        // yang sudah ditegakkan di seluruh aplikasi ini: riwayat booking
+        // yang sudah diproses bersifat PERMANEN, tidak boleh
+        // diubah/dihapus siapa pun. Sekarang penghapusan ruangan yang
+        // masih punya riwayat booking (apa pun statusnya, kapan pun
+        // waktunya) diblokir — admin diarahkan menonaktifkan ruangan
+        // (kolom status, sudah ada fiturnya) sebagai gantinya, supaya
+        // ruangan tidak bisa dipakai booking baru TANPA menghapus riwayat
+        // lama.
+        if (\App\Models\Booking::where('room_id', $room->id)->exists()) {
+            return back()->with('error', 'Ruangan ini masih memiliki riwayat peminjaman dan tidak dapat dihapus (riwayat bersifat permanen). Nonaktifkan ruangan ini jika tidak ingin dipakai lagi.');
+        }
+
         foreach ($room->photos as $photo) {
             Storage::disk('public')->delete($photo->photo_path);
             $photo->delete();

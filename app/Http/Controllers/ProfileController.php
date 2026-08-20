@@ -24,6 +24,13 @@ class ProfileController extends Controller
     {
         $user = Auth::user()->load(['division', 'position']);
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'info' => view('profile.partials._info-card', compact('user'))->render(),
+                'signature' => md5($user->updated_at . '|' . optional($user->division)->id . '|' . optional($user->position)->id),
+            ]);
+        }
+
         return view('profile.index', compact('user'));
     }
 

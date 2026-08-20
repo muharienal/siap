@@ -35,6 +35,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // FIX: pagination di seluruh aplikasi (Daftar Peminjaman, dll)
+        // tampil rusak — panah Previous/Next raksasa tak berbentuk. Akar
+        // masalahnya: Laravel 10 defaultnya merender view pagination
+        // gaya TAILWIND (pakai SVG + class utility Tailwind seperti
+        // "h-5 w-5" untuk ukuran ikon). Aplikasi ini 100% pakai Bootstrap
+        // 5, TIDAK PERNAH memuat Tailwind CSS sama sekali — jadi class
+        // ukuran itu tidak pernah berlaku, SVG-nya jatuh ke ukuran native
+        // browser (raksasa). Diarahkan pakai view Bootstrap yang memang
+        // sudah disediakan Laravel, sesuai framework CSS yang benar-benar
+        // dipakai aplikasi ini.
+        \Illuminate\Pagination\Paginator::useBootstrap();
+
         // Register custom MySQL connection to handle SSL issues in schema operations
         Connection::resolverFor('mysql', function ($connection, $database, $prefix, $config) {
             return new MySqlConnection($connection, $database, $prefix, $config);

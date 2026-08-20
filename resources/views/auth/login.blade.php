@@ -79,13 +79,21 @@
     }
 
     /* ============================================================
-       WRAPPER — FIX: menghapus `zoom: 0.9` (properti CSS non-standar,
-       perilakunya beda-beda antar browser & jadi sumber bug tampilan
-       tidak konsisten). Ukuran dasar sengaja dikecilkan ~10% langsung
-       di sini (bukan pakai transform:scale/zoom) supaya hasilnya
-       konsisten di semua browser tanpa efek samping.
+       WRAPPER
+       FIX (bug modal tertutup layer gelap): sebelumnya elemen ini
+       dinamai `.auth-wrapper` — nama yang SAMA PERSIS dengan div
+       pembungkus di layouts/auth.blade.php (yang membungkus SELURUH
+       @yield('content'), termasuk modal Lupa Kata Sandi). Karena CSS
+       di sini tidak ter-scope, aturan `position:relative; z-index:1`
+       ikut kena ke wrapper milik LAYOUT itu juga — akibatnya SELURUH
+       konten halaman (termasuk modal) jadi "terjebak" dalam stacking
+       context ber-z-index rendah, kalah tumpuk dari modal-backdrop
+       Bootstrap (z-index:1050), jadi modal terlihat ada tapi tidak
+       bisa diklik apa pun (ketutup lapisan gelap transparan).
+       Diganti nama jadi `.login-panel` yang unik, tidak bentrok
+       dengan elemen manapun di layout.
        ============================================================ */
-    .auth-wrapper {
+    .login-panel {
         width: 100%;
         max-width: 840px;
         margin: 0 auto;
@@ -138,8 +146,8 @@
         pointer-events: none;
     }
 
-    /* Aksen cahaya statis halus — diganti dari shape mengambang yang
-       sebelumnya bisa salah posisi di panel dengan tinggi berbeda-beda. */
+    /* Aksen cahaya statis halus — diposisikan pas di tengah panel
+       supaya tetap proporsional berapa pun tinggi panelnya. */
     .auth-brand-panel::after {
         content: '';
         position: absolute; top: 50%; left: 50%; width: 340px; height: 340px;
@@ -182,7 +190,6 @@
     .brand-logo-box:hover { transform: scale(1.05) rotate(-2deg); }
     .brand-logo-box svg { width: 100%; height: 100%; display: block; border-radius: 14px; overflow: hidden; }
     .brand-logo-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
-    .brand-logo-box.company-box { background: #fff; padding: 12px; }
 
     /* ============================================================
        FORM PANEL
@@ -206,11 +213,9 @@
     }
 
     /* ============================================================
-       FIELD INPUT — FIX: sebelumnya ikon diposisikan `position:absolute`
-       di atas input, rawan geser/tumpang-tindih tergantung state
-       (fokus, error, dsb). Diganti pendekatan flexbox murni: ikon dan
-       input sama-sama anak flex dalam satu kontainer, jadi sejajar
-       otomatis oleh browser — tidak mungkin salah posisi lagi.
+       FIELD INPUT — flexbox murni: ikon dan input sama-sama anak flex
+       dalam satu kontainer, jadi sejajar otomatis oleh browser — tidak
+       mungkin salah posisi.
        ============================================================ */
     .field-group { margin-bottom: 1.05rem; }
 
@@ -340,9 +345,10 @@
 
     /* ============================================================
        MODAL FORGOT PASSWORD
-       FIX: background & z-index dibuat eksplisit supaya modal selalu
-       solid/opaque, tidak pernah tembus pandang ke konten di belakangnya
-       walau ada elemen dekoratif lain di halaman.
+       background & z-index dibuat eksplisit supaya modal selalu
+       solid/opaque, dan sekarang TIDAK LAGI terjebak stacking context
+       manapun karena `.login-panel` (lihat catatan di atas) sudah
+       nama unik yang tidak bentrok dengan elemen apa pun di layout.
        ============================================================ */
     .forgot-modal { z-index: 1060; }
     .forgot-modal .modal-content {
@@ -383,6 +389,58 @@
     }
 
     /* ============================================================
+       BANTUAN — dipindah ke DALAM panel kiri, tepat di bawah tagline,
+       bukan mengambang di viewport lagi. Tetap dibuat mencolok
+       (pill putih kontras dengan gradient panel, ikon WA dengan
+       pulse ring, teks "Klik disini" eksplisit) supaya user yang
+       bingung langsung tahu ini bisa diklik tanpa perlu menebak.
+       ============================================================ */
+    .auth-help-inline {
+        margin-top: 1.5rem;
+        display: inline-flex; align-items: center; gap: 10px;
+        background: rgba(255,255,255,0.16);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        border: 1.5px solid rgba(255,255,255,0.35);
+        border-radius: 999px; padding: 10px 20px 10px 12px;
+        color: #fff; text-decoration: none; cursor: pointer;
+        transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), background 0.25s ease, box-shadow 0.25s ease;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+    }
+    .auth-help-inline:hover {
+        transform: translateY(-2px) scale(1.02);
+        background: rgba(255,255,255,0.24);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+        color: #fff;
+    }
+    .auth-help-inline-icon {
+        width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+        background: var(--wa-green); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; position: relative;
+    }
+    .auth-help-inline-icon .pulse-ring {
+        position: absolute; inset: 0; border-radius: 50%;
+        border: 2px solid #fff; animation: loginHelpPulse 2s ease-out infinite;
+    }
+    @keyframes loginHelpPulse {
+        0% { transform: scale(1); opacity: 0.7; }
+        100% { transform: scale(1.7); opacity: 0; }
+    }
+    .auth-help-inline-text { text-align: left; line-height: 1.3; }
+    .auth-help-inline-text .label { font-size: 0.84rem; font-weight: 700; }
+    .auth-help-inline-text .sub { font-size: 0.71rem; opacity: 0.85; font-weight: 500; }
+
+    @media (max-width: 575.98px) {
+        .auth-help-inline { margin-top: 1.1rem; padding: 8px 16px 8px 10px; gap: 8px; }
+        .auth-help-inline-icon { width: 28px; height: 28px; font-size: 0.9rem; }
+        .auth-help-inline-text .label { font-size: 0.76rem; }
+        .auth-help-inline-text .sub { font-size: 0.65rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .auth-help-inline-icon .pulse-ring { animation: none; }
+    }
+
+    /* ============================================================
        ANIMASI MASUK
        ============================================================ */
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
@@ -391,10 +449,11 @@
 
     .auth-card { animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1); }
     .brand-logo-row { animation: fadeInScale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both; }
-    .auth-app-name, .auth-app-sub, .auth-tagline { animation: fadeInDown 0.55s ease-out both; }
+    .auth-app-name, .auth-app-sub, .auth-tagline, .auth-help-inline { animation: fadeInDown 0.55s ease-out both; }
     .auth-app-name { animation-delay: 0.18s; }
     .auth-app-sub { animation-delay: 0.24s; }
     .auth-tagline { animation-delay: 0.3s; }
+    .auth-help-inline { animation-delay: 0.36s; }
     .form-heading, .field-group, .form-options, .btn-login {
         animation: fadeInUp 0.5s ease-out both;
     }
@@ -432,7 +491,7 @@
         body.auth-page::before, body.auth-page::after { display: none; }
         .auth-brand-panel::after { width: 200px; height: 200px; }
 
-        .auth-wrapper { min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 100%; }
+        .login-panel { min-height: 100vh; min-height: 100dvh; width: 100%; max-width: 100%; }
 
         .auth-card {
             border-radius: 0; box-shadow: none; min-height: 100vh; min-height: 100dvh;
@@ -499,7 +558,7 @@
        ============================================================ */
     @media (max-width: 991.98px) and (orientation: landscape) and (max-height: 500px) {
         body.auth-page { padding: 1rem; align-items: center; background: var(--ui-bg); }
-        .auth-wrapper { min-height: auto; }
+        .login-panel { min-height: auto; }
         .auth-card { min-height: auto; border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); }
         .auth-card > .row { min-height: auto; flex-direction: row; }
         .auth-brand-panel { min-height: 100%; padding: 1.5rem; border-radius: 0; }
@@ -516,17 +575,18 @@
         .field-input { font-size: 15px; }
         .btn-login { height: 42px; }
         .login-footer { margin-top: 0.85rem; padding-top: 0.85rem; }
+        .auth-help-inline { display: none; }
     }
 
     /* ============================================================
        ULTRA-WIDE / LAYAR BESAR — jaga proporsi tetap nyaman dibaca
        ============================================================ */
     @media (min-width: 1600px) {
-        .auth-wrapper { max-width: 980px; }
+        .login-panel { max-width: 980px; }
     }
 </style>
 
-<div class="auth-wrapper">
+<div class="login-panel">
 
     <div class="auth-card">
         <div class="row g-0">
@@ -552,7 +612,6 @@
                                 </g>
                             </svg>
                         </div>
-                        <span class="brand-logo-divider"></span>
                         <div class="brand-logo-box company-box">
                             <img src="{{ asset('assets/images/icon/icon.png') }}" alt="PT Petrokopindo Cipta Selaras">
                         </div>
@@ -562,6 +621,18 @@
                     <p class="auth-tagline">
                         Kelola ruang rapat, jadwal pertemuan, dan administrasi kehadiran secara terintegrasi, efektif, dan efisien.
                     </p>
+
+                    <a href="https://wa.me/6281332867075?text=Halo%20Admin%20SIAP%2C%20saya%20butuh%20bantuan."
+                       target="_blank" rel="noopener noreferrer" class="auth-help-inline" aria-label="Butuh bantuan? Klik untuk chat admin via WhatsApp">
+                        <span class="auth-help-inline-icon">
+                            <span class="pulse-ring"></span>
+                            <i class="bi bi-whatsapp"></i>
+                        </span>
+                        <span class="auth-help-inline-text">
+                            <span class="label d-block">Butuh Bantuan?</span>
+                            <span class="sub d-block">Klik disini untuk chat admin SIAP</span>
+                        </span>
+                    </a>
                 </div>
             </div>
 
@@ -580,6 +651,20 @@
                     <!-- Form -->
                     <form method="POST" action="{{ route('login') }}">
                         @csrf
+
+                        {{-- Flash message umum (bukan validasi field) — dipakai
+                             antara lain saat sesi/token CSRF sudah kedaluwarsa,
+                             supaya pesannya jelas bukan halaman error mentah. --}}
+                        @if(session('error'))
+                            <div class="alert-modern alert-error field-alert" style="margin-bottom: 1.25rem;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> {{ session('error') }}
+                            </div>
+                        @endif
+                        @if(session('success'))
+                            <div class="alert-modern" style="margin-bottom: 1.25rem; background: #f0fdf4; border-color: #bbf7d0; color: #15803d;">
+                                <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
+                            </div>
+                        @endif
 
                         <!-- NIK -->
                         <div class="field-group">
@@ -621,16 +706,13 @@
 
                         <!-- Options -->
                         <div class="form-options">
-                            <div class="form-check form-check-custom">
+                            <div>
                                 <input class="form-check-input" type="checkbox" name="remember" id="remember"
                                        {{ old('remember') ? 'checked' : '' }}>
                                 <label class="form-check-label" for="remember">
                                     Ingat saya
                                 </label>
                             </div>
-                            <button type="button" class="forgot-link" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">
-                                Lupa kata sandi?
-                            </button>
                         </div>
 
                         <!-- Submit -->

@@ -5,275 +5,268 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Status Ruang Rapat &middot; Digital Signage</title>
     <link rel="icon" href="{{ asset('assets/images/icon/icon.png') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    {{-- FIX: paksa tema terang di mana pun signage ini dibuka. --}}
-    <meta name="color-scheme" content="light only">
-    <meta name="supported-color-schemes" content="light">
     <style>
         :root {
-            color-scheme: light only;
-            --brand-orange: #f97316;
-            --brand-orange-dark: #ea580c;
-            --brand-green: #10b981;
-            --brand-green-dark: #059669;
+            --brand-orange: #FF9142;
+            --brand-orange-dark: #F2751A;
+            --brand-green: #22C55E;
+            --brand-green-dark: #16A34A;
             --brand-gradient: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-green) 100%);
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --bg-body: #cbd3dd;
-            --bg-card: #ffffff;
-            --bg-tile: #f8fafc;
-            --border-color: #e7ebf1;
             --red: #ef4444;
             --red-bg: #fef2f2;
-            --gray: #94a3b8;
-            --gray-bg: #f1f5f9;
+            --red-dark: #b91c1c;
 
-            /* ===== Ukuran tetap agar layout tidak "goyang" =====
-               Semua panel & header memakai tinggi tetap ini, TIDAK
-               bergantung pada panjang nama ruangan / lokasi, sehingga
-               susunan grid selalu rapi berapa pun jumlah baris teks. */
-            --header-h: clamp(64px, 6.2vw, 96px);
-            --status-w: clamp(96px, 8vw, 128px);
+            /* ===== TEMA TERANG (default) ===== */
+            --bg-body: #f4f6f9;
+            --bg-card: #ffffff;
+            --bg-subtle: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border-color: #e7ebf1;
+            --shadow-card: 0 6px 24px rgba(15,23,42,0.06);
+            --shadow-soft: 0 4px 16px rgba(15,23,42,0.05);
         }
+
+        /* ===== TEMA GELAP ===== */
+        body.theme-dark {
+            --bg-body: #0a0e17;
+            --bg-card: #151b2b;
+            --bg-subtle: #1c2438;
+            --text-primary: #f1f5f9;
+            --text-secondary: #a8b3c7;
+            --text-muted: #6b7690;
+            --border-color: #262f47;
+            --red-bg: rgba(239,68,68,0.12);
+            --shadow-card: 0 6px 24px rgba(0,0,0,0.35);
+            --shadow-soft: 0 4px 16px rgba(0,0,0,0.3);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { color-scheme: light only; }
         html, body {
             width: 100%; height: 100%; overflow: hidden;
             font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
-            background-color: var(--bg-body) !important;
-            color: var(--text-primary) !important;
-        }
-        @media (prefers-color-scheme: dark) {
-            html, body { background-color: var(--bg-body) !important; color: var(--text-primary) !important; }
-            .signage-header, .room-panel { background-color: var(--bg-card) !important; color: var(--text-primary) !important; }
-            .schedule-tile { background-color: var(--bg-tile) !important; color: var(--text-primary) !important; }
-            .schedule-tile.current { background-color: var(--red-bg) !important; }
+            background: var(--bg-body); color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
+        /* Wash gradient brand halus di pojok — dikecilkan di dark mode
+           supaya tidak terasa terlalu terang di tengah latar gelap */
         body::before {
             content: ''; position: fixed; top: -20%; right: -12%; width: 55vw; height: 55vw;
-            background: radial-gradient(circle, rgba(249,115,22,0.06), transparent 70%);
+            background: radial-gradient(circle, rgba(255,145,66,0.06), transparent 70%);
             z-index: 0; pointer-events: none;
         }
         body::after {
             content: ''; position: fixed; bottom: -18%; left: -10%; width: 45vw; height: 45vw;
-            background: radial-gradient(circle, rgba(16,185,129,0.07), transparent 70%);
+            background: radial-gradient(circle, rgba(34,197,94,0.07), transparent 70%);
             z-index: 0; pointer-events: none;
         }
+        body.theme-dark::before { background: radial-gradient(circle, rgba(255,145,66,0.09), transparent 70%); }
+        body.theme-dark::after { background: radial-gradient(circle, rgba(34,197,94,0.1), transparent 70%); }
 
         .signage-wrapper {
             position: relative; z-index: 1;
             width: 100vw; height: 100vh;
             display: flex; flex-direction: column;
-            padding: clamp(16px, 2vw, 34px);
-            gap: clamp(10px, 1.2vw, 18px);
+            padding: clamp(20px, 2.4vw, 40px);
+            gap: clamp(14px, 1.6vw, 22px);
         }
 
         /* ===== HEADER ===== */
         .signage-header {
-            display: flex; align-items: center; gap: clamp(16px, 1.8vw, 30px); flex-shrink: 0;
-            background: var(--bg-card); border-radius: clamp(14px, 1.2vw, 22px);
-            padding: clamp(10px, 1.1vw, 18px) clamp(16px, 1.8vw, 28px);
-            box-shadow: 0 4px 20px rgba(15,23,42,0.05); border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+            background: var(--bg-card); border-radius: clamp(16px, 1.4vw, 24px);
+            padding: clamp(14px, 1.5vw, 22px) clamp(18px, 2vw, 30px);
+            box-shadow: var(--shadow-soft); border: 1px solid var(--border-color);
         }
-        .signage-brand-row { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
-        .signage-header-divider { width: 1px; align-self: stretch; background: var(--border-color); flex-shrink: 0; }
+        .signage-brand-row { display: flex; align-items: center; gap: 16px; }
         .signage-logo-group { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .signage-logo {
-            width: clamp(34px, 3vw, 50px); height: clamp(34px, 3vw, 50px); border-radius: 12px;
-            box-shadow: 0 4px 14px rgba(16,185,129,0.22); flex-shrink: 0; overflow: hidden;
+            width: clamp(40px, 3.6vw, 58px); height: clamp(40px, 3.6vw, 58px); border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(34,197,94,0.25); flex-shrink: 0; overflow: hidden;
         }
         .signage-logo svg { display: block; width: 100%; height: 100%; }
-        .signage-logo.company { background: #fff; border: 1px solid var(--border-color); box-shadow: 0 4px 14px rgba(15,23,42,0.07); padding: 5px; }
+        .signage-logo.company { background: #fff; border: 1px solid var(--border-color); box-shadow: var(--shadow-soft); padding: 6px; }
         .signage-logo.company img { width: 100%; height: 100%; object-fit: contain; }
-        .signage-title h1 { font-size: clamp(16px, 1.9vw, 27px); font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.15; }
-        .signage-title .subtitle { font-size: clamp(9.5px, 0.78vw, 12.5px); color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+        .signage-logo-divider { font-size: clamp(14px, 1.3vw, 18px); color: var(--text-muted); font-weight: 300; }
+        .signage-title h1 { font-size: clamp(19px, 2.3vw, 32px); font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; line-height: 1.15; }
+        .signage-title .subtitle { font-size: clamp(10.5px, 0.85vw, 13.5px); color: var(--text-muted); font-weight: 600; margin-top: 2px; }
 
         .signage-clock { text-align: right; flex-shrink: 0; }
         .signage-time {
-            font-size: clamp(20px, 2.6vw, 38px); font-weight: 700; line-height: 1;
-            font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+            font-size: clamp(28px, 3.6vw, 50px); font-weight: 800; line-height: 1;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
             background: var(--brand-gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
         }
-        .signage-date { font-size: clamp(10px, 0.9vw, 13.5px); color: var(--text-secondary); font-weight: 600; margin-top: 4px; }
+        .signage-date { font-size: clamp(11px, 1vw, 15px); color: var(--text-secondary); font-weight: 600; margin-top: 6px; }
 
-        .signage-legend { display: flex; gap: 20px; flex-shrink: 0; padding: 0 4px; }
-        .legend-item { display: flex; align-items: center; gap: 7px; font-size: clamp(10.5px, 0.82vw, 13px); font-weight: 600; color: var(--text-secondary); }
-        .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .signage-legend { display: flex; gap: 22px; flex-shrink: 0; padding: 0 4px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: clamp(11.5px, 0.9vw, 14px); font-weight: 700; color: var(--text-secondary); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
         .legend-dot.available { background: var(--brand-green); }
         .legend-dot.occupied { background: var(--red); }
-        .legend-dot.done { background: var(--gray); }
 
-        .signage-copyright {
-            flex-shrink: 0; text-align: center;
-            font-size: clamp(11px, 0.85vw, 13.5px); font-weight: 600; color: var(--text-secondary);
-            letter-spacing: 0.2px;
-        }
-        .signage-copyright strong { color: var(--text-primary); font-weight: 700; }
-
-        /* ===== ROOM PANELS ===== */
+        /* ============================================================
+           ROOM PANELS
+           FIX (STABILITAS): sebelumnya baris grid pakai tinggi otomatis
+           (auto), jadi tinggi tiap panel ikut berubah tergantung berapa
+           banyak jadwal yang ada di ruangan itu — begitu jadwal berganti
+           status (upcoming -> aktif -> selesai) atau halaman refresh,
+           tinggi antar panel jadi tidak konsisten dan terlihat "naik
+           turun". `grid-auto-rows: 1fr` memaksa semua baris grid punya
+           tinggi SAMA & TETAP, murni berdasar jumlah ruangan & ukuran
+           layar — bukan berdasar isi kontennya. Kalau jadwal kepanjangan,
+           tinggal scroll di dalam panel (sudah ada overflow-y:auto).
+           ============================================================ */
         .rooms-board {
-            flex: 1; display: grid; gap: clamp(10px, 1.2vw, 18px);
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            flex: 1; display: grid; gap: clamp(14px, 1.6vw, 22px);
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
             grid-auto-rows: 1fr;
             min-height: 0;
         }
 
         .room-panel {
-            background: var(--bg-card); border-radius: clamp(16px, 1.4vw, 24px);
+            background: var(--bg-card); border-radius: clamp(18px, 1.6vw, 26px);
             border: 1px solid var(--border-color);
-            display: flex; flex-direction: column; overflow: hidden; min-height: 0; height: 100%;
-            box-shadow: 0 6px 24px rgba(15,23,42,0.05);
+            display: flex; flex-direction: column; overflow: hidden; min-height: 0;
+            box-shadow: var(--shadow-card);
         }
 
-        /* Header panel TINGGI TETAP (var(--header-h)) supaya semua panel
-           dalam satu baris selalu sejajar, tidak peduli nama ruangan
-           atau lokasi panjang berapa pun. Teks yang kepanjangan dipotong
-           dengan ellipsis, bukan membuat tinggi header berubah. */
         .room-panel-header {
-            height: var(--header-h); flex-shrink: 0;
-            padding: 0 clamp(12px, 1.3vw, 20px);
-            display: flex; align-items: center; justify-content: space-between; gap: 10px;
-            position: relative; min-width: 0;
+            padding: clamp(16px, 1.7vw, 24px); flex-shrink: 0;
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+            position: relative;
         }
         .room-panel-header::after {
-            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+            content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
         }
-        .room-panel-header.available { background: linear-gradient(180deg, rgba(16,185,129,0.06), transparent); }
+        .room-panel-header.available { background: linear-gradient(180deg, rgba(34,197,94,0.08), transparent); }
         .room-panel-header.available::after { background: linear-gradient(90deg, var(--brand-green), #6ee7b7); }
-        .room-panel-header.occupied { background: linear-gradient(180deg, rgba(239,68,68,0.05), transparent); }
+        .room-panel-header.occupied { background: linear-gradient(180deg, rgba(239,68,68,0.07), transparent); }
         .room-panel-header.occupied::after { background: linear-gradient(90deg, var(--red), #fca5a5); }
 
-        .room-panel-info { min-width: 0; flex: 1; }
-        .room-panel-name {
-            font-size: clamp(14px, 1.35vw, 20px); font-weight: 700; color: var(--text-primary); line-height: 1.2;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
+        .room-panel-name { font-size: clamp(18px, 1.7vw, 25px); font-weight: 700; color: var(--text-primary); line-height: 1.2; }
         .room-panel-meta {
-            font-size: clamp(9.5px, 0.75vw, 12px); color: var(--text-secondary); font-weight: 600; margin-top: 4px;
-            display: flex; align-items: center; gap: 5px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-size: clamp(11px, 0.9vw, 13.5px); color: var(--text-muted); font-weight: 600; margin-top: 5px;
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
         }
-        .room-panel-meta i { flex-shrink: 0; }
-        .room-panel-meta span.meta-sep { flex-shrink: 0; }
 
+        /* Lebar tetap (min-width) supaya badge "TERSEDIA" vs "AKTIF" tidak
+           bikin header sedikit "kedut" walau angkanya beda panjang teks. */
         .room-panel-status {
-            font-size: clamp(9px, 0.75vw, 11.5px); font-weight: 700; padding: 5px 12px; border-radius: 999px;
+            font-size: clamp(10.5px, 0.9vw, 13px); font-weight: 800; padding: 7px 16px; border-radius: 999px;
             white-space: nowrap; flex-shrink: 0; letter-spacing: 0.3px; color: #fff;
-            display: inline-flex; align-items: center; gap: 6px;
-            min-width: var(--status-w); justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            min-width: clamp(88px, 7.5vw, 108px);
         }
-        .room-panel-status.available { background: var(--brand-green); box-shadow: 0 3px 10px rgba(16,185,129,0.3); }
-        .room-panel-status.occupied { background: var(--red); box-shadow: 0 3px 10px rgba(239,68,68,0.3); }
-        .status-pulse { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulseDot 1.6s ease-in-out infinite; }
+        .room-panel-status.available { background: var(--brand-green); box-shadow: 0 3px 10px rgba(34,197,94,0.35); }
+        .room-panel-status.occupied { background: var(--red); box-shadow: 0 3px 10px rgba(239,68,68,0.35); }
+        .status-pulse { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulseDot 1.6s ease-in-out infinite; flex-shrink: 0; }
         @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        /* ===== JADWAL — TILE GRID ===== */
         .room-panel-schedule {
-            flex: 1; min-height: 0;
-            padding: clamp(8px, 0.9vw, 14px);
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            grid-auto-rows: min-content;
-            align-content: start;
-            gap: clamp(8px, 0.9vw, 12px);
-            overflow-y: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
-                    mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent 100%);
+            flex: 1; overflow-y: auto; padding: clamp(10px, 1.1vw, 16px);
+            display: flex; flex-direction: column; gap: clamp(8px, 0.8vw, 11px);
         }
-        .room-panel-schedule::-webkit-scrollbar { display: none; }
+        .room-panel-schedule::-webkit-scrollbar { width: 5px; }
+        .room-panel-schedule::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 99px; }
 
-        .schedule-tile {
-            display: flex; flex-direction: column; gap: 6px;
-            padding: clamp(10px, 1vw, 14px);
-            border-radius: clamp(10px, 0.9vw, 14px);
-            background: var(--bg-tile);
-            border: 1px solid var(--border-color);
-            min-width: 0; position: relative;
+        /* ============================================================
+           SLOT JADWAL — 3 status: akan datang (default), aktif (sedang
+           berlangsung), selesai. FIX (redaksi & tampilan "selesai"):
+           sebelumnya slot yang sudah lewat cuma diberi opacity:0.5 —
+           terkesan seperti elemen "disabled"/error, bukan status yang
+           memang wajar (rapat memang sudah kelar). Diganti: teks tetap
+           terbaca jelas (opacity penuh), ditandai label "SELESAI" yang
+           rapi, bukan meredupkan semuanya.
+           ============================================================ */
+        .schedule-slot {
+            display: flex; gap: clamp(12px, 1.1vw, 16px); align-items: center;
+            padding: clamp(10px, 1vw, 14px) clamp(12px, 1.1vw, 16px);
+            border-radius: 14px; background: var(--bg-subtle);
+            border-left: 4px solid var(--border-color);
         }
-        .schedule-tile.current { border-color: rgba(239,68,68,0.25); background: var(--red-bg); }
-        .schedule-tile.done { background: var(--gray-bg); border-color: var(--border-color); }
-        .schedule-tile.done .schedule-tile-time,
-        .schedule-tile.done .schedule-tile-purpose,
-        .schedule-tile.done .schedule-tile-organizer { color: var(--text-muted); }
+        .schedule-slot.active { border-left-color: var(--red); background: var(--red-bg); }
+        .schedule-slot.done { border-left-color: var(--border-color); background: transparent; border: 1px solid var(--border-color); border-left-width: 4px; }
+        .schedule-slot.done .schedule-slot-purpose,
+        .schedule-slot.done .schedule-slot-organizer { color: var(--text-muted); }
 
-        .schedule-tile-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-        .schedule-tile-time {
-            font-weight: 600; color: var(--text-primary);
-            font-size: clamp(12px, 1vw, 14.5px);
-            font-variant-numeric: tabular-nums; line-height: 1.25;
+        .schedule-slot-time {
+            font-weight: 800; font-size: clamp(12.5px, 1.05vw, 16px); color: var(--text-primary);
+            font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: clamp(66px, 5.6vw, 86px); line-height: 1.35;
         }
-        .schedule-tile-time small { display: block; font-size: 0.75em; font-weight: 600; color: var(--text-muted); }
+        .schedule-slot.done .schedule-slot-time { color: var(--text-muted); }
+        .schedule-slot-time small { display: block; font-size: clamp(10px, 0.78vw, 11.5px); font-weight: 600; color: var(--text-muted); }
 
-        .schedule-tile-purpose {
-            font-weight: 700; color: var(--text-primary);
-            font-size: clamp(12px, 1vw, 14px);
-            line-height: 1.3;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        .schedule-slot-info { flex: 1; min-width: 0; }
+        .schedule-slot-purpose {
+            font-size: clamp(12.5px, 1.05vw, 16px); font-weight: 700; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .schedule-tile-organizer {
-            color: var(--text-secondary); font-weight: 600;
-            font-size: clamp(10.5px, 0.82vw, 12.5px);
-            line-height: 1.25; margin-top: auto; padding-top: 2px;
-            white-space: normal; overflow-wrap: break-word; word-break: break-word;
-            display: flex; align-items: flex-start; gap: 4px;
+        .schedule-slot-organizer {
+            font-size: clamp(10.5px, 0.9vw, 13px); color: var(--text-muted); font-weight: 600; margin-top: 3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            display: flex; align-items: center; gap: 5px;
         }
-        .schedule-tile-organizer i { margin-top: 2px; flex-shrink: 0; }
 
-        .schedule-tile-tag {
-            font-size: 8px; font-weight: 700; color: #fff;
-            padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
+        /* Tag status kecil di ujung kanan slot — lebar tetap (min-width)
+           supaya "AKTIF" & "SELESAI" tidak menggeser konten sebelahnya
+           walau jumlah hurufnya beda. Redaksi disamakan & disingkat
+           dengan badge status ruangan (AKTIF, bukan lagi "Live"/"Digunakan"). */
+        .schedule-slot-tag {
+            font-size: 9.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
+            text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
+            min-width: 58px; text-align: center;
         }
-        .schedule-tile-tag.now { background: var(--red); }
-        .schedule-tile-tag.done { background: var(--gray); }
+        .schedule-slot-tag.active { color: #fff; background: var(--red); }
+        .schedule-slot-tag.done { color: var(--text-muted); background: var(--border-color); }
 
         .schedule-empty {
-            grid-column: 1 / -1;
-            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--text-muted); text-align: center; gap: 8px; padding: 10px;
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--text-muted); text-align: center; gap: 10px; padding: 20px;
         }
         .schedule-empty .empty-icon-ring {
-            width: clamp(38px, 3.3vw, 52px); height: clamp(38px, 3.3vw, 52px); border-radius: 50%;
-            background: rgba(16,185,129,0.1); border: 1.5px solid rgba(16,185,129,0.22);
+            width: clamp(46px, 4vw, 60px); height: clamp(46px, 4vw, 60px); border-radius: 50%;
+            background: rgba(34,197,94,0.1); border: 1.5px solid rgba(34,197,94,0.25);
             display: flex; align-items: center; justify-content: center;
-            font-size: clamp(16px, 1.4vw, 22px); color: var(--brand-green-dark);
+            font-size: clamp(18px, 1.6vw, 24px); color: var(--brand-green-dark);
         }
-        .schedule-empty span { font-size: clamp(11px, 0.9vw, 13.5px); font-weight: 600; }
+        .schedule-empty span { font-size: clamp(12px, 1vw, 14.5px); font-weight: 700; }
 
-        /* ===== BARCODE — di header, garis (Code128), lebih tahan
-           terhadap resolusi rendah TV/Android box dibanding QR. ===== */
-        .signage-barcode-inline { display: flex; align-items: center; gap: clamp(8px, 0.9vw, 12px); flex-shrink: 0; }
-        .barcode-box {
-            width: clamp(120px, 11vw, 190px); height: clamp(46px, 4vw, 64px);
-            background: #fff; border-radius: 9px; padding: 6px 8px; flex-shrink: 0;
-            border: 1px solid var(--border-color);
-            display: flex; align-items: center; justify-content: center;
+        /* ===== FOOTER / QR ===== */
+        .signage-footer { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-shrink: 0; }
+        .signage-qr {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: clamp(8px, 0.8vw, 12px); display: flex; align-items: center; gap: 10px;
+            box-shadow: var(--shadow-soft);
         }
-        .barcode-box svg { width: 100%; height: 100%; }
-        .barcode-text { display: flex; flex-direction: column; gap: 1px; }
-        .barcode-caption { font-size: clamp(10.5px, 0.85vw, 13px); color: var(--text-primary); font-weight: 700; line-height: 1.3; max-width: 170px; }
+        /* FIX (skan lebih mudah): kotak QR diperbesar sedikit & dikasih
+           padding putih lebih longgar supaya modul QR (kotak-kotak
+           kecilnya) tidak terlalu rapat — pada layar TV yang kurang
+           tajam, modul rapat itulah yang bikin susah discan. Kepadatan
+           modul sendiri diatur di level generate QR-nya (lihat script,
+           pakai correctLevel Low — bukan High) supaya polanya memang
+           lebih longgar/sederhana, bukan cuma dibesarkan tampilannya. */
+        .qr-box { width: clamp(56px, 4.8vw, 76px); height: clamp(56px, 4.8vw, 76px); background: #fff; border-radius: 10px; padding: 7px; flex-shrink: 0; border: 1px solid var(--border-color); }
+        .qr-box img, .qr-box canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+        .qr-caption { font-size: clamp(9px, 0.75vw, 12px); color: var(--text-muted); font-weight: 600; max-width: 140px; }
 
         /* ===== PORTRAIT ===== */
-        body.signage-portrait .signage-header { flex-direction: column; align-items: stretch; gap: 14px; }
-        body.signage-portrait .signage-header-divider { width: 100%; height: 1px; }
+        body.signage-portrait .signage-header { flex-direction: column; align-items: flex-start; gap: 14px; }
         body.signage-portrait .signage-clock { text-align: left; }
-        body.signage-portrait .signage-barcode-inline { justify-content: flex-start; }
         body.signage-portrait .rooms-board { grid-template-columns: 1fr; }
-        body.signage-portrait .room-panel-schedule { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        body.signage-portrait { --header-h: clamp(58px, 9vw, 84px); }
 
         .offline-banner {
             position: fixed; top: 0; left: 0; right: 0; background: #1e293b; color: #fbbf24;
-            text-align: center; font-size: 13px; font-weight: 600; padding: 6px; display: none; z-index: 999;
+            text-align: center; font-size: 13px; font-weight: 700; padding: 6px; display: none; z-index: 999;
         }
     </style>
 </head>
-<body class="signage-{{ $display->orientation }}">
+<body class="signage-{{ $display->orientation }} {{ $display->theme === 'dark' ? 'theme-dark' : '' }}">
 
     <div class="offline-banner" id="offlineBanner"><i class="bi bi-wifi-off"></i> Koneksi terputus. Mencoba menyambung kembali...</div>
 
@@ -296,6 +289,7 @@
                             </g>
                         </svg>
                     </div>
+                    <span class="signage-logo-divider">&times;</span>
                     <div class="signage-logo company">
                         <img src="{{ asset('assets/images/icon/icon.png') }}" alt="PT Petrokopindo Cipta Selaras">
                     </div>
@@ -309,92 +303,26 @@
                 <div class="signage-time" id="liveClock">--:--</div>
                 <div class="signage-date">{{ $now->locale('id')->isoFormat('dddd, D MMMM Y') }}</div>
             </div>
-            @if($display->show_qr)
-            <div class="signage-header-divider"></div>
-            <div class="signage-barcode-inline">
-                <div class="barcode-box">
-                    <svg id="bookingBarcode"></svg>
-                </div>
-                <div class="barcode-text">
-                    <span class="barcode-caption">Scan untuk booking ruang rapat</span>
-                </div>
-            </div>
-            @endif
         </header>
 
         <div class="signage-legend">
             <div class="legend-item"><span class="legend-dot available"></span> Tersedia</div>
-            <div class="legend-item"><span class="legend-dot occupied"></span> Terpakai</div>
-            <div class="legend-item"><span class="legend-dot done"></span> Selesai</div>
+            <div class="legend-item"><span class="legend-dot occupied"></span> Aktif</div>
         </div>
 
-        <div class="rooms-board">
-            @foreach($roomsSchedule as $item)
-                @php
-                    $room = $item['room'];
-                    $bookings = $item['bookings'];
-                    $isOccupied = $item['is_occupied'];
-                    $currentId = $item['current_id'];
-                @endphp
-                <div class="room-panel">
-                    <div class="room-panel-header {{ $isOccupied ? 'occupied' : 'available' }}">
-                        <div class="room-panel-info">
-                            <div class="room-panel-name" title="{{ $room->name }}">{{ $room->name }}</div>
-                            <div class="room-panel-meta">
-                                <i class="bi bi-people-fill"></i> {{ $room->capacity }} orang
-                                <span class="meta-sep">&middot;</span>
-                                <i class="bi bi-geo-alt-fill"></i> {{ $room->location }}
-                            </div>
-                        </div>
-                        <span class="room-panel-status {{ $isOccupied ? 'occupied' : 'available' }}">
-                            @if($isOccupied)<span class="status-pulse"></span>@endif
-                            {{ $isOccupied ? 'TERPAKAI' : 'TERSEDIA' }}
-                        </span>
-                    </div>
+        @include('signage.partials._rooms-board', ['roomsSchedule' => $roomsSchedule, 'now' => $now, 'display' => $display])
 
-                    <div class="room-panel-schedule">
-                        @forelse($bookings as $b)
-                            @php
-                                $bStart = \Carbon\Carbon::parse($b->start_time);
-                                $bEnd = \Carbon\Carbon::parse($b->end_time);
-                                $isCurrent = $b->id === $currentId;
-                                $isDone = $bEnd->lt($now) && !$isCurrent;
-                            @endphp
-                            <div class="schedule-tile {{ $isCurrent ? 'current' : '' }} {{ $isDone ? 'done' : '' }}">
-                                <div class="schedule-tile-top">
-                                    <div class="schedule-tile-time">
-                                        {{ $bStart->format('H:i') }}
-                                        <small>&ndash; {{ $bEnd->format('H:i') }}</small>
-                                    </div>
-                                    @if($isCurrent)
-                                        <span class="schedule-tile-tag now">Berlangsung</span>
-                                    @elseif($isDone)
-                                        <span class="schedule-tile-tag done">Selesai</span>
-                                    @endif
-                                </div>
-                                <div class="schedule-tile-purpose">{{ $b->purpose }}</div>
-                                <div class="schedule-tile-organizer"><i class="bi bi-person-fill"></i> {{ $b->user->full_name ?? 'Unknown' }}</div>
-                            </div>
-                        @empty
-                            <div class="schedule-empty">
-                                <div class="empty-icon-ring"><i class="bi bi-calendar-check"></i></div>
-                                <span>Tidak ada jadwal rapat hari ini</span>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            @endforeach
+        @if($display->show_qr)
+        <div class="signage-footer">
+            <div class="signage-qr">
+                <div class="qr-box" id="qrContainer"></div>
+                <div class="qr-caption">Scan untuk booking ruang rapat</div>
+            </div>
         </div>
-
-        <div class="signage-copyright">
-            Powered by <strong>IT PT Petrokopindo Cipta Selaras</strong> &middot; &copy; {{ $now->format('Y') }}
-        </div>
+        @endif
     </div>
 
-    <script>
-/*! JsBarcode v3.12.3 | (c) Johan Lindell | MIT license */
-!function(t){var e={};function n(r){if(e[r])return e[r].exports;var o=e[r]={i:r,l:!1,exports:{}};return t[r].call(o.exports,o,o.exports,n),o.l=!0,o.exports}n.m=t,n.c=e,n.d=function(t,e,r){n.o(t,e)||Object.defineProperty(t,e,{enumerable:!0,get:r})},n.r=function(t){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(t,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(t,"__esModule",{value:!0})},n.t=function(t,e){if(1&e&&(t=n(t)),8&e)return t;if(4&e&&"object"==typeof t&&t&&t.__esModule)return t;var r=Object.create(null);if(n.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:t}),2&e&&"string"!=typeof t)for(var o in t)n.d(r,o,function(e){return t[e]}.bind(null,o));return r},n.n=function(t){var e=t&&t.__esModule?function(){return t.default}:function(){return t};return n.d(e,"a",e),e},n.o=function(t,e){return Object.prototype.hasOwnProperty.call(t,e)},n.p="",n(n.s=16)}([function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});e.default=function t(e,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,t),this.data=e,this.text=n.text||e,this.options=n}},function(t,e,n){"use strict";var r;function o(t,e,n){return e in t?Object.defineProperty(t,e,{value:n,enumerable:!0,configurable:!0,writable:!0}):t[e]=n,t}Object.defineProperty(e,"__esModule",{value:!0});var i=e.SET_A=0,a=e.SET_B=1,u=e.SET_C=2,f=(e.SHIFT=98,e.START_A=103),c=e.START_B=104,s=e.START_C=105;e.MODULO=103,e.STOP=106,e.FNC1=207,e.SET_BY_CODE=(o(r={},f,i),o(r,c,a),o(r,s,u),r),e.SWAP={101:i,100:a,99:u},e.A_START_CHAR=String.fromCharCode(208),e.B_START_CHAR=String.fromCharCode(209),e.C_START_CHAR=String.fromCharCode(210),e.A_CHARS="[\0-_È-Ï]",e.B_CHARS="[ -È-Ï]",e.C_CHARS="(Ï*[0-9]{2}Ï*)",e.BARS=[11011001100,11001101100,11001100110,10010011e3,10010001100,10001001100,10011001e3,10011000100,10001100100,11001001e3,11001000100,11000100100,10110011100,10011011100,10011001110,10111001100,10011101100,10011100110,11001110010,11001011100,11001001110,11011100100,11001110100,11101101110,11101001100,11100101100,11100100110,11101100100,11100110100,11100110010,11011011e3,11011000110,11000110110,10100011e3,10001011e3,10001000110,10110001e3,10001101e3,10001100010,11010001e3,11000101e3,11000100010,10110111e3,10110001110,10001101110,10111011e3,10111000110,10001110110,11101110110,11010001110,11000101110,11011101e3,11011100010,11011101110,11101011e3,11101000110,11100010110,11101101e3,11101100010,11100011010,11101111010,11001000010,11110001010,1010011e4,10100001100,1001011e4,10010000110,10000101100,10000100110,1011001e4,10110000100,1001101e4,10011000010,10000110100,10000110010,11000010010,1100101e4,11110111010,11000010100,10001111010,10100111100,10010111100,10010011110,10111100100,10011110100,10011110010,11110100100,11110010100,11110010010,11011011110,11011110110,11110110110,10101111e3,10100011110,10001011110,10111101e3,10111100010,11110101e3,11110100010,10111011110,10111101110,11101011110,11110101110,11010000100,1101001e4,11010011100,1100011101011]},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});e.SIDE_BIN="101",e.MIDDLE_BIN="01010",e.BINARIES={L:["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"],G:["0100111","0110011","0011011","0100001","0011101","0111001","0000101","0010001","0001001","0010111"],R:["1110010","1100110","1101100","1000010","1011100","1001110","1010000","1000100","1001000","1110100"],O:["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"],E:["0100111","0110011","0011011","0100001","0011101","0111001","0000101","0010001","0001001","0010111"]},e.EAN2_STRUCTURE=["LL","LG","GL","GG"],e.EAN5_STRUCTURE=["GGLLL","GLGLL","GLLGL","GLLLG","LGGLL","LLGGL","LLLGG","LGLGL","LGLLG","LLGLG"],e.EAN13_STRUCTURE=["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"]},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=n(2);e.default=function(t,e,n){var o=t.split("").map((function(t,n){return r.BINARIES[e[n]]})).map((function(e,n){return e?e[t[n]]:""}));if(n){var i=t.length-1;o=o.map((function(t,e){return e<i?t+n:t}))}return o.join("")}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0);var a=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"encode",value:function(){for(var t="110",e=0;e<this.data.length;e++){var n=parseInt(this.data[e]).toString(2);n=u(n,4-n.length);for(var r=0;r<n.length;r++)t+="0"==n[r]?"100":"110"}return{data:t+="1001",text:this.text}}},{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]+$/)}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default);function u(t,e){for(var n=0;n<e;n++)t="0"+t;return t}e.default=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0),a=(r=i)&&r.__esModule?r:{default:r},u=n(1);var f=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e);var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t.substring(1),n));return r.bytes=t.split("").map((function(t){return t.charCodeAt(0)})),r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return/^[\x00-\x7F\xC8-\xD3]+$/.test(this.data)}},{key:"encode",value:function(){var t=this.bytes,n=t.shift()-105,r=u.SET_BY_CODE[n];if(void 0===r)throw new RangeError("The encoding does not start with a start character.");!0===this.shouldEncodeAsEan128()&&t.unshift(u.FNC1);var o=e.next(t,1,r);return{text:this.text===this.data?this.text.replace(/[^\x20-\x7E]/g,""):this.text,data:e.getBar(n)+o.result+e.getBar((o.checksum+n)%u.MODULO)+e.getBar(u.STOP)}}},{key:"shouldEncodeAsEan128",value:function(){var t=this.options.ean128||!1;return"string"==typeof t&&(t="true"===t.toLowerCase()),t}}],[{key:"getBar",value:function(t){return u.BARS[t]?u.BARS[t].toString():""}},{key:"correctIndex",value:function(t,e){if(e===u.SET_A){var n=t.shift();return n<32?n+64:n-32}return e===u.SET_B?t.shift()-32:10*(t.shift()-48)+t.shift()-48}},{key:"next",value:function(t,n,r){if(!t.length)return{result:"",checksum:0};var o=void 0,i=void 0;if(t[0]>=200){i=t.shift()-105;var a=u.SWAP[i];void 0!==a?o=e.next(t,n+1,a):(r!==u.SET_A&&r!==u.SET_B||i!==u.SHIFT||(t[0]=r===u.SET_A?t[0]>95?t[0]-96:t[0]:t[0]<32?t[0]+96:t[0]),o=e.next(t,n+1,r))}else i=e.correctIndex(t,r),o=e.next(t,n+1,r);var f=i*n;return{result:e.getBar(i)+o.result,checksum:f+o.checksum}}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.mod10=function(t){for(var e=0,n=0;n<t.length;n++){var r=parseInt(t[n]);(n+t.length)%2==0?e+=r:e+=2*r%10+Math.floor(2*r/10)}return(10-e%10)%10},e.mod11=function(t){for(var e=0,n=[2,3,4,5,6,7],r=0;r<t.length;r++){var o=parseInt(t[t.length-1-r]);e+=n[r%n.length]*o}return(11-e%11)%11}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=Object.assign||function(t){for(var e=1;e<arguments.length;e++){var n=arguments[e];for(var r in n)Object.prototype.hasOwnProperty.call(n,r)&&(t[r]=n[r])}return t};e.default=function(t,e){return r({},t,e)}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),o=n(2),i=a(n(3));function a(t){return t&&t.__esModule?t:{default:t}}var u=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e);var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));return r.fontSize=!n.flat&&n.fontSize>10*n.width?10*n.width:n.fontSize,r.guardHeight=n.height+r.fontSize/2+n.textMargin,r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),r(e,[{key:"encode",value:function(){return this.options.flat?this.encodeFlat():this.encodeGuarded()}},{key:"leftText",value:function(t,e){return this.text.substr(t,e)}},{key:"leftEncode",value:function(t,e){return(0,i.default)(t,e)}},{key:"rightText",value:function(t,e){return this.text.substr(t,e)}},{key:"rightEncode",value:function(t,e){return(0,i.default)(t,e)}},{key:"encodeGuarded",value:function(){var t={fontSize:this.fontSize},e={height:this.guardHeight};return[{data:o.SIDE_BIN,options:e},{data:this.leftEncode(),text:this.leftText(),options:t},{data:o.MIDDLE_BIN,options:e},{data:this.rightEncode(),text:this.rightText(),options:t},{data:o.SIDE_BIN,options:e}]}},{key:"encodeFlat",value:function(){return{data:[o.SIDE_BIN,this.leftEncode(),o.MIDDLE_BIN,this.rightEncode(),o.SIDE_BIN].join(""),text:this.text}}}]),e}(a(n(0)).default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}();e.checksum=u;var o=i(n(3));function i(t){return t&&t.__esModule?t:{default:t}}var a=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),-1!==t.search(/^[0-9]{11}$/)&&(t+=u(t));var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));return r.displayValue=n.displayValue,n.fontSize>10*n.width?r.fontSize=10*n.width:r.fontSize=n.fontSize,r.guardHeight=n.height+r.fontSize/2+n.textMargin,r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),r(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{12}$/)&&this.data[11]==u(this.data)}},{key:"encode",value:function(){return this.options.flat?this.flatEncoding():this.guardedEncoding()}},{key:"flatEncoding",value:function(){var t="";return t+="101",t+=(0,o.default)(this.data.substr(0,6),"LLLLLL"),t+="01010",t+=(0,o.default)(this.data.substr(6,6),"RRRRRR"),{data:t+="101",text:this.text}}},{key:"guardedEncoding",value:function(){var t=[];return this.displayValue&&t.push({data:"00000000",text:this.text.substr(0,1),options:{textAlign:"left",fontSize:this.fontSize}}),t.push({data:"101"+(0,o.default)(this.data[0],"L"),options:{height:this.guardHeight}}),t.push({data:(0,o.default)(this.data.substr(1,5),"LLLLL"),text:this.text.substr(1,5),options:{fontSize:this.fontSize}}),t.push({data:"01010",options:{height:this.guardHeight}}),t.push({data:(0,o.default)(this.data.substr(6,5),"RRRRR"),text:this.text.substr(6,5),options:{fontSize:this.fontSize}}),t.push({data:(0,o.default)(this.data[11],"R")+"101",options:{height:this.guardHeight}}),this.displayValue&&t.push({data:"00000000",text:this.text.substr(11,1),options:{textAlign:"right",fontSize:this.fontSize}}),t}}]),e}(i(n(0)).default);function u(t){var e,n=0;for(e=1;e<11;e+=2)n+=parseInt(t[e]);for(e=0;e<11;e+=2)n+=3*parseInt(t[e]);return(10-n%10)%10}e.default=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(32),a=n(0);function u(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}function f(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}var c=function(t){function e(){return u(this,e),f(this,(e.__proto__||Object.getPrototypeOf(e)).apply(this,arguments))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return-1!==this.data.search(/^([0-9]{2})+$/)}},{key:"encode",value:function(){var t=this,e=this.data.match(/.{2}/g).map((function(e){return t.encodePair(e)})).join("");return{data:i.START_BIN+e+i.END_BIN,text:this.text}}},{key:"encodePair",value:function(t){var e=i.BINARIES[t[1]];return i.BINARIES[t[0]].split("").map((function(t,n){return("1"===t?"111":"1")+("1"===e[n]?"000":"0")})).join("")}}]),e}(((r=a)&&r.__esModule?r:{default:r}).default);e.default=c},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(42),a=n(0);var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return/^[0-9A-Z\-. $/+%]+$/.test(this.data)}},{key:"encode",value:function(){var t=this.data.split("").flatMap((function(t){return i.MULTI_SYMBOLS[t]||t})),n=t.map((function(t){return e.getEncoding(t)})).join(""),r=e.checksum(t,20),o=e.checksum(t.concat(r),15);return{text:this.text,data:e.getEncoding("ÿ")+n+e.getEncoding(r)+e.getEncoding(o)+e.getEncoding("ÿ")+"1"}}}],[{key:"getEncoding",value:function(t){return i.BINARIES[e.symbolValue(t)]}},{key:"getSymbol",value:function(t){return i.SYMBOLS[t]}},{key:"symbolValue",value:function(t){return i.SYMBOLS.indexOf(t)}},{key:"checksum",value:function(t,n){var r=t.slice().reverse().reduce((function(t,r,o){var i=o%n+1;return t+e.symbolValue(r)*i}),0);return e.getSymbol(r%47)}}]),e}(((r=a)&&r.__esModule?r:{default:r}).default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t){var e=["width","height","textMargin","fontSize","margin","marginTop","marginBottom","marginLeft","marginRight"];for(var n in e)e.hasOwnProperty(n)&&(n=e[n],"string"==typeof t[n]&&(t[n]=parseInt(t[n],10)));"string"==typeof t.displayValue&&(t.displayValue="false"!=t.displayValue);return t}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r={width:2,height:100,format:"auto",displayValue:!0,fontOptions:"",font:"monospace",text:void 0,textAlign:"center",textPosition:"bottom",textMargin:2,fontSize:20,background:"#ffffff",lineColor:"#000000",margin:10,marginTop:void 0,marginBottom:void 0,marginLeft:void 0,marginRight:void 0,valid:function(){}};e.default=r},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.getTotalWidthOfEncodings=e.calculateEncodingAttributes=e.getBarcodePadding=e.getEncodingHeight=e.getMaximumHeightOfEncodings=void 0;var r,o=n(7),i=(r=o)&&r.__esModule?r:{default:r};function a(t,e){return e.height+(e.displayValue&&t.text.length>0?e.fontSize+e.textMargin:0)+e.marginTop+e.marginBottom}function u(t,e,n){if(n.displayValue&&e<t){if("center"==n.textAlign)return Math.floor((t-e)/2);if("left"==n.textAlign)return 0;if("right"==n.textAlign)return Math.floor(t-e)}return 0}function f(t,e,n){var r;if(n)r=n;else{if("undefined"==typeof document)return 0;r=document.createElement("canvas").getContext("2d")}r.font=e.fontOptions+" "+e.fontSize+"px "+e.font;var o=r.measureText(t);return o?o.width:0}e.getMaximumHeightOfEncodings=function(t){for(var e=0,n=0;n<t.length;n++)t[n].height>e&&(e=t[n].height);return e},e.getEncodingHeight=a,e.getBarcodePadding=u,e.calculateEncodingAttributes=function(t,e,n){for(var r=0;r<t.length;r++){var o,c=t[r],s=(0,i.default)(e,c.options);o=s.displayValue?f(c.text,s,n):0;var l=c.data.length*s.width;c.width=Math.ceil(Math.max(o,l)),c.height=a(c,s),c.barcodePadding=u(o,l,s)}},e.getTotalWidthOfEncodings=function(t){for(var e=0,n=0;n<t.length;n++)e+=t[n].width;return e}},function(t,e,n){"use strict";function r(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}function o(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}function i(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}Object.defineProperty(e,"__esModule",{value:!0});var a=function(t){function e(t,n){r(this,e);var i=o(this,(e.__proto__||Object.getPrototypeOf(e)).call(this));return i.name="InvalidInputException",i.symbology=t,i.input=n,i.message='"'+i.input+'" is not a valid input for '+i.symbology,i}return i(e,Error),e}(),u=function(t){function e(){r(this,e);var t=o(this,(e.__proto__||Object.getPrototypeOf(e)).call(this));return t.name="InvalidElementException",t.message="Not supported type to render on",t}return i(e,Error),e}(),f=function(t){function e(){r(this,e);var t=o(this,(e.__proto__||Object.getPrototypeOf(e)).call(this));return t.name="NoElementException",t.message="No element to render on.",t}return i(e,Error),e}();e.InvalidInputException=a,e.InvalidElementException=u,e.NoElementException=f},function(t,e,n){"use strict";var r=p(n(17)),o=p(n(7)),i=p(n(45)),a=p(n(46)),u=p(n(47)),f=p(n(12)),c=p(n(53)),s=n(15),l=p(n(13));function p(t){return t&&t.__esModule?t:{default:t}}var d=function(){},h=function(t,e,n){var r=new d;if(void 0===t)throw Error("No element to render on was provided.");return r._renderProperties=(0,u.default)(t),r._encodings=[],r._options=l.default,r._errorHandler=new c.default(r),void 0!==e&&((n=n||{}).format||(n.format=_()),r.options(n)[n.format](e,n).render()),r};for(var y in h.getModule=function(t){return r.default[t]},r.default)r.default.hasOwnProperty(y)&&b(r.default,y);function b(t,e){d.prototype[e]=d.prototype[e.toUpperCase()]=d.prototype[e.toLowerCase()]=function(n,r){var i=this;return i._errorHandler.wrapBarcodeCall((function(){r.text=void 0===r.text?void 0:""+r.text;var a=(0,o.default)(i._options,r);a=(0,f.default)(a);var u=t[e],c=v(n,u,a);return i._encodings.push(c),i}))}}function v(t,e,n){var r=new e(t=""+t,n);if(!r.valid())throw new s.InvalidInputException(r.constructor.name,t);var a=r.encode();a=(0,i.default)(a);for(var u=0;u<a.length;u++)a[u].options=(0,o.default)(n,a[u].options);return a}function _(){return r.default.CODE128?"CODE128":Object.keys(r.default)[0]}function g(t,e,n){e=(0,i.default)(e);for(var r=0;r<e.length;r++)e[r].options=(0,o.default)(n,e[r].options),(0,a.default)(e[r].options);(0,a.default)(n),new(0,t.renderer)(t.element,e,n).render(),t.afterRender&&t.afterRender()}d.prototype.options=function(t){return this._options=(0,o.default)(this._options,t),this},d.prototype.blank=function(t){var e=new Array(t+1).join("0");return this._encodings.push({data:e}),this},d.prototype.init=function(){var t;if(this._renderProperties)for(var e in Array.isArray(this._renderProperties)||(this._renderProperties=[this._renderProperties]),this._renderProperties){t=this._renderProperties[e];var n=(0,o.default)(this._options,t.options);"auto"==n.format&&(n.format=_()),this._errorHandler.wrapBarcodeCall((function(){var e=v(n.value,r.default[n.format.toUpperCase()],n);g(t,e,n)}))}},d.prototype.render=function(){if(!this._renderProperties)throw new s.NoElementException;if(Array.isArray(this._renderProperties))for(var t=0;t<this._renderProperties.length;t++)g(this._renderProperties[t],this._encodings,this._options);else g(this._renderProperties,this._encodings,this._options);return this},d.prototype._defaults=l.default,"undefined"!=typeof window&&(window.JsBarcode=h),"undefined"!=typeof jQuery&&(jQuery.fn.JsBarcode=function(t,e){var n=[];return jQuery(this).each((function(){n.push(this)})),h(n,t,e)}),t.exports=h},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=n(18),o=n(19),i=n(25),a=n(31),u=n(34),f=n(39),c=n(40),s=n(41),l=n(44);e.default={CODE39:r.CODE39,CODE128:o.CODE128,CODE128A:o.CODE128A,CODE128B:o.CODE128B,CODE128C:o.CODE128C,EAN13:i.EAN13,EAN8:i.EAN8,EAN5:i.EAN5,EAN2:i.EAN2,UPC:i.UPC,UPCE:i.UPCE,ITF14:a.ITF14,ITF:a.ITF,MSI:u.MSI,MSI10:u.MSI10,MSI11:u.MSI11,MSI1010:u.MSI1010,MSI1110:u.MSI1110,pharmacode:f.pharmacode,codabar:c.codabar,CODE93:s.CODE93,CODE93FullASCII:s.CODE93FullASCII,GenericBarcode:l.GenericBarcode}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.CODE39=void 0;var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0);var a=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),t=t.toUpperCase(),n.mod43&&(t+=function(t){return u[t]}(function(t){for(var e=0,n=0;n<t.length;n++)e+=s(t[n]);return e%=43}(t))),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"encode",value:function(){for(var t=c("*"),e=0;e<this.data.length;e++)t+=c(this.data[e])+"0";return{data:t+=c("*"),text:this.text}}},{key:"valid",value:function(){return-1!==this.data.search(/^[0-9A-Z\-\.\ \$\/\+\%]+$/)}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default),u=["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","-","."," ","$","/","+","%","*"],f=[20957,29783,23639,30485,20951,29813,23669,20855,29789,23645,29975,23831,30533,22295,30149,24005,21623,29981,23837,22301,30023,23879,30545,22343,30161,24017,21959,30065,23921,22385,29015,18263,29141,17879,29045,18293,17783,29021,18269,17477,17489,17681,20753,35770];function c(t){return function(t){return f[t].toString(2)}(s(t))}function s(t){return u.indexOf(t)}e.CODE39=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.CODE128C=e.CODE128B=e.CODE128A=e.CODE128=void 0;var r=u(n(20)),o=u(n(22)),i=u(n(23)),a=u(n(24));function u(t){return t&&t.__esModule?t:{default:t}}e.CODE128=r.default,e.CODE128A=o.default,e.CODE128B=i.default,e.CODE128C=a.default},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=i(n(5)),o=i(n(21));function i(t){return t&&t.__esModule?t:{default:t}}function a(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}var u=function(t){function e(t,n){if(function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),/^[\x00-\x7F\xC8-\xD3]+$/.test(t))var r=a(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,(0,o.default)(t),n));else r=a(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));return a(r)}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),e}(r.default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=n(1),o=function(t){return t.match(new RegExp("^"+r.A_CHARS+"*"))[0].length},i=function(t){return t.match(new RegExp("^"+r.B_CHARS+"*"))[0].length},a=function(t){return t.match(new RegExp("^"+r.C_CHARS+"*"))[0]};function u(t,e){var n=e?r.A_CHARS:r.B_CHARS,o=t.match(new RegExp("^("+n+"+?)(([0-9]{2}){2,})([^0-9]|$)"));if(o)return o[1]+String.fromCharCode(204)+f(t.substring(o[1].length));var i=t.match(new RegExp("^"+n+"+"))[0];return i.length===t.length?t:i+String.fromCharCode(e?205:206)+u(t.substring(i.length),!e)}function f(t){var e=a(t),n=e.length;if(n===t.length)return t;t=t.substring(n);var r=o(t)>=i(t);return e+String.fromCharCode(r?206:205)+u(t,r)}e.default=function(t){var e=void 0;if(a(t).length>=2)e=r.C_START_CHAR+f(t);else{var n=o(t)>i(t);e=(n?r.A_START_CHAR:r.B_START_CHAR)+u(t,n)}return e.replace(/[\xCD\xCE]([^])[\xCD\xCE]/,(function(t,e){return String.fromCharCode(203)+e}))}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(5),a=(r=i)&&r.__esModule?r:{default:r},u=n(1);var f=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,u.A_START_CHAR+t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return new RegExp("^"+u.A_CHARS+"+$").test(this.data)}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(5),a=(r=i)&&r.__esModule?r:{default:r},u=n(1);var f=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,u.B_START_CHAR+t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return new RegExp("^"+u.B_CHARS+"+$").test(this.data)}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(5),a=(r=i)&&r.__esModule?r:{default:r},u=n(1);var f=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,u.C_START_CHAR+t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return new RegExp("^"+u.C_CHARS+"+$").test(this.data)}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.UPCE=e.UPC=e.EAN2=e.EAN5=e.EAN8=e.EAN13=void 0;var r=c(n(26)),o=c(n(27)),i=c(n(28)),a=c(n(29)),u=c(n(9)),f=c(n(30));function c(t){return t&&t.__esModule?t:{default:t}}e.EAN13=r.default,e.EAN8=o.default,e.EAN5=i.default,e.EAN2=a.default,e.UPC=u.default,e.UPCE=f.default},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=function t(e,n,r){null===e&&(e=Function.prototype);var o=Object.getOwnPropertyDescriptor(e,n);if(void 0===o){var i=Object.getPrototypeOf(e);return null===i?void 0:t(i,n,r)}if("value"in o)return o.value;var a=o.get;return void 0!==a?a.call(r):void 0},a=n(2),u=n(8),f=(r=u)&&r.__esModule?r:{default:r};var c=function(t){return(10-t.substr(0,12).split("").map((function(t){return+t})).reduce((function(t,e,n){return n%2?t+3*e:t+e}),0)%10)%10},s=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),-1!==t.search(/^[0-9]{12}$/)&&(t+=c(t));var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));return r.lastChar=n.lastChar,r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{13}$/)&&+this.data[12]===c(this.data)}},{key:"leftText",value:function(){return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"leftText",this).call(this,1,6)}},{key:"leftEncode",value:function(){var t=this.data.substr(1,6),n=a.EAN13_STRUCTURE[this.data[0]];return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"leftEncode",this).call(this,t,n)}},{key:"rightText",value:function(){return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"rightText",this).call(this,7,6)}},{key:"rightEncode",value:function(){var t=this.data.substr(7,6);return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"rightEncode",this).call(this,t,"RRRRRR")}},{key:"encodeGuarded",value:function(){var t=i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"encodeGuarded",this).call(this);return this.options.displayValue&&(t.unshift({data:"000000000000",text:this.text.substr(0,1),options:{textAlign:"left",fontSize:this.fontSize}}),this.options.lastChar&&(t.push({data:"00"}),t.push({data:"00000",text:this.options.lastChar,options:{fontSize:this.fontSize}}))),t}}]),e}(f.default);e.default=s},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=function t(e,n,r){null===e&&(e=Function.prototype);var o=Object.getOwnPropertyDescriptor(e,n);if(void 0===o){var i=Object.getPrototypeOf(e);return null===i?void 0:t(i,n,r)}if("value"in o)return o.value;var a=o.get;return void 0!==a?a.call(r):void 0},a=n(8),u=(r=a)&&r.__esModule?r:{default:r};var f=function(t){return(10-t.substr(0,7).split("").map((function(t){return+t})).reduce((function(t,e,n){return n%2?t+e:t+3*e}),0)%10)%10},c=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),-1!==t.search(/^[0-9]{7}$/)&&(t+=f(t)),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{8}$/)&&+this.data[7]===f(this.data)}},{key:"leftText",value:function(){return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"leftText",this).call(this,0,4)}},{key:"leftEncode",value:function(){var t=this.data.substr(0,4);return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"leftEncode",this).call(this,t,"LLLL")}},{key:"rightText",value:function(){return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"rightText",this).call(this,4,4)}},{key:"rightEncode",value:function(){var t=this.data.substr(4,4);return i(e.prototype.__proto__||Object.getPrototypeOf(e.prototype),"rightEncode",this).call(this,t,"RRRR")}}]),e}(u.default);e.default=c},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),o=n(2),i=u(n(3)),a=u(n(0));function u(t){return t&&t.__esModule?t:{default:t}}var f=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),r(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{5}$/)}},{key:"encode",value:function(){var t,e=o.EAN5_STRUCTURE[(t=this.data,t.split("").map((function(t){return+t})).reduce((function(t,e,n){return n%2?t+9*e:t+3*e}),0)%10)];return{data:"1011"+(0,i.default)(this.data,e,"01"),text:this.text}}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),o=n(2),i=a(n(3));function a(t){return t&&t.__esModule?t:{default:t}}var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),r(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{2}$/)}},{key:"encode",value:function(){var t=o.EAN2_STRUCTURE[parseInt(this.data)%4];return{data:"1011"+(0,i.default)(this.data,t,"01"),text:this.text}}}]),e}(a(n(0)).default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),o=u(n(3)),i=u(n(0)),a=n(9);function u(t){return t&&t.__esModule?t:{default:t}}function f(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}var c=["XX00000XXX","XX10000XXX","XX20000XXX","XXX00000XX","XXXX00000X","XXXXX00005","XXXXX00006","XXXXX00007","XXXXX00008","XXXXX00009"],s=[["EEEOOO","OOOEEE"],["EEOEOO","OOEOEE"],["EEOOEO","OOEEOE"],["EEOOOE","OOEEEO"],["EOEEOO","OEOOEE"],["EOOEEO","OEEOOE"],["EOOOEE","OEEEOO"],["EOEOEO","OEOEOE"],["EOEOOE","OEOEEO"],["EOOEOE","OEEOEO"]],l=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e);var r=f(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));if(r.isValid=!1,-1!==t.search(/^[0-9]{6}$/))r.middleDigits=t,r.upcA=p(t,"0"),r.text=n.text||""+r.upcA[0]+t+r.upcA[r.upcA.length-1],r.isValid=!0;else{if(-1===t.search(/^[01][0-9]{7}$/))return f(r);if(r.middleDigits=t.substring(1,t.length-1),r.upcA=p(r.middleDigits,t[0]),r.upcA[r.upcA.length-1]!==t[t.length-1])return f(r);r.isValid=!0}return r.displayValue=n.displayValue,n.fontSize>10*n.width?r.fontSize=10*n.width:r.fontSize=n.fontSize,r.guardHeight=n.height+r.fontSize/2+n.textMargin,r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),r(e,[{key:"valid",value:function(){return this.isValid}},{key:"encode",value:function(){return this.options.flat?this.flatEncoding():this.guardedEncoding()}},{key:"flatEncoding",value:function(){var t="";return t+="101",t+=this.encodeMiddleDigits(),{data:t+="010101",text:this.text}}},{key:"guardedEncoding",value:function(){var t=[];return this.displayValue&&t.push({data:"00000000",text:this.text[0],options:{textAlign:"left",fontSize:this.fontSize}}),t.push({data:"101",options:{height:this.guardHeight}}),t.push({data:this.encodeMiddleDigits(),text:this.text.substring(1,7),options:{fontSize:this.fontSize}}),t.push({data:"010101",options:{height:this.guardHeight}}),this.displayValue&&t.push({data:"00000000",text:this.text[7],options:{textAlign:"right",fontSize:this.fontSize}}),t}},{key:"encodeMiddleDigits",value:function(){var t=this.upcA[0],e=this.upcA[this.upcA.length-1],n=s[parseInt(e)][parseInt(t)];return(0,o.default)(this.middleDigits,n)}}]),e}(i.default);function p(t,e){for(var n=parseInt(t[t.length-1]),r=c[n],o="",i=0,u=0;u<r.length;u++){var f=r[u];o+="X"===f?t[i++]:f}return""+(o=""+e+o)+(0,a.checksum)(o)}e.default=l},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.ITF14=e.ITF=void 0;var r=i(n(10)),o=i(n(33));function i(t){return t&&t.__esModule?t:{default:t}}e.ITF=r.default,e.ITF14=o.default},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});e.START_BIN="1010",e.END_BIN="11101",e.BINARIES=["00110","10001","01001","11000","00101","10100","01100","00011","10010","01010"]},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(10),a=(r=i)&&r.__esModule?r:{default:r};var u=function(t){var e=t.substr(0,13).split("").map((function(t){return parseInt(t,10)})).reduce((function(t,e,n){return t+e*(3-n%2*2)}),0);return 10*Math.ceil(e/10)-e},f=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),-1!==t.search(/^[0-9]{13}$/)&&(t+=u(t)),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[0-9]{14}$/)&&+this.data[13]===u(this.data)}}]),e}(a.default);e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.MSI1110=e.MSI1010=e.MSI11=e.MSI10=e.MSI=void 0;var r=f(n(4)),o=f(n(35)),i=f(n(36)),a=f(n(37)),u=f(n(38));function f(t){return t&&t.__esModule?t:{default:t}}e.MSI=r.default,e.MSI10=o.default,e.MSI11=i.default,e.MSI1010=a.default,e.MSI1110=u.default},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=n(4),i=(r=o)&&r.__esModule?r:{default:r},a=n(6);var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t+(0,a.mod10)(t),n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),e}(i.default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=n(4),i=(r=o)&&r.__esModule?r:{default:r},a=n(6);var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t+(0,a.mod11)(t),n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),e}(i.default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=n(4),i=(r=o)&&r.__esModule?r:{default:r},a=n(6);var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),t+=(0,a.mod10)(t),t+=(0,a.mod10)(t),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),e}(i.default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=n(4),i=(r=o)&&r.__esModule?r:{default:r},a=n(6);var u=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),t+=(0,a.mod11)(t),t+=(0,a.mod10)(t),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),e}(i.default);e.default=u},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.pharmacode=void 0;var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0);var a=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e);var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n));return r.number=parseInt(t,10),r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"encode",value:function(){for(var t=this.number,e="";!isNaN(t)&&0!=t;)t%2==0?(e="11100"+e,t=(t-2)/2):(e="100"+e,t=(t-1)/2);return{data:e=e.slice(0,-2),text:this.text}}},{key:"valid",value:function(){return this.number>=3&&this.number<=131070}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default);e.pharmacode=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.codabar=void 0;var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0);var a=function(t){function e(t,n){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),0===t.search(/^[0-9\-\$\:\.\+\/]+$/)&&(t="A"+t+"A");var r=function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t.toUpperCase(),n));return r.text=r.options.text||r.text.replace(/[A-D]/g,""),r}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return-1!==this.data.search(/^[A-D][0-9\-\$\:\.\+\/]+[A-D]$/)}},{key:"encode",value:function(){for(var t=[],e=this.getEncodings(),n=0;n<this.data.length;n++)t.push(e[this.data.charAt(n)]),n!==this.data.length-1&&t.push("0");return{text:this.text,data:t.join("")}}},{key:"getEncodings",value:function(){return{0:"101010011",1:"101011001",2:"101001011",3:"110010101",4:"101101001",5:"110101001",6:"100101011",7:"100101101",8:"100110101",9:"110100101","-":"101001101",$:"101100101",":":"1101011011","/":"1101101011",".":"1101101101","+":"1011011011",A:"1011001001",B:"1001001011",C:"1010010011",D:"1010011001"}}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default);e.codabar=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.CODE93FullASCII=e.CODE93=void 0;var r=i(n(11)),o=i(n(43));function i(t){return t&&t.__esModule?t:{default:t}}e.CODE93=r.default,e.CODE93FullASCII=o.default},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});e.SYMBOLS=["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","-","."," ","$","/","+","%","($)","(%)","(/)","(+)","ÿ"],e.BINARIES=["100010100","101001000","101000100","101000010","100101000","100100100","100100010","101010000","100010010","100001010","110101000","110100100","110100010","110010100","110010010","110001010","101101000","101100100","101100010","100110100","100011010","101011000","101001100","101000110","100101100","100010110","110110100","110110010","110101100","110100110","110010110","110011010","101101100","101100110","100110110","100111010","100101110","111010100","111010010","111001010","101101110","101110110","110101110","100100110","111011010","111010110","100110010","101011110"],e.MULTI_SYMBOLS={"\0":["(%)","U"],"":["($)","A"],"":["($)","B"],"":["($)","C"],"":["($)","D"],"":["($)","E"],"":["($)","F"],"":["($)","G"],"\b":["($)","H"],"\t":["($)","I"],"\n":["($)","J"],"\v":["($)","K"],"\f":["($)","L"],"\r":["($)","M"],"":["($)","N"],"":["($)","O"],"":["($)","P"],"":["($)","Q"],"":["($)","R"],"":["($)","S"],"":["($)","T"],"":["($)","U"],"":["($)","V"],"":["($)","W"],"":["($)","X"],"":["($)","Y"],"":["($)","Z"],"":["(%)","A"],"":["(%)","B"],"":["(%)","C"],"":["(%)","D"],"":["(%)","E"],"!":["(/)","A"],'"':["(/)","B"],"#":["(/)","C"],"&":["(/)","F"],"'":["(/)","G"],"(":["(/)","H"],")":["(/)","I"],"*":["(/)","J"],",":["(/)","L"],":":["(/)","Z"],";":["(%)","F"],"<":["(%)","G"],"=":["(%)","H"],">":["(%)","I"],"?":["(%)","J"],"@":["(%)","V"],"[":["(%)","K"],"\\":["(%)","L"],"]":["(%)","M"],"^":["(%)","N"],_:["(%)","O"],"`":["(%)","W"],a:["(+)","A"],b:["(+)","B"],c:["(+)","C"],d:["(+)","D"],e:["(+)","E"],f:["(+)","F"],g:["(+)","G"],h:["(+)","H"],i:["(+)","I"],j:["(+)","J"],k:["(+)","K"],l:["(+)","L"],m:["(+)","M"],n:["(+)","N"],o:["(+)","O"],p:["(+)","P"],q:["(+)","Q"],r:["(+)","R"],s:["(+)","S"],t:["(+)","T"],u:["(+)","U"],v:["(+)","V"],w:["(+)","W"],x:["(+)","X"],y:["(+)","Y"],z:["(+)","Z"],"{":["(%)","P"],"|":["(%)","Q"],"}":["(%)","R"],"~":["(%)","S"],"":["(%)","T"]}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(11);var a=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"valid",value:function(){return/^[\x00-\x7f]+$/.test(this.data)}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default);e.default=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.GenericBarcode=void 0;var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(0);var a=function(t){function e(t,n){return function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,e),function(t,e){if(!t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!e||"object"!=typeof e&&"function"!=typeof e?t:e}(this,(e.__proto__||Object.getPrototypeOf(e)).call(this,t,n))}return function(t,e){if("function"!=typeof e&&null!==e)throw new TypeError("Super expression must either be null or a function, not "+typeof e);t.prototype=Object.create(e&&e.prototype,{constructor:{value:t,enumerable:!1,writable:!0,configurable:!0}}),e&&(Object.setPrototypeOf?Object.setPrototypeOf(t,e):t.__proto__=e)}(e,t),o(e,[{key:"encode",value:function(){return{data:"10101010101010101010101010101010101010101",text:this.text}}},{key:"valid",value:function(){return!0}}]),e}(((r=i)&&r.__esModule?r:{default:r}).default);e.GenericBarcode=a},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t){var e=[];return function t(n){if(Array.isArray(n))for(var r=0;r<n.length;r++)t(n[r]);else n.text=n.text||"",n.data=n.data||"",e.push(n)}(t),e}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0}),e.default=function(t){return t.marginTop=t.marginTop||t.margin,t.marginBottom=t.marginBottom||t.margin,t.marginRight=t.marginRight||t.margin,t.marginLeft=t.marginLeft||t.margin,t}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol&&t!==Symbol.prototype?"symbol":typeof t},o=u(n(48)),i=u(n(49)),a=n(15);function u(t){return t&&t.__esModule?t:{default:t}}function f(t){if("string"==typeof t)return function(t){var e=document.querySelectorAll(t);if(0===e.length)return;for(var n=[],r=0;r<e.length;r++)n.push(f(e[r]));return n}(t);if(Array.isArray(t)){for(var e=[],n=0;n<t.length;n++)e.push(f(t[n]));return e}if("undefined"!=typeof HTMLCanvasElement&&t instanceof HTMLImageElement)return u=t,{element:c=document.createElement("canvas"),options:(0,o.default)(u),renderer:i.default.CanvasRenderer,afterRender:function(){u.setAttribute("src",c.toDataURL())}};if(t&&t.nodeName&&"svg"===t.nodeName.toLowerCase()||"undefined"!=typeof SVGElement&&t instanceof SVGElement)return{element:t,options:(0,o.default)(t),renderer:i.default.SVGRenderer};if("undefined"!=typeof HTMLCanvasElement&&t instanceof HTMLCanvasElement)return{element:t,options:(0,o.default)(t),renderer:i.default.CanvasRenderer};if(t&&t.getContext)return{element:t,renderer:i.default.CanvasRenderer};if(t&&"object"===(void 0===t?"undefined":r(t))&&!t.nodeName)return{element:t,renderer:i.default.ObjectRenderer};throw new a.InvalidElementException;var u,c}e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=i(n(12)),o=i(n(13));function i(t){return t&&t.__esModule?t:{default:t}}e.default=function(t){var e={};for(var n in o.default)o.default.hasOwnProperty(n)&&(t.hasAttribute("jsbarcode-"+n.toLowerCase())&&(e[n]=t.getAttribute("jsbarcode-"+n.toLowerCase())),t.hasAttribute("data-"+n.toLowerCase())&&(e[n]=t.getAttribute("data-"+n.toLowerCase())));return e.value=t.getAttribute("jsbarcode-value")||t.getAttribute("data-value"),e=(0,r.default)(e)}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=a(n(50)),o=a(n(51)),i=a(n(52));function a(t){return t&&t.__esModule?t:{default:t}}e.default={CanvasRenderer:r.default,SVGRenderer:o.default,ObjectRenderer:i.default}},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(7),a=(r=i)&&r.__esModule?r:{default:r},u=n(14);var f=function(){function t(e,n,r){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,t),this.canvas=e,this.encodings=n,this.options=r}return o(t,[{key:"render",value:function(){if(!this.canvas.getContext)throw new Error("The browser does not support canvas.");this.prepareCanvas();for(var t=0;t<this.encodings.length;t++){var e=(0,a.default)(this.options,this.encodings[t].options);this.drawCanvasBarcode(e,this.encodings[t]),this.drawCanvasText(e,this.encodings[t]),this.moveCanvasDrawing(this.encodings[t])}this.restoreCanvas()}},{key:"prepareCanvas",value:function(){var t=this.canvas.getContext("2d");t.save(),(0,u.calculateEncodingAttributes)(this.encodings,this.options,t);var e=(0,u.getTotalWidthOfEncodings)(this.encodings),n=(0,u.getMaximumHeightOfEncodings)(this.encodings);this.canvas.width=e+this.options.marginLeft+this.options.marginRight,this.canvas.height=n,t.clearRect(0,0,this.canvas.width,this.canvas.height),this.options.background&&(t.fillStyle=this.options.background,t.fillRect(0,0,this.canvas.width,this.canvas.height)),t.translate(this.options.marginLeft,0)}},{key:"drawCanvasBarcode",value:function(t,e){var n,r=this.canvas.getContext("2d"),o=e.data;n="top"==t.textPosition?t.marginTop+t.fontSize+t.textMargin:t.marginTop,r.fillStyle=t.lineColor;for(var i=0;i<o.length;i++){var a=i*t.width+e.barcodePadding;"1"===o[i]?r.fillRect(a,n,t.width,t.height):o[i]&&r.fillRect(a,n,t.width,t.height*o[i])}}},{key:"drawCanvasText",value:function(t,e){var n,r,o=this.canvas.getContext("2d"),i=t.fontOptions+" "+t.fontSize+"px "+t.font;t.displayValue&&(r="top"==t.textPosition?t.marginTop+t.fontSize-t.textMargin:t.height+t.textMargin+t.marginTop+t.fontSize,o.font=i,"left"==t.textAlign||e.barcodePadding>0?(n=0,o.textAlign="left"):"right"==t.textAlign?(n=e.width-1,o.textAlign="right"):(n=e.width/2,o.textAlign="center"),o.fillText(e.text,n,r))}},{key:"moveCanvasDrawing",value:function(t){this.canvas.getContext("2d").translate(t.width,0)}},{key:"restoreCanvas",value:function(){this.canvas.getContext("2d").restore()}}]),t}();e.default=f},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r,o=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}(),i=n(7),a=(r=i)&&r.__esModule?r:{default:r},u=n(14);var f="http://www.w3.org/2000/svg",c=function(){function t(e,n,r){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,t),this.svg=e,this.encodings=n,this.options=r,this.document=r.xmlDocument||document}return o(t,[{key:"render",value:function(){var t=this.options.marginLeft;this.prepareSVG();for(var e=0;e<this.encodings.length;e++){var n=this.encodings[e],r=(0,a.default)(this.options,n.options),o=this.createGroup(t,r.marginTop,this.svg);this.setGroupOptions(o,r),this.drawSvgBarcode(o,r,n),this.drawSVGText(o,r,n),t+=n.width}}},{key:"prepareSVG",value:function(){for(;this.svg.firstChild;)this.svg.removeChild(this.svg.firstChild);(0,u.calculateEncodingAttributes)(this.encodings,this.options);var t=(0,u.getTotalWidthOfEncodings)(this.encodings),e=(0,u.getMaximumHeightOfEncodings)(this.encodings),n=t+this.options.marginLeft+this.options.marginRight;this.setSvgAttributes(n,e),this.options.background&&this.drawRect(0,0,n,e,this.svg).setAttribute("fill",this.options.background)}},{key:"drawSvgBarcode",value:function(t,e,n){var r,o=n.data;r="top"==e.textPosition?e.fontSize+e.textMargin:0;for(var i=0,a=0,u=0;u<o.length;u++)a=u*e.width+n.barcodePadding,"1"===o[u]?i++:i>0&&(this.drawRect(a-e.width*i,r,e.width*i,e.height,t),i=0);i>0&&this.drawRect(a-e.width*(i-1),r,e.width*i,e.height,t)}},{key:"drawSVGText",value:function(t,e,n){var r,o,i=this.document.createElementNS(f,"text");e.displayValue&&(i.setAttribute("font-family",e.font),i.setAttribute("font-size",e.fontSize),e.fontOptions.includes("bold")&&i.setAttribute("font-weight","bold"),e.fontOptions.includes("italic")&&i.setAttribute("font-style","italic"),o="top"==e.textPosition?e.fontSize-e.textMargin:e.height+e.textMargin+e.fontSize,"left"==e.textAlign||n.barcodePadding>0?(r=0,i.setAttribute("text-anchor","start")):"right"==e.textAlign?(r=n.width-1,i.setAttribute("text-anchor","end")):(r=n.width/2,i.setAttribute("text-anchor","middle")),i.setAttribute("x",r),i.setAttribute("y",o),i.appendChild(this.document.createTextNode(n.text)),t.appendChild(i))}},{key:"setSvgAttributes",value:function(t,e){var n=this.svg;n.setAttribute("width",t+"px"),n.setAttribute("height",e+"px"),n.setAttribute("x","0px"),n.setAttribute("y","0px"),n.setAttribute("viewBox","0 0 "+t+" "+e),n.setAttribute("xmlns",f),n.setAttribute("version","1.1")}},{key:"createGroup",value:function(t,e,n){var r=this.document.createElementNS(f,"g");return r.setAttribute("transform","translate("+t+", "+e+")"),n.appendChild(r),r}},{key:"setGroupOptions",value:function(t,e){t.setAttribute("fill",e.lineColor)}},{key:"drawRect",value:function(t,e,n,r,o){var i=this.document.createElementNS(f,"rect");return i.setAttribute("x",t),i.setAttribute("y",e),i.setAttribute("width",n),i.setAttribute("height",r),o.appendChild(i),i}}]),t}();e.default=c},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}();var o=function(){function t(e,n,r){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,t),this.object=e,this.encodings=n,this.options=r}return r(t,[{key:"render",value:function(){this.object.encodings=this.encodings}}]),t}();e.default=o},function(t,e,n){"use strict";Object.defineProperty(e,"__esModule",{value:!0});var r=function(){function t(t,e){for(var n=0;n<e.length;n++){var r=e[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(t,r.key,r)}}return function(e,n,r){return n&&t(e.prototype,n),r&&t(e,r),e}}();var o=function(){function t(e){!function(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}(this,t),this.api=e}return r(t,[{key:"handleCatch",value:function(t){if("InvalidInputException"!==t.name)throw t;if(this.api._options.valid===this.api._defaults.valid)throw t.message;this.api._options.valid(!1),this.api.render=function(){}}},{key:"wrapBarcodeCall",value:function(t){try{var e=t.apply(void 0,arguments);return this.api._options.valid(!0),e}catch(t){return this.handleCatch(t),this.api}}}]),t}();e.default=o}]);
-</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         function tickClock() {
             var el = document.getElementById('liveClock');
@@ -402,44 +330,56 @@
             var now = new Date();
             var h = String(now.getHours()).padStart(2, '0');
             var m = String(now.getMinutes()).padStart(2, '0');
-            var s = String(now.getSeconds()).padStart(2, '0');
-            el.textContent = h + ':' + m + ':' + s;
+            el.textContent = h + ':' + m;
         }
         tickClock();
         setInterval(tickClock, 1000);
 
         @if($display->show_qr)
-        // Barcode garis (Code128) jauh lebih tahan blur/pecah di layar TV
-        // resolusi rendah dibanding QR yang bergantung pada modul kecil.
-        var barcodeEl = document.getElementById('bookingBarcode');
-        if (barcodeEl && window.JsBarcode) {
-            try {
-                JsBarcode(barcodeEl, "{{ route('bookings.create') }}", {
-                    format: "CODE128",
-                    displayValue: false,
-                    margin: 0,
-                    height: 46,
-                    width: 1.6,
-                    background: "#ffffff",
-                    lineColor: "#000000"
-                });
-            } catch (e) {
-                console.error('Gagal membuat barcode:', e);
-            }
-        } else if (barcodeEl) {
-            console.error('JsBarcode tidak tersedia.');
+        var qrContainer = document.getElementById('qrContainer');
+        if (qrContainer) {
+            // FIX: correctLevel diturunkan dari H (High) ke L (Low).
+            // Tingkat koreksi error yang lebih tinggi membuat pola QR jadi
+            // lebih PADAT (butuh lebih banyak modul kecil untuk data yang
+            // sama) — pola padat itulah yang susah discan kamera HP kalau
+            // layar TV-nya kurang tajam. Link booking cukup pendek, jadi
+            // koreksi Low sudah lebih dari cukup dan hasilnya jauh lebih
+            // longgar & mudah discan.
+            new QRCode(qrContainer, {
+                text: "{{ route('bookings.create') }}",
+                width: 200, height: 200,
+                colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.L
+            });
         }
         @endif
 
-        setTimeout(function () {
-            window.location.reload();
-        }, {{ $display->refresh_seconds }} * 1000);
+        // ============================================================
+        // LIVE UPDATE — sama seperti papan single-room: dulu reload
+        // penuh (kedip), sekarang cuma grid status ruangan yang ditukar
+        // lewat AJAX, jam & QR tidak ikut kedip.
+        // ============================================================
+        var SIGNAGE_ALL_LIVE_URL = "{{ route('signage.show', $display->display_token) }}";
+        function pollSignageAllLive() {
+            fetch(SIGNAGE_ALL_LIVE_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data) return;
+                    var boardEl = document.getElementById('roomsBoard');
+                    if (boardEl && data.board) boardEl.outerHTML = data.board;
+                    document.getElementById('offlineBanner').style.display = 'none';
+                })
+                .catch(function () {
+                    document.getElementById('offlineBanner').style.display = 'block';
+                });
+        }
+        setInterval(pollSignageAllLive, {{ max(10, (int) $display->refresh_seconds) }} * 1000);
 
         window.addEventListener('offline', function () {
             document.getElementById('offlineBanner').style.display = 'block';
         });
         window.addEventListener('online', function () {
             document.getElementById('offlineBanner').style.display = 'none';
+            pollSignageAllLive();
         });
     </script>
 </body>

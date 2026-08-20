@@ -26,10 +26,10 @@
     }
     .btn-back:hover { border-color: var(--brand-orange); color: var(--brand-orange-dark); }
     .btn-primary-sm {
-        background: var(--brand-gradient); color: white;
+        background: var(--brand-orange); color: white;
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
-    .btn-primary-sm:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25); color: white; }
+    .btn-primary-sm:hover { background: var(--brand-orange-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25); color: white; }
 
     /* ============================================
        ROOM HERO CARD
@@ -274,24 +274,7 @@
             @endif
         </div>
 
-        <div class="section-card">
-            <div class="section-title">
-                <span><i class="bi bi-calendar3"></i> Jadwal Hari Ini</span>
-                <span class="schedule-date">{{ $today->translatedFormat('d M Y') }}</span>
-            </div>
-            <div class="schedule-list">
-                @foreach($schedule as $time => $booking)
-                    <div class="schedule-row">
-                        <span class="time">{{ $time }}</span>
-                        @if($booking)
-                            <div class="slot busy">{{ $booking->purpose }}</div>
-                        @else
-                            <div class="slot">Kosong</div>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
-        </div>
+        @include('pages.partials._room-today-schedule', ['schedule' => $schedule, 'today' => $today])
     </div>
 </div>
 
@@ -366,6 +349,31 @@
         document.getElementById('lightbox').addEventListener('click', function (e) {
             if (e.target === this) closeLightbox();
         });
+    })();
+</script>
+
+<script>
+    // ============================================================
+    // LIVE UPDATE — polling berkala (bukan WebSocket). Jadwal hari
+    // ini di-refresh otomatis kalau ada booking baru disetujui/
+    // berubah, supaya karyawan lihat ketersediaan yang selalu akurat
+    // saat memutuskan mau booking jam berapa.
+    // ============================================================
+    (function () {
+        var lastSignature = 'initial';
+
+        createLivePoller({
+            url: "{{ route('rooms.live-schedule', $room->id) }}",
+            interval: 20000,
+            onUpdate: function (data) {
+                if (data.signature === lastSignature) return;
+                lastSignature = data.signature;
+
+                var el = document.getElementById('roomTodayScheduleCard');
+                if (el) el.outerHTML = data.schedule;
+            }
+        });
+    })();
     })();
 </script>
 @endsection

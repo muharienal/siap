@@ -95,55 +95,37 @@
     </button>
 </div>
 
-<div class="section-card" id="notifListWrapper">
-    @if($notifications->count() > 0)
-        @foreach($notifications as $notification)
-            <a href="{{ $notification->booking_id ? route('bookings.show', $notification->booking_id) : '#' }}"
-               class="notif-row {{ !$notification->is_read ? 'is-unread' : '' }}"
-               data-id="{{ $notification->id }}" data-unread="{{ $notification->is_read ? '0' : '1' }}">
-                <div class="notif-row-icon"><i class="bi bi-bell-fill"></i></div>
-                <div class="notif-row-body">
-                    <div class="notif-row-message">{{ $notification->message }}</div>
-                    <div class="notif-row-meta">
-                        <span class="notif-row-time"><i class="bi bi-clock"></i> {{ $notification->created_at->diffForHumans() }} &middot; {{ $notification->created_at->format('d M Y, H:i') }}</span>
-                        @if($notification->booking)
-                            <span class="notif-row-room"><i class="bi bi-door-open"></i> {{ $notification->booking->room->name ?? 'N/A' }}</span>
-                        @endif
-                    </div>
-                </div>
-                @if(!$notification->is_read)
-                    <span class="notif-row-dot"></span>
-                @endif
-            </a>
-        @endforeach
-    @else
-        <div class="empty-state">
-            <i class="bi bi-bell-slash"></i>
-            <p>{{ $filter === 'unread' ? 'Tidak ada notifikasi yang belum dibaca.' : 'Belum ada notifikasi.' }}</p>
-        </div>
-    @endif
-</div>
+@include('notifications.partials._list', ['notifications' => $notifications, 'filter' => $filter])
 
 <script>
-    // Klik notifikasi: tandai dibaca lalu lanjut navigasi ke booking terkait (kalau ada)
-    document.querySelectorAll('.notif-row').forEach(function (row) {
-        row.addEventListener('click', function (e) {
-            const isUnread = this.dataset.unread === '1';
-            if (!isUnread) return; // sudah dibaca, biarkan link jalan normal
-            e.preventDefault();
-            const id = this.dataset.id;
-            const targetUrl = this.getAttribute('href');
-            fetch('{{ route("notifications.mark-read") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ notification_id: id })
-            }).finally(function () {
-                window.location.href = targetUrl;
-            });
+    // FIX (siap live-update): sebelumnya listener klik di-attach LANGSUNG
+    // ke tiap elemen .notif-row satu-satu saat halaman dimuat. Begitu
+    // daftar ini di-refresh otomatis (live-polling), elemen lama diganti
+    // elemen baru yang TIDAK punya listener — klik jadi tidak berfungsi
+    // sama sekali sampai reload manual. Sekarang pakai event delegation
+    // di document (BUKAN di #notifListWrapper — wrapper itu sendiri yang
+    // di-swap tiap polling, jadi listener yang nempel di situ akan ikut
+    // hilang juga setiap kali swap terjadi) — dengan delegasi ke document,
+    // listener tetap berfungsi walau isi di dalamnya berganti-ganti.
+    document.addEventListener('click', function (e) {
+        var row = e.target.closest('.notif-row');
+        if (!row) return;
+        var isUnread = row.dataset.unread === '1';
+        if (!isUnread) return; // sudah dibaca, biarkan link jalan normal
+
+        e.preventDefault();
+        var id = row.dataset.id;
+        var targetUrl = row.getAttribute('href');
+        fetch('{{ route("notifications.mark-read") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ notification_id: id })
+        }).finally(function () {
+            window.location.href = targetUrl;
         });
     });
 
@@ -159,5 +141,46 @@
             });
         });
     }
+
+    // ============================================================
+    // LIVE UPDATE — polling berkala (bukan WebSocket). Daftar
+    // notifikasi di-refresh otomatis kalau ada notifikasi baru masuk
+    // (mis. booking disetujui/ditolak/dialihkan dari device lain),
+    // tanpa reload manual.
+    // ============================================================
+    (function () {
+        var lastSignature = 'initial';
+
+        createLivePoller({
+            url: window.location.pathname + window.location.search,
+            interval: 20000,
+            onUpdate: function (data) {
+                if (data.signature === lastSignature) return;
+                lastSignature = data.signature;
+
+                var el = document.getElementById('notifListWrapper');
+                if (el) el.outerHTML = data.list;
+
+                // Badge "Belum Dibaca" & tombol "Tandai Semua Dibaca" di
+                // toolbar ikut disinkronkan (jumlahnya bisa berubah).
+                var tabUnread = document.querySelector('.notif-tab:nth-child(2)');
+                if (tabUnread) {
+                    var pill = tabUnread.querySelector('.count-pill');
+                    if (data.unread_count > 0) {
+                        if (!pill) {
+                            pill = document.createElement('span');
+                            pill.className = 'count-pill';
+                            tabUnread.appendChild(pill);
+                        }
+                        pill.textContent = data.unread_count;
+                    } else if (pill) {
+                        pill.remove();
+                    }
+                }
+                var btn = document.getElementById('markAllReadBtn');
+                if (btn) btn.disabled = data.unread_count == 0;
+            }
+        });
+    })();
 </script>
 @endsection

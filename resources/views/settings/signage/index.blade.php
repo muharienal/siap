@@ -132,6 +132,29 @@
     .orientation-label { font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); }
     .orientation-option.selected .orientation-label { color: var(--brand-orange-dark); }
 
+    /* Pemilih tema tampilan TV (terang/gelap) — pola visualnya disamakan
+       persis dengan pemilih orientasi di atas supaya konsisten. */
+    .theme-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: var(--space-4); }
+    .theme-option {
+        border: 2px solid var(--border-color); border-radius: var(--radius-sm); padding: var(--space-4);
+        display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s;
+        background: var(--bg-input);
+    }
+    .theme-option:hover { border-color: var(--brand-orange); }
+    .theme-option.selected { border-color: var(--brand-orange); background: rgba(255,145,66,0.05); }
+    .theme-preview {
+        width: 64px; height: 42px; border-radius: 6px; border: 2px solid var(--text-muted);
+        display: flex; align-items: center; justify-content: center; gap: 3px;
+    }
+    .theme-preview.light { background: #f4f6f9; }
+    .theme-preview.dark { background: #0a0e17; }
+    .theme-preview span { width: 8px; height: 8px; border-radius: 50%; }
+    .theme-preview.light span { background: linear-gradient(135deg, #FF9142, #22C55E); }
+    .theme-preview.dark span { background: linear-gradient(135deg, #FF9142, #22C55E); box-shadow: 0 0 6px rgba(255,145,66,0.5); }
+    .theme-option.selected .theme-preview { border-color: var(--brand-orange); }
+    .theme-label { font-weight: 600; font-size: 0.85rem; color: var(--text-secondary); }
+    .theme-option.selected .theme-label { color: var(--brand-orange-dark); }
+
     .form-label-modern { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
     .modern-select {
         width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--border-color);
@@ -239,51 +262,7 @@
     <div style="flex:1; height:1px; background: var(--border-color-light);"></div>
 </div>
 
-<div class="signage-grid">
-    @foreach($rooms as $room)
-        @php
-            $display = $room->display;
-            $validPhoto = $room->photos->first(fn($p) => $p->photo_url !== null);
-        @endphp
-        <div class="signage-card">
-            <div class="signage-card-image">
-                @if($validPhoto)
-                    <img src="{{ $validPhoto->photo_url }}" alt="{{ $room->name }}">
-                @else
-                    <div class="signage-card-image-placeholder"><i class="bi bi-tv"></i></div>
-                @endif
-                <span class="signage-status-badge {{ $display && $display->is_active ? 'on' : 'off' }}">
-                    {{ $display && $display->is_active ? 'Aktif' : 'Belum Diatur' }}
-                </span>
-            </div>
-            <div class="signage-card-body">
-                <h3 class="signage-card-title">{{ $room->name }}</h3>
-                <div class="signage-card-meta"><i class="bi bi-geo-alt"></i> {{ $room->location }}</div>
-
-                @if($display)
-                    <div class="signage-config-chips">
-                        <span class="signage-chip">
-                            <i class="bi bi-{{ $display->orientation === 'portrait' ? 'phone' : 'tv' }}"></i>
-                            {{ $display->orientation === 'portrait' ? 'Portrait' : 'Landscape' }}
-                        </span>
-                        <span class="signage-chip"><i class="bi bi-arrow-repeat"></i> {{ $display->refresh_seconds }}s</span>
-                        @if($display->show_qr)<span class="signage-chip"><i class="bi bi-qr-code"></i> QR</span>@endif
-                    </div>
-                @endif
-            </div>
-            <div class="signage-card-footer">
-                <button type="button" class="btn-signage-action primary" onclick='openSignageModal(@json($room->id), @json($room->name), @json($display))'>
-                    <i class="bi bi-sliders"></i> Kelola Tampilan
-                </button>
-                @if($display)
-                    <a href="{{ route('signage.show', $display->display_token) }}" target="_blank" class="btn-signage-action" title="Buka Preview">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                @endif
-            </div>
-        </div>
-    @endforeach
-</div>
+@include('settings.signage.partials._signage-grid', ['rooms' => $rooms])
 
 {{-- ========================================== --}}
 {{-- MODAL: KELOLA PAPAN SEMUA RUANGAN          --}}
@@ -309,6 +288,19 @@
                         </div>
                     </div>
                     <input type="hidden" name="orientation" id="allBoardOrientation" value="landscape">
+
+                    <label class="form-label-modern">Tema Warna</label>
+                    <div class="theme-picker">
+                        <div class="theme-option" data-theme="light" onclick="selectAllBoardTheme('light')">
+                            <div class="theme-preview light"><span></span></div>
+                            <span class="theme-label">Terang</span>
+                        </div>
+                        <div class="theme-option" data-theme="dark" onclick="selectAllBoardTheme('dark')">
+                            <div class="theme-preview dark"><span></span></div>
+                            <span class="theme-label">Gelap</span>
+                        </div>
+                    </div>
+                    <input type="hidden" name="theme" id="allBoardTheme" value="light">
 
                     <div class="toggle-row">
                         <div class="toggle-row-label">
@@ -391,6 +383,19 @@
                         </div>
                     </div>
                     <input type="hidden" name="orientation" id="signageOrientation" value="landscape">
+
+                    <label class="form-label-modern">Tema Warna</label>
+                    <div class="theme-picker">
+                        <div class="theme-option" data-theme="light" onclick="selectTheme('light')">
+                            <div class="theme-preview light"><span></span></div>
+                            <span class="theme-label">Terang</span>
+                        </div>
+                        <div class="theme-option" data-theme="dark" onclick="selectTheme('dark')">
+                            <div class="theme-preview dark"><span></span></div>
+                            <span class="theme-label">Gelap</span>
+                        </div>
+                    </div>
+                    <input type="hidden" name="theme" id="signageTheme" value="light">
 
                     <div class="toggle-row">
                         <div class="toggle-row-label">
@@ -509,8 +514,16 @@
         });
     }
 
+    function selectAllBoardTheme(value) {
+        document.getElementById('allBoardTheme').value = value;
+        document.querySelectorAll('#allBoardModal .theme-option').forEach(el => {
+            el.classList.toggle('selected', el.dataset.theme === value);
+        });
+    }
+
     function openAllBoardModal(allBoard) {
         selectAllBoardOrientation(allBoard ? allBoard.orientation : 'landscape');
+        selectAllBoardTheme(allBoard && allBoard.theme ? allBoard.theme : 'light');
         document.getElementById('allBoardShowQr').checked = allBoard ? !!allBoard.show_qr : true;
         document.getElementById('allBoardRefreshSeconds').value = allBoard ? allBoard.refresh_seconds : 60;
         document.getElementById('allBoardIsActive').checked = allBoard ? !!allBoard.is_active : true;
@@ -546,11 +559,19 @@
         });
     }
 
+    function selectTheme(value) {
+        document.getElementById('signageTheme').value = value;
+        document.querySelectorAll('#signageModal .theme-option').forEach(el => {
+            el.classList.toggle('selected', el.dataset.theme === value);
+        });
+    }
+
     function openSignageModal(roomId, roomName, display) {
         currentRoomId = roomId;
         document.getElementById('signageModalRoomName').textContent = roomName;
 
         selectOrientation(display ? display.orientation : 'landscape');
+        selectTheme(display && display.theme ? display.theme : 'light');
         document.getElementById('signageShowQr').checked = display ? !!display.show_qr : true;
         document.getElementById('signageShowUpcoming').checked = display ? !!display.show_upcoming : true;
         document.getElementById('signageUpcomingCount').value = display ? display.upcoming_count : 3;
@@ -596,6 +617,7 @@
             e.preventDefault();
             var data = {
                 orientation: document.getElementById('allBoardOrientation').value,
+                theme: document.getElementById('allBoardTheme').value,
                 show_qr: document.getElementById('allBoardShowQr').checked ? 1 : 0,
                 refresh_seconds: document.getElementById('allBoardRefreshSeconds').value,
                 is_active: document.getElementById('allBoardIsActive').checked ? 1 : 0,
@@ -646,6 +668,7 @@
             var formData = new FormData(this);
             var data = {
                 orientation: formData.get('orientation'),
+                theme: formData.get('theme'),
                 show_qr: document.getElementById('signageShowQr').checked ? 1 : 0,
                 show_upcoming: document.getElementById('signageShowUpcoming').checked ? 1 : 0,
                 upcoming_count: formData.get('upcoming_count'),
@@ -693,5 +716,28 @@
             .catch(() => showToast('error', 'Error', 'Terjadi kesalahan jaringan.', 5000));
         });
     });
+
+    // ============================================================
+    // LIVE UPDATE — polling berkala (bukan WebSocket). Grid status
+    // konfigurasi tiap ruangan di-refresh otomatis kalau ada admin
+    // lain yang mengubah pengaturan tampilan TV-nya, tanpa reload
+    // manual. Jeda otomatis kalau modal Kelola Tampilan terbuka.
+    // ============================================================
+    (function () {
+        var lastSignature = 'initial';
+
+        createLivePoller({
+            url: window.location.pathname,
+            interval: 20000,
+            shouldPause: function () { return document.querySelector('.modal.show') !== null; },
+            onUpdate: function (data) {
+                if (data.signature === lastSignature) return;
+                lastSignature = data.signature;
+
+                var el = document.getElementById('signageGrid');
+                if (el) el.outerHTML = data.grid;
+            }
+        });
+    })();
 </script>
 @endsection

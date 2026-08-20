@@ -16,6 +16,13 @@ class UserController extends Controller
     {
         $users = User::with(['division', 'position'])->orderBy('full_name')->get();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'table' => view('settings.users.partials._user-table', compact('users'))->render(),
+                'signature' => md5($users->pluck('id')->implode(',') . '|' . optional($users->max('updated_at'))->timestamp),
+            ]);
+        }
+
         // Divisi & Bidang sekarang dikelola langsung di halaman ini lewat
         // modal "Kelola Bidang & Divisi", jadi ikut dimuat di sini.
         $divisions = Division::orderBy('name')->get();

@@ -21,9 +21,15 @@ class Booking extends Model
         'booking_type',
         'displaced_by_id',
         'relocation_note',
+        'awaiting_user_confirmation',
+        'relocated_from_room_id',
+        'relocated_from_start_time',
+        'relocated_from_end_time',
+        'relocated_at',
         'processed_by',
         'processed_at',
         'rejection_reason',
+        'approval_note',
         'absent_code',
         'qr_code_path',
     ];
@@ -32,6 +38,10 @@ class Booking extends Model
         'start_time' => 'datetime',
         'end_time' => 'datetime',
         'processed_at' => 'datetime',
+        'awaiting_user_confirmation' => 'boolean',
+        'relocated_from_start_time' => 'datetime',
+        'relocated_from_end_time' => 'datetime',
+        'relocated_at' => 'datetime',
     ];
 
     public function user()
@@ -76,5 +86,12 @@ class Booking extends Model
     public function displaces()
     {
         return $this->hasMany(Booking::class, 'displaced_by_id');
+    }
+
+    // Ruangan asal sebelum booking ini dialihkan admin (riwayat pengalihan
+    // terakhir, null kalau booking ini belum pernah dialihkan sama sekali)
+    public function relocatedFromRoom()
+    {
+        return $this->belongsTo(Room::class, 'relocated_from_room_id');
     }
 }

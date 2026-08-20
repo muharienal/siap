@@ -26,6 +26,15 @@ class SignageController extends Controller
         $rooms = Room::with(['display', 'photos'])->orderBy('name')->get();
         $allBoard = RoomDisplay::allRoomsBoard();
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'grid' => view('settings.signage.partials._signage-grid', compact('rooms'))->render(),
+                'signature' => md5($rooms->map(function ($r) {
+                    return $r->id . ':' . optional($r->display)->updated_at;
+                })->implode(',')),
+            ]);
+        }
+
         return view('settings.signage.index', compact('rooms', 'allBoard'));
     }
 
@@ -42,6 +51,7 @@ class SignageController extends Controller
 
         $request->validate([
             'orientation' => 'required|in:landscape,portrait',
+            'theme' => 'required|in:light,dark',
             'show_qr' => 'sometimes|boolean',
             'show_upcoming' => 'sometimes|boolean',
             'upcoming_count' => 'required|integer|min:1|max:10',
@@ -54,6 +64,7 @@ class SignageController extends Controller
         $display->fill([
             'type' => 'room',
             'orientation' => $request->orientation,
+            'theme' => $request->theme,
             'show_qr' => $request->boolean('show_qr'),
             'show_upcoming' => $request->boolean('show_upcoming'),
             'upcoming_count' => $request->upcoming_count,
@@ -105,6 +116,7 @@ class SignageController extends Controller
 
         $request->validate([
             'orientation' => 'required|in:landscape,portrait',
+            'theme' => 'required|in:light,dark',
             'show_qr' => 'sometimes|boolean',
             'refresh_seconds' => 'required|integer|min:15|max:600',
             'is_active' => 'sometimes|boolean',
@@ -116,6 +128,7 @@ class SignageController extends Controller
             'type' => 'all',
             'room_id' => null,
             'orientation' => $request->orientation,
+            'theme' => $request->theme,
             'show_qr' => $request->boolean('show_qr'),
             'show_upcoming' => true, // tidak relevan untuk tipe 'all', dibiarkan default
             'upcoming_count' => 3,
@@ -161,6 +174,7 @@ class SignageController extends Controller
             'type' => $display->type,
             'display_url' => route('signage.show', $display->display_token),
             'orientation' => $display->orientation,
+            'theme' => $display->theme,
             'show_qr' => $display->show_qr,
             'show_upcoming' => $display->show_upcoming,
             'upcoming_count' => $display->upcoming_count,
@@ -218,6 +232,13 @@ class SignageController extends Controller
             return Carbon::parse($b->start_time)->gt($now);
         })->take($display->upcoming_count);
 
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'main' => view('signage.partials._main-status', compact('currentBooking', 'now'))->render(),
+                'upcoming' => view('signage.partials._upcoming', compact('display', 'upcomingBookings'))->render(),
+            ]);
+        }
+
         return view('signage.show', compact('display', 'room', 'currentBooking', 'upcomingBookings', 'now'));
     }
 
@@ -250,6 +271,12 @@ class SignageController extends Controller
                 'current_id' => $currentId,
             ];
         });
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'board' => view('signage.partials._rooms-board', compact('roomsSchedule', 'now', 'display'))->render(),
+            ]);
+        }
 
         return view('signage.show-all', compact('display', 'roomsSchedule', 'now'));
     }

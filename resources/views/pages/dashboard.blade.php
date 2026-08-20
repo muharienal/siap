@@ -57,6 +57,45 @@
 
 <style>
     /* ============================================================
+       PALET WARNA STATUS — DASHBOARD
+       Satu sumber kebenaran untuk semua warna status (Pending/
+       Disetujui/Ditolak) & info yang dipakai berulang di halaman ini
+       (kartu statistik, legend jadwal, kotak jadwal kalender, jam
+       live). Dibangun DI ATAS variabel brand yang sudah ada di
+       layout utama (--brand-orange, --brand-green, --brand-blue) —
+       bukan menggantikannya. Sebelumnya nilai-nilai ini (mis. #f59e0b,
+       #10b981, #ef4444) ditulis ulang mentah-mentah di banyak tempat
+       berbeda di file ini; sekarang cukup diubah di satu tempat kalau
+       suatu saat perlu disesuaikan, dan lebih mudah diaudit konsistensinya.
+       ============================================================ */
+    :root {
+        --status-pending-solid: #f59e0b;
+        --status-pending-bg: rgba(245, 158, 11, 0.12);
+        --status-pending-text: #b45309;
+
+        --status-approved-solid: #10b981;
+        --status-approved-bg: rgba(16, 185, 129, 0.1);
+        --status-approved-text: #047857;
+
+        --status-rejected-solid: #ef4444;
+        --status-rejected-bg: rgba(239, 68, 68, 0.08);
+        --status-rejected-text: #b91c1c;
+
+        --status-info-solid: var(--brand-blue);
+        --status-info-bg: rgba(59, 130, 246, 0.1);
+        --status-info-text: #1d4ed8;
+
+        --status-neutral-solid: #94a3b8;
+
+        /* Warna "Priority" — HARUS SAMA dengan badge Priority di halaman
+           Detail Peminjaman (resources/views/bookings/show.blade.php),
+           supaya makna "booking tipe Priority" konsisten di seluruh
+           aplikasi, tidak beda warna di tiap halaman. */
+        --priority-solid: #7c3aed;
+        --priority-bg: rgba(139, 92, 246, 0.12);
+    }
+
+    /* ============================================================
        DASHBOARD SPECIFIC STYLES
        ============================================================ */
     .db-toolbar {
@@ -94,8 +133,8 @@
         font-weight: 600;
         padding: 4px 12px;
         border-radius: var(--radius-pill);
-        background: rgba(245, 158, 11, 0.12);
-        color: #b45309;
+        background: var(--status-pending-bg);
+        color: var(--status-pending-text);
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -105,8 +144,8 @@
         font-weight: 700;
         padding: 4px 12px;
         border-radius: var(--radius-pill);
-        background: rgba(59, 130, 246, 0.1);
-        color: #1d4ed8;
+        background: var(--status-info-bg);
+        color: var(--status-info-text);
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -114,7 +153,7 @@
     }
     .pulse-dot {
         width: 8px; height: 8px; border-radius: 50%;
-        background: #1d4ed8;
+        background: var(--status-info-text);
         animation: pulse 1.5s infinite;
     }
     @keyframes pulse {
@@ -126,7 +165,7 @@
     .btn-primary-sm {
         height: 44px;
         padding: 0 var(--space-5);
-        background: var(--brand-gradient);
+        background: var(--brand-orange);
         border: none;
         border-radius: var(--radius-sm);
         font-weight: 600;
@@ -141,9 +180,9 @@
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
     }
     .btn-primary-sm:hover {
-        background: var(--brand-gradient-hover);
+        background: var(--brand-orange-dark);
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+        box-shadow: 0 6px 16px rgba(249, 115, 22, 0.25);
         color: var(--text-inverse);
     }
 
@@ -193,9 +232,9 @@
         font-size: 1.5rem;
         flex-shrink: 0;
     }
-    .stat-icon.blue   { background: rgba(59,130,246,0.1);  color: var(--brand-blue); }
-    .stat-icon.green  { background: rgba(16,185,129,0.1);  color: var(--brand-green-dark); }
-    .stat-icon.amber  { background: rgba(245,158,11,0.12); color: #b45309; }
+    .stat-icon.blue   { background: var(--status-info-bg);    color: var(--brand-blue); }
+    .stat-icon.green  { background: rgba(16,185,129,0.1);     color: var(--brand-green-dark); }
+    .stat-icon.amber  { background: var(--status-pending-bg); color: var(--status-pending-text); }
     .stat-body { min-width: 0; }
     .stat-value {
         font-size: var(--font-size-2xl);
@@ -242,7 +281,7 @@
     .btn-today {
         height: 44px;
         padding: 0 var(--space-4);
-        background: var(--brand-gradient);
+        background: var(--brand-orange);
         color: var(--text-inverse);
         font-weight: 600;
         font-size: var(--font-size-sm);
@@ -253,7 +292,7 @@
         white-space: nowrap;
         box-shadow: none;
     }
-    .btn-today:hover { filter: brightness(1.05); }
+    .btn-today:hover { background: var(--brand-orange-dark); }
     .date-nav-btn {
         width: 44px;
         background: transparent;
@@ -679,11 +718,11 @@
     .schedule-legend .legend-item { display: flex; align-items: center; gap: 6px; }
     .schedule-legend .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .schedule-legend .dot.available { background: var(--brand-green); }
-    .schedule-legend .dot.pending   { background: #f59e0b; }
-    .schedule-legend .dot.approved  { background: #10b981; }
-    .schedule-legend .dot.rejected  { background: #ef4444; }
+    .schedule-legend .dot.pending   { background: var(--status-pending-solid); }
+    .schedule-legend .dot.approved  { background: var(--status-approved-solid); }
+    .schedule-legend .dot.rejected  { background: var(--status-rejected-solid); }
     .schedule-legend .dot.current   { background: var(--brand-orange); box-shadow: 0 0 0 3px rgba(249,115,22,0.2); }
-    .schedule-legend .dot.past      { background: #94a3b8; }
+    .schedule-legend .dot.past      { background: var(--status-neutral-solid); }
 
     .schedule-card .card-body {
         padding: 0;
@@ -909,7 +948,15 @@
         padding: 9px 11px 9px 13px;
         z-index: 2;
         cursor: pointer;
-        overflow: hidden;
+        /* FIX: sebelumnya "hidden" — ini MEMOTONG tooltip kaya-info yang
+           posisinya di luar kotak kartu (position:absolute, muncul di
+           atas/bawah kartu saat hover). Diubah ke "visible"; aman karena
+           potongan sudut membulat aksen kiri (::before) sudah punya
+           border-radius sendiri yang presisi, tidak bergantung pada
+           overflow:hidden induknya. Judul yang panjang tetap terpotong
+           rapi kok — itu ditangani overflow:hidden di .cal-event-title
+           sendiri (line-clamp), bukan di sini. */
+        overflow: visible;
         border: 1px solid transparent;
         box-shadow: 0 1px 4px rgba(15,23,42,0.05);
         transition: box-shadow 0.2s ease, transform 0.2s ease;
@@ -1007,6 +1054,89 @@
     .cal-event.is-compact .cal-event-sub,
     .cal-event.is-compact .cal-event-status { display: none; }
 
+    /* ============================================================
+       BARIS "BIDANG" — info tambahan di bawah nama peminjam. Ikut
+       disembunyikan di kartu ringkas (is-compact) supaya kartu
+       booking singkat/rapat tidak dipaksa menampilkan baris yang
+       tidak akan muat.
+       ============================================================ */
+    .cal-event.is-compact .cal-event-bidang { display: none; }
+    .cal-event-bidang { margin-top: -2px; }
+
+    /* ============================================================
+       TOOLTIP KAYA INFORMASI — menggantikan title="" bawaan browser
+       (default browser: polos, lambat muncul ~1 detik, tanpa
+       styling). Muncul di atas kartu saat hover, selalu berisi info
+       LENGKAP (judul penuh, peminjam, bidang, ruangan, jam, status)
+       apa pun ukuran kartu aslinya — jadi kalaupun teks di kartu
+       terpotong karena sempit, detail lengkapnya tetap terlihat
+       jelas tinggal arahkan kursor. Pola visualnya sama seperti
+       tooltip fasilitas di halaman Tambah Peminjaman, supaya
+       konsisten satu sama lain.
+       ============================================================ */
+    .cal-event-tooltip {
+        position: absolute;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%) translateY(6px);
+        background: #1e293b;
+        color: #fff;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-size: 12.5px;
+        font-weight: 500;
+        min-width: 220px;
+        max-width: 300px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        z-index: 50;
+        box-shadow: 0 14px 32px rgba(0,0,0,0.28);
+        pointer-events: none;
+        text-align: left;
+        white-space: normal;
+    }
+    .cal-event-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #1e293b;
+    }
+    .cal-event-tooltip-title {
+        font-weight: 700; font-size: 13.5px; color: #fff;
+        margin-bottom: 8px; line-height: 1.35;
+        padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .cal-event-tooltip-row {
+        display: flex; align-items: center; gap: 7px;
+        color: #cbd5e1; line-height: 1.5;
+        margin-top: 4px;
+    }
+    .cal-event-tooltip-row:first-of-type { margin-top: 0; }
+    .cal-event-tooltip-row i { color: #94a3b8; font-size: 11px; flex-shrink: 0; width: 12px; text-align: center; }
+    /* Hover di kartu (bukan di readonly) memunculkan tooltip. z-index
+       kartu dinaikkan saat hover supaya tooltip-nya tidak ketiban
+       kartu tetangga yang posisinya lebih "atas" secara dokumen. */
+    .cal-event:hover { z-index: 20; }
+    .cal-event:hover .cal-event-tooltip {
+        opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+    }
+    /* Kalau kartu ada di baris paling atas kalender, tooltip yang
+       muncul ke ATAS akan terpotong tak terlihat (kepotong tepi
+       layar) — dibalik ke bawah kartu untuk kartu pertama di tiap
+       kolom ruangan (yang jamnya paling awal, otomatis di posisi
+       paling atas grid). */
+    .cal-room-col > .cal-event:first-child .cal-event-tooltip {
+        bottom: auto; top: calc(100% + 10px);
+    }
+    .cal-room-col > .cal-event:first-child .cal-event-tooltip::after {
+        top: auto; bottom: 100%;
+        border-top-color: transparent; border-bottom-color: #1e293b;
+    }
+
     .cal-weekend-overlay {
         position: absolute;
         inset: 0;
@@ -1055,7 +1185,7 @@
         transition: all 0.18s ease;
     }
     .agenda-room-tab.active {
-        background: var(--brand-gradient);
+        background: var(--brand-orange);
         border-color: transparent;
         color: #fff;
         box-shadow: 0 3px 10px rgba(249,115,22,0.25);
@@ -1105,10 +1235,8 @@
         line-height: 1.3;
     }
     .agenda-item-title .title-text {
-        overflow: hidden;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+        /* FIX: line-clamp:2 dihapus — baris list ini punya ruang lebar
+           yang cukup, judul sekarang ditampilkan penuh tanpa dipotong. */
         word-break: break-word;
     }
     .agenda-item-title i { margin-top: 3px; flex-shrink: 0; }
@@ -1117,10 +1245,11 @@
         color: var(--text-secondary);
         font-weight: 500;
         margin-top: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal;
+        word-break: break-word;
+        display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
     }
+    .agenda-item-sub-divider { color: var(--text-muted); }
     .agenda-item-status {
         flex-shrink: 0;
         font-size: 9.5px;
@@ -1518,238 +1647,7 @@
         </div>
     </div>
 
-    <div class="card-body" id="scheduleBody">
-        @php
-            $slotHeight = 64;
-            $pxPerMin = $slotHeight / 30;
-            $slotCount = count($timeSlots ?? []);
-            $gridHeight = ($slotCount + 1) * $slotHeight;
-
-            $dayStartParts = explode(':', $timeSlots[0] ?? '07:00');
-            $dayStartMinutes = ((int) $dayStartParts[0]) * 60 + ((int) $dayStartParts[1]);
-
-            $nowMinutes = Carbon::now()->hour * 60 + Carbon::now()->minute;
-            $nowTopPx = ($nowMinutes - $dayStartMinutes) * $pxPerMin;
-            $showNowLine = ($isToday ?? false) && !($isWeekend ?? false) && $nowTopPx >= 0 && $nowTopPx <= $gridHeight;
-
-            $statusColors = [
-                0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'chipBg' => 'rgba(245,158,11,0.18)', 'label' => 'Pending'],
-                1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'chipBg' => 'rgba(16,185,129,0.18)', 'label' => 'Disetujui'],
-                2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'chipBg' => 'rgba(239,68,68,0.18)', 'label' => 'Ditolak'],
-            ];
-        @endphp
-
-        @if($slotCount > 0 && count($rooms ?? []) > 0)
-            @php $gridCols = "80px repeat({$rooms->count()}, minmax(200px, 1fr))"; @endphp
-
-            <div class="cal-grid-header" style="grid-template-columns: {{ $gridCols }};">
-                <div class="cal-header-cell cal-time-header"></div>
-                @foreach($rooms as $room)
-                    @php
-                        $photos = $room->photos ?? collect();
-                        $hasPhoto = $photos->count() > 0;
-                        $firstPhoto = $hasPhoto ? $photos->first()->photo_url : null;
-                    @endphp
-                    <div class="cal-header-cell cal-room-header">
-                        @if($hasPhoto)
-                            <img src="{{ $firstPhoto }}" class="cal-room-photo" tabindex="0"
-                                 onclick="openGallery({{ $room->id }})"
-                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGallery({{ $room->id }});}"
-                                 alt="Lihat foto {{ $room->name }}" title="Klik untuk lihat foto" loading="lazy">
-                        @else
-                            <div class="cal-room-photo-placeholder"><i class="bi bi-building"></i></div>
-                        @endif
-                        <div class="cal-room-info">
-                            <div class="cal-room-name">{{ $room->name }}</div>
-                            <div class="cal-room-meta-row">
-                                <span class="cal-room-capacity"><i class="bi bi-people-fill"></i> {{ $room->capacity }} orang</span>
-                                <span class="cal-room-location"><i class="bi bi-geo-alt-fill"></i> {{ $room->location }}</span>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            <div class="cal-grid-body-wrapper">
-                <div class="cal-grid-body" style="grid-template-columns: {{ $gridCols }};">
-                    <div class="cal-time-col" style="height: {{ $gridHeight }}px;">
-                        @foreach($timeSlots as $timeSlot)
-                            @php $isHour = Str::endsWith($timeSlot, ':00'); @endphp
-                            <div class="cal-time-label {{ $isHour ? 'hour-mark' : '' }}" style="height: {{ $slotHeight }}px;">{{ $timeSlot }}</div>
-                        @endforeach
-                    </div>
-
-                    @foreach($rooms as $room)
-                        <div class="cal-room-col {{ $isWeekend ? 'cal-weekend' : '' }}" style="height: {{ $gridHeight }}px;">
-                            @if($isWeekend)
-                                <div class="cal-weekend-overlay"><i class="bi bi-calendar-x"></i> Libur</div>
-                            @else
-                                @foreach($timeSlots as $index => $timeSlot)
-                                    @php
-                                        // Cek apakah slot waktu sudah selesai (lewat dari waktu sekarang)
-                                        // Jika waktu sekarang masih di dalam rentang slot (start - end), maka masih bisa dipesan.
-                                        $slotStart = Carbon::parse(($selectedDate ?? date('Y-m-d')) . ' ' . $timeSlot);
-                                        $slotEnd = $slotStart->copy()->addMinutes(30); // Interval 30 menit
-                                        $isPastSlot = $slotEnd->lte(Carbon::now());
-                                    @endphp
-                                    
-                                    @if($isPastSlot)
-                                        <div class="cal-slot-past" style="top: {{ $index * $slotHeight }}px; height: {{ $slotHeight }}px;" title="Waktu telah berlalu">
-                                            <i class="bi bi-lock-fill"></i>
-                                        </div>
-                                    @else
-                                        <div class="cal-slot-hover" role="button" tabindex="0"
-                                             style="top: {{ $index * $slotHeight }}px; height: {{ $slotHeight }}px;"
-                                             onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')"
-                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}');}"
-                                             aria-label="Booking {{ $room->name }} jam {{ $timeSlot }}"
-                                             title="Klik untuk booking jam {{ $timeSlot }}">
-                                            <div class="cal-slot-hover-inner"><i class="bi bi-plus-lg"></i> Booking</div>
-                                        </div>
-                                    @endif
-                                @endforeach
-
-                                @if(isset($visibleBookings))
-                                    @foreach($visibleBookings->where('room_id', $room->id) as $booking)
-                                        @php
-                                            $bStart = Carbon::parse($booking->start_time);
-                                            $bEnd = Carbon::parse($booking->end_time);
-                                            $bStartMin = $bStart->hour * 60 + $bStart->minute;
-                                            $bEndMin = $bEnd->hour * 60 + $bEnd->minute;
-                                            $topPx = max(0, ($bStartMin - $dayStartMinutes) * $pxPerMin);
-                                            $heightPx = max(28, ($bEndMin - $bStartMin) * $pxPerMin);
-                                            $colors = $statusColors[$booking->status] ?? $statusColors[0];
-                                            $bookerName = $booking->user->full_name ?? 'Unknown';
-                                            $initial = strtoupper(mb_substr($bookerName, 0, 1));
-                                            $isCompact = $heightPx < 52;
-                                            // FIX: dulu semua kotak jadwal bisa diklik dan mengarah ke
-                                            // halaman detail, walau ujung-ujungnya kena 403 kalau bukan
-                                            // booking sendiri. Sekarang klik cuma aktif untuk booking
-                                            // milik sendiri atau kalau yang lihat admin — booking orang
-                                            // lain tetap kelihatan (untuk koordinasi jadwal ruangan),
-                                            // tapi memang tidak bisa diklik sama sekali.
-                                            $canOpen = Auth::user()->role == 1 || $booking->user_id == Auth::id();
-                                        @endphp
-                                        <div class="cal-event {{ $isCompact ? 'is-compact' : '' }} {{ !$canOpen ? 'is-readonly' : '' }}"
-                                             @if($canOpen)
-                                                 role="button" tabindex="0"
-                                                 onclick="showBookingDetails({{ $booking->id }})"
-                                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $booking->id }});}"
-                                                 aria-label="Detail booking {{ $booking->purpose }}"
-                                             @endif
-                                             title="{{ $booking->purpose }} — {{ $bookerName }} ({{ $colors['label'] }})"
-                                             style="top: {{ $topPx }}px; height: {{ $heightPx }}px; background: {{ $colors['bg'] }}; --event-accent: {{ $colors['border'] }};">
-                                            @if($booking->booking_type === 'Priority' && Auth::user()->role == 1)
-                                                <span class="cal-event-priority-flag" title="Priority">
-                                                    <i class="bi bi-star-fill" style="color: #f97316;"></i>
-                                                </span>
-                                            @endif
-                                            <div class="cal-event-top">
-                                                <span class="cal-event-avatar" style="background: {{ $colors['border'] }};">{{ $initial }}</span>
-                                                <span class="cal-event-title" style="color: {{ $colors['text'] }};">{{ Str::limit($booking->purpose, 60) }}</span>
-                                            </div>
-                                            <div class="cal-event-sub"><i class="bi bi-person-fill" style="font-size:9px;opacity:0.6;margin-right:3px;"></i>{{ $bookerName }}</div>
-                                            <div class="cal-event-time"><i class="bi bi-clock"></i> {{ $bStart->format('H:i') }}–{{ $bEnd->format('H:i') }}</div>
-                                            <span class="cal-event-status" style="color: {{ $colors['text'] }}; background: {{ $colors['chipBg'] }};">{{ $colors['label'] }}</span>
-                                        </div>
-                                    @endforeach
-                                @endif
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-
-                @if($showNowLine)
-                    <div class="cal-now-line" id="nowLine" style="top: {{ $nowTopPx }}px;"><span class="cal-now-dot"></span></div>
-                @endif
-            </div>
-
-            {{-- ============================================================
-                 AGENDA LIST (KHUSUS MOBILE) — pengganti grid horizontal
-                 supaya terasa seperti native app di HP, bukan tabel desktop
-                 yang diperkecil.
-            ============================================================ --}}
-            <div class="agenda-mobile">
-                <div class="agenda-room-tabs">
-                    @foreach($rooms as $i => $room)
-                        <button type="button" class="agenda-room-tab {{ $i === 0 ? 'active' : '' }}"
-                                onclick="switchAgendaRoom({{ $room->id }})" data-room-tab="{{ $room->id }}">
-                            {{ $room->name }}
-                        </button>
-                    @endforeach
-                </div>
-
-                @foreach($rooms as $i => $room)
-                    <div class="agenda-room-panel {{ $i === 0 ? 'active' : '' }}" data-room-panel="{{ $room->id }}">
-                        @if($isWeekend)
-                            <div class="agenda-empty"><i class="bi bi-calendar-x"></i> Libur — tidak ada jadwal hari ini</div>
-                        @else
-                            @php $roomBookings = $visibleBookings->where('room_id', $room->id)->sortBy('start_time'); @endphp
-                            <div class="agenda-list">
-                                @foreach($timeSlots as $timeSlot)
-                                    @php
-                                        $slotStart = Carbon::parse(($selectedDate ?? date('Y-m-d')) . ' ' . $timeSlot);
-                                        $slotEnd = $slotStart->copy()->addMinutes(30);
-                                        $isPastSlot = $slotEnd->lte(Carbon::now());
-                                        $slotBooking = $roomBookings->first(function ($b) use ($slotStart) {
-                                            return $slotStart->gte(Carbon::parse($b->start_time)) && $slotStart->lt(Carbon::parse($b->end_time));
-                                        });
-                                        $isBookingStartSlot = $slotBooking && Carbon::parse($slotBooking->start_time)->format('H:i') === $timeSlot;
-                                    @endphp
-
-                                    @if($slotBooking && !$isBookingStartSlot)
-                                        {{-- lanjutan booking yang sama, sudah dirender di slot mulainya --}}
-                                    @elseif($slotBooking && $isBookingStartSlot)
-                                        @php
-                                            $bStart = Carbon::parse($slotBooking->start_time);
-                                            $bEnd = Carbon::parse($slotBooking->end_time);
-                                            $colors = $statusColors[$slotBooking->status] ?? $statusColors[0];
-                                            $bookerName = $slotBooking->user->full_name ?? 'Unknown';
-                                            $canOpenSlot = Auth::user()->role == 1 || $slotBooking->user_id == Auth::id();
-                                        @endphp
-                                        <div class="agenda-item agenda-item-booked {{ !$canOpenSlot ? 'is-readonly' : '' }}"
-                                             @if($canOpenSlot)
-                                                 role="button" tabindex="0"
-                                                 onclick="showBookingDetails({{ $slotBooking->id }})"
-                                                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showBookingDetails({{ $slotBooking->id }});}"
-                                             @endif
-                                             style="--event-accent: {{ $colors['border'] }}; background: {{ $colors['bg'] }};">
-                                            <div class="agenda-item-time">{{ $bStart->format('H:i') }}<span>{{ $bEnd->format('H:i') }}</span></div>
-                                            <div class="agenda-item-body">
-                                                <div class="agenda-item-title">
-                                                    @if($slotBooking->booking_type === 'Priority' && Auth::user()->role == 1)<i class="bi bi-star-fill" style="color:#f97316;"></i>@endif
-                                                    <span class="title-text">{{ Str::limit($slotBooking->purpose, 80) }}</span>
-                                                </div>
-                                                <div class="agenda-item-sub"><i class="bi bi-person"></i> {{ $bookerName }}</div>
-                                            </div>
-                                            <span class="agenda-item-status" style="color: {{ $colors['text'] }}; background: {{ $colors['chipBg'] }};">{{ $colors['label'] }}</span>
-                                        </div>
-                                    @elseif($isPastSlot)
-                                        <div class="agenda-item agenda-item-past">
-                                            <div class="agenda-item-time">{{ $timeSlot }}</div>
-                                            <div class="agenda-item-body"><span class="agenda-item-empty-label"><i class="bi bi-lock-fill"></i> Waktu lewat</span></div>
-                                        </div>
-                                    @else
-                                        <div class="agenda-item agenda-item-available" role="button" tabindex="0"
-                                             onclick="quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}')"
-                                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();quickBook({{ $room->id }}, '{{ $selectedDate }}', '{{ $timeSlot }}');}">
-                                            <div class="agenda-item-time">{{ $timeSlot }}</div>
-                                            <div class="agenda-item-body"><span class="agenda-item-empty-label"><i class="bi bi-plus-circle"></i> Tersedia — ketuk untuk booking</span></div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <div class="no-results">
-                <i class="bi bi-inbox"></i>
-                <p>Tidak ada jadwal untuk tanggal yang dipilih.</p>
-            </div>
-        @endif
-    </div>
+    @include('pages.partials._schedule-body', ['timeSlots' => $timeSlots ?? [], 'rooms' => $rooms ?? collect(), 'isWeekend' => $isWeekend ?? false, 'isToday' => $isToday ?? false, 'selectedDate' => $selectedDate ?? date('Y-m-d'), 'visibleBookings' => $visibleBookings ?? collect(), 'statusFilter' => $statusFilter ?? 'all'])
 
     <div class="schedule-legend">
         <span class="legend-item"><span class="dot available"></span> Tersedia</span>
@@ -2155,6 +2053,48 @@
         });
     };
 
+})();
+</script>
+@endpush
+
+{{-- ============================================================
+     LIVE UPDATE — polling berkala (bukan WebSocket, server belum
+     punya infrastrukturnya). Kalender jadwal di-refresh otomatis
+     tiap beberapa detik memakai filter/tanggal yang SAMA seperti
+     yang sedang aktif di layar, supaya kalau ada booking baru/
+     berubah status dari device/akun lain, admin/karyawan yang
+     sedang lihat dashboard ini langsung melihatnya tanpa reload.
+     ============================================================ --}}
+@push('scripts')
+<script>
+(function () {
+    var lastSignature = 'initial';
+
+    createLivePoller({
+        url: window.location.pathname + window.location.search,
+        interval: 15000,
+        onUpdate: function (data) {
+            if (data.signature === lastSignature) return;
+            lastSignature = data.signature;
+
+            var container = document.getElementById('scheduleBody');
+            if (!container) return;
+
+            // Simpan posisi scroll dulu — supaya kalau admin sedang lihat
+            // jam tertentu di jadwal, tidak tiba-tiba lompat ke atas
+            // setiap kali ada pembaruan.
+            var scrollTop = container.scrollTop;
+            var scrollLeft = container.scrollLeft;
+
+            container.outerHTML = data.schedule;
+
+            var refreshed = document.getElementById('scheduleBody');
+            if (refreshed) {
+                refreshed.scrollTop = scrollTop;
+                refreshed.scrollLeft = scrollLeft;
+            }
+        }
+    });
 })();
 </script>
 @endpush

@@ -13,7 +13,7 @@ use App\Http\Requests\BookingRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -31,89 +31,10 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Booking::with(['user', 'room', 'facilities', 'bookingFacilities.facility']);
-
-        // Role-based access
-        if ($user->role != 1) {
-            $query->where('user_id', $user->id);
-        }
-
-        // Filter by status
-        if ($request->filled('status')) {
-            $statusMap = [
-                'pending' => 0,
-                'approved' => 1,
-                'rejected' => 2,
-            ];
-            $status = $statusMap[$request->status] ?? null;
-            if ($status !== null) {
-                $query->where('status', $status);
-            }
-        }
-
-        // Filter by room
-        if ($request->filled('room')) {
-            $query->where('room_id', $request->room);
-        }
-
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $query->whereDate('start_time', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('start_time', '<=', $request->date_to);
-        }
-
-        // Filter by specific date
-        $hasDateFilter = $request->filled('date') || $request->filled('date_from') || $request->filled('date_to');
-        if ($request->filled('date')) {
-            $query->whereDate('start_time', $request->date);
-        } elseif (!$hasDateFilter) {
-            // UX: tanpa filter tanggal eksplisit, jangan diam-diam batasi ke
-            // hari ini saja — tampilkan hari ini & semua yang akan datang,
-            // supaya admin/user tidak "kehilangan" booking 2-3 hari ke depan
-            // hanya karena defaultnya kebetulan menyempit ke satu hari.
-            $query->whereDate('start_time', '>=', Carbon::today());
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = '%' . $request->search . '%';
-            $query->where(function ($q) use ($search) {
-                $q->where('purpose', 'LIKE', $search)
-                  ->orWhereHas('user', function ($q2) use ($search) {
-                      $q2->where('full_name', 'LIKE', $search)
-                         ->orWhere('nip', 'LIKE', $search);
-                  })
-                  ->orWhereHas('room', function ($q2) use ($search) {
-                      $q2->where('name', 'LIKE', $search);
-                  });
-            });
-        }
-
-        // Sort
-        // Default diubah ke "date_asc" (waktu mulai terdekat lebih dulu) karena
-        // dropdown sort tidak diekspos di UI — ini yang selalu dilihat user,
-        // dan lebih masuk akal untuk daftar jadwal dibanding urutan dibuat.
-        $sort = $request->get('sort', 'date_asc');
-        switch ($sort) {
-            case 'oldest':
-                $query->orderBy('created_at', 'asc');
-                break;
-            case 'date_asc':
-                $query->orderBy('start_time', 'asc');
-                break;
-            case 'date_desc':
-                $query->orderBy('start_time', 'desc');
-                break;
-            default:
-                $query->orderBy('created_at', 'desc');
-        }
-
-        $bookings = $query->paginate(10)->appends($request->query());
         $rooms = Room::orderBy('name')->get();
 
-        // Stats for cards
+        // Stats for cards — tetap ringkasan GLOBAL (semua status/tanggal),
+        // tidak terikat filter salah satu dari 3 tabel di bawah.
         $statsQuery = $user->role == 1 ? Booking::query() : Booking::where('user_id', $user->id);
         $stats = [
             'total' => $statsQuery->count(),
@@ -123,7 +44,120 @@ class BookingController extends Controller
             'today' => (clone $statsQuery)->whereDate('start_time', Carbon::today())->count(),
         ];
 
-        return view('bookings.index', compact('bookings', 'rooms', 'stats', 'hasDateFilter'));
+        // FIX (struktur halaman): sebelumnya SATU tabel gabungan (semua
+        // status jadi satu, difilter lewat dropdown Status) + tabel
+        // "Riwayat Peminjaman" terpisah di bawahnya untuk data lampau.
+        // Sekarang diganti jadi TIGA tabel independen — Pending, Disetujui,
+        // Ditolak — masing-masing dengan filter (Tanggal/Jam Kerja/Ruangan)
+        // dan paginasi SENDIRI (nama parameter berawalan pending_/approved_/
+        // rejected_ supaya tidak saling bentrok di URL yang sama). Tabel
+        // Riwayat dihapus total — data lampau sekarang otomatis kelihatan
+        // di tabel status masing-masing kalau memang difilter tanggalnya
+        // (bukan lagi disembunyikan ke bagian terpisah).
+        $pending = $this->filteredBookingsByStatus($request, 0, 'pending');
+        $approved = $this->filteredBookingsByStatus($request, 1, 'approved');
+        $rejected = $this->filteredBookingsByStatus($request, 2, 'rejected');
+
+        // Live-refresh (polling dari JS di halaman) — reuse SEMUA query/
+        // filter/stats yang sama persis di atas, cuma balikin fragmen HTML
+        // tiap tabel saja supaya bisa update otomatis tanpa reload, tanpa
+        // duplikasi logic query di method terpisah.
+        //
+        // FIX (konsistensi & pencegahan): dipersempit ke wantsJson() saja
+        // (cek header Accept), BUKAN "ajax() || wantsJson()" seperti
+        // sebelumnya — ajax() cuma cek header X-Requested-With yang bisa
+        // saja suatu saat dikirim juga oleh mekanisme AJAX lain di halaman
+        // ini yang sebenarnya mengharapkan HTML utuh (persis bug yang
+        // ditemukan & diperbaiki di DashboardController: request tanggal/
+        // filter salah dibalas JSON, kontennya jadi tidak pernah tertukar).
+        // Saat ini belum ada mekanisme lain seperti itu di halaman ini,
+        // tapi kondisi ini disamakan sekarang supaya tidak jadi jebakan
+        // yang sama kalau nanti ditambah fitur AJAX baru.
+        if ($request->wantsJson()) {
+            return response()->json([
+                'stats' => view('bookings.partials._stats', compact('stats'))->render(),
+                'pending_results' => view('bookings.partials._main-list', [
+                    'bookings' => $pending['bookings'], 'hasDateFilter' => $pending['hasDateFilter'],
+                    'prefix' => 'pending', 'showBulk' => $user->role == 1,
+                ])->render(),
+                'approved_results' => view('bookings.partials._main-list', [
+                    'bookings' => $approved['bookings'], 'hasDateFilter' => $approved['hasDateFilter'],
+                    'prefix' => 'approved', 'showBulk' => false,
+                ])->render(),
+                'rejected_results' => view('bookings.partials._main-list', [
+                    'bookings' => $rejected['bookings'], 'hasDateFilter' => $rejected['hasDateFilter'],
+                    'prefix' => 'rejected', 'showBulk' => false,
+                ])->render(),
+                'signature' => md5(
+                    $pending['bookings']->pluck('id')->implode(',') . '|' .
+                    $approved['bookings']->pluck('id')->implode(',') . '|' .
+                    $rejected['bookings']->pluck('id')->implode(',') . '|' .
+                    json_encode($stats)
+                ),
+            ]);
+        }
+
+        return view('bookings.index', [
+            'rooms' => $rooms,
+            'stats' => $stats,
+            'pendingBookings' => $pending['bookings'],
+            'pendingHasDateFilter' => $pending['hasDateFilter'],
+            'approvedBookings' => $approved['bookings'],
+            'approvedHasDateFilter' => $approved['hasDateFilter'],
+            'rejectedBookings' => $rejected['bookings'],
+            'rejectedHasDateFilter' => $rejected['hasDateFilter'],
+        ]);
+    }
+
+    /**
+     * Query booking untuk SATU status tertentu, dengan filter Tanggal/
+     * Ruangan yang independen dari 2 tabel status lainnya di halaman yang
+     * sama — nama parameter query string diberi awalan ($prefix) supaya
+     * ketiga tabel tidak saling menimpa filter satu sama lain di URL yang
+     * sama persis. Rumus filternya SENGAJA sama persis dengan yang dulu
+     * dipakai tabel gabungan, cuma status-nya sekarang tetap (bukan
+     * pilihan dropdown lagi).
+     */
+    private function filteredBookingsByStatus(Request $request, int $status, string $prefix)
+    {
+        $user = Auth::user();
+        $query = Booking::with(['user', 'room', 'facilities', 'bookingFacilities.facility'])
+            ->where('status', $status);
+
+        if ($user->role != 1) {
+            $query->where('user_id', $user->id);
+        }
+
+        if ($request->filled("{$prefix}_room")) {
+            $query->where('room_id', $request->get("{$prefix}_room"));
+        }
+
+        $dateParam = $request->get("{$prefix}_date");
+        $dateFromParam = $request->get("{$prefix}_date_from");
+        $dateToParam = $request->get("{$prefix}_date_to");
+
+        if ($dateFromParam) {
+            $query->whereDate('start_time', '>=', $dateFromParam);
+        }
+        if ($dateToParam) {
+            $query->whereDate('start_time', '<=', $dateToParam);
+        }
+
+        $hasDateFilter = (bool) ($dateParam || $dateFromParam || $dateToParam);
+        if ($dateParam) {
+            $query->whereDate('start_time', $dateParam);
+        } elseif (!$hasDateFilter) {
+            // UX: tanpa filter tanggal eksplisit, jangan diam-diam batasi ke
+            // hari ini saja — tampilkan hari ini & semua yang akan datang.
+            $query->whereDate('start_time', '>=', Carbon::today());
+        }
+
+        $query->orderBy('start_time', 'asc');
+
+        return [
+            'bookings' => $query->paginate(10, ['*'], "{$prefix}_page")->appends($request->query()),
+            'hasDateFilter' => $hasDateFilter,
+        ];
     }
 
     /**
@@ -271,7 +305,7 @@ class BookingController extends Controller
     {
         // FIX: sebelumnya method ini tidak punya pengecekan otorisasi sama
         // sekali — user mana pun yang login bisa buka detail booking siapa
-        // saja cukup lewat URL /bookings/{id}, termasuk lihat kode absensi
+        // saja cukup lewat URL /bookings/{id}, termasuk lihat kode presensi
         // & QR-nya. Disamakan dengan pola yang sudah benar di edit()/destroy().
         if (Auth::user()->role != 1 && $booking->user_id != Auth::id()) {
             abort(403, 'Anda hanya bisa melihat detail peminjaman milik Anda sendiri.');
@@ -284,17 +318,66 @@ class BookingController extends Controller
             'user',
             'bookingFacilities.facility',
             'attendances.user',
-            'processedBy'
+            'processedBy',
+            'relocatedFromRoom'
         ]);
 
         $timeline = $this->buildTimeline($booking);
 
-        // Untuk modal "Alihkan ke Ruangan Lain" (hanya relevan kalau booking
-        // ini sedang bentrok dan yang membuka admin, tapi dimuat sekalian
-        // supaya modal siap pakai tanpa request tambahan).
-        $rooms = Room::where('status', 1)->orderBy('name')->get();
+        // FIX: variabel status ini SEBELUMNYA cuma dihitung lewat @php di
+        // dalam partial _top-status.blade.php — begitu partial itu
+        // di-@include, variabel yang dihitung di dalamnya TIDAK ikut
+        // "bocor" balik ke file utama show.blade.php (setiap file Blade
+        // yang di-include punya scope variabel sendiri). Akibatnya bagian
+        // lain di show.blade.php yang juga butuh variabel ini (modal
+        // konfirmasi/tolak pengalihan) menabrak "Undefined variable" dan
+        // membuat SELURUH halaman gagal render dengan error 500 — inilah
+        // yang bikin terasa "lemot"/error di banyak alur CRUD, karena
+        // hampir semua aksi booking pada akhirnya redirect ke halaman ini.
+        // Sekarang dihitung SEKALI di sini (satu sumber kebenaran), dikirim
+        // ke view utama maupun ke partial live() di bawah — bukan dihitung
+        // ulang terpisah di masing-masing tempat yang berisiko berbeda hasil.
+        $isConflicted = (bool) $booking->displaced_by_id && $booking->status != 2;
+        $awaitingConfirmation = (bool) $booking->awaiting_user_confirmation;
+        $isBookingOwner = $booking->user_id == Auth::id();
 
-        return view('bookings.show', compact('booking', 'timeline', 'rooms'));
+        return view('bookings.show', compact('booking', 'timeline', 'isConflicted', 'awaitingConfirmation', 'isBookingOwner'));
+    }
+
+    /**
+     * Endpoint live-refresh untuk halaman detail booking — di-poll berkala
+     * lewat JS supaya status/timeline/QR ter-update otomatis kalau ada
+     * perubahan dari perangkat/akun lain, TANPA reload manual. Otorisasi
+     * disamakan persis dengan show().
+     */
+    public function live(Booking $booking)
+    {
+        if (Auth::user()->role != 1 && $booking->user_id != Auth::id()) {
+            abort(403, 'Anda hanya bisa melihat detail peminjaman milik Anda sendiri.');
+        }
+
+        $booking->load([
+            'room.photos',
+            'facilities',
+            'user',
+            'bookingFacilities.facility',
+            'attendances.user',
+            'processedBy',
+            'relocatedFromRoom'
+        ]);
+
+        $timeline = $this->buildTimeline($booking);
+        $isConflicted = (bool) $booking->displaced_by_id && $booking->status != 2;
+        $awaitingConfirmation = (bool) $booking->awaiting_user_confirmation;
+        $isBookingOwner = $booking->user_id == Auth::id();
+
+        return response()->json([
+            'top' => view('bookings.partials._top-status', compact('booking', 'isConflicted', 'awaitingConfirmation', 'isBookingOwner'))->render(),
+            'side' => view('bookings.partials._side-panel', compact('booking', 'timeline'))->render(),
+            'has_qr' => (bool) ($booking->status == 1 && $booking->absent_code),
+            'absent_code' => $booking->absent_code,
+            'updated_at' => optional($booking->updated_at)->timestamp,
+        ]);
     }
 
     /**
@@ -306,9 +389,23 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if ($booking->status != 0 && Auth::user()->role != 1) {
+        // FIX: sebelumnya admin (role==1) BOLEH mengubah booking yang sudah
+        // diproses (disetujui/ditolak) — celah ini bikin riwayat booking
+        // bisa "berubah-ubah" setelah diputuskan, padahal riwayat harusnya
+        // permanen/tidak bisa diotak-atik siapa pun begitu sudah diproses.
+        // Sekarang berlaku untuk SEMUA role tanpa kecuali, termasuk admin.
+        if ($booking->status != 0) {
             return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah.');
+                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah — riwayat bersifat permanen.');
+        }
+
+        // Sedang menunggu peminjam konfirmasi usulan pengalihan — ruangan/
+        // waktu tidak boleh diubah lewat form edit biasa selama ini,
+        // supaya tidak membajak keputusan yang harus diambil peminjam
+        // sendiri lewat Setuju/Tolak Pengalihan.
+        if ($booking->awaiting_user_confirmation) {
+            return redirect()->route('bookings.show', $booking->id)
+                ->with('error', 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam — tidak bisa diedit sampai dijawab.');
         }
 
         // FIX: checklist fasilitas fisik (Microphone, Videotron, dll) dihapus
@@ -329,9 +426,16 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        if ($booking->status != 0 && Auth::user()->role != 1) {
+        // FIX: sama seperti edit() — status lock sekarang berlaku untuk
+        // semua role, termasuk admin.
+        if ($booking->status != 0) {
             return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah.');
+                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah — riwayat bersifat permanen.');
+        }
+
+        if ($booking->awaiting_user_confirmation) {
+            return redirect()->route('bookings.show', $booking->id)
+                ->with('error', 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam — tidak bisa diedit sampai dijawab.');
         }
 
         try {
@@ -415,19 +519,27 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // FIX: sebelumnya user biasa bisa menghapus booking miliknya sendiri
-        // kapan pun, termasuk yang sudah disetujui admin. Sekarang disamakan
-        // dengan aturan edit(): booking yang sudah diproses (disetujui/
-        // ditolak) cuma boleh dihapus admin.
-        if ($booking->status != 0 && Auth::user()->role != 1) {
+        // FIX: sebelumnya admin (role==1) BOLEH menghapus booking yang sudah
+        // diproses (disetujui/ditolak), padahal riwayat harusnya permanen —
+        // tidak bisa dihapus siapa pun begitu sudah diputuskan. Sekarang
+        // berlaku untuk SEMUA role tanpa kecuali, termasuk admin.
+        if ($booking->status != 0) {
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Booking yang sudah disetujui/ditolak tidak dapat dihapus. Hubungi admin.'
+                    'message' => 'Booking yang sudah disetujui/ditolak tidak dapat dihapus — riwayat bersifat permanen.'
                 ], 403);
             }
             return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat dihapus. Hubungi admin.');
+                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat dihapus — riwayat bersifat permanen.');
+        }
+
+        if ($booking->awaiting_user_confirmation) {
+            $msg = 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam — tidak bisa dihapus sampai dijawab.';
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 403);
+            }
+            return redirect()->route('bookings.show', $booking->id)->with('error', $msg);
         }
 
         try {
@@ -597,7 +709,7 @@ class BookingController extends Controller
     /**
      * Approve booking (admin only).
      */
-    public function approve(Booking $booking)
+    public function approve(Request $request, Booking $booking)
     {
         if (Auth::user()->role != 1) {
             abort(403, 'Unauthorized action.');
@@ -607,6 +719,19 @@ class BookingController extends Controller
             return back()->with('error', 'Booking sudah diproses sebelumnya.');
         }
 
+        if ($booking->awaiting_user_confirmation) {
+            return back()->with('error', 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam, bukan persetujuan admin.');
+        }
+
+        // Catatan persetujuan sifatnya opsional — admin boleh menyetujui
+        // tanpa mengisi apa pun, beda dengan Tolak/Alihkan yang mewajibkan
+        // alasan/catatan.
+        $request->validate([
+            'approval_note' => 'nullable|string|max:500',
+        ], [
+            'approval_note.max' => 'Catatan maksimal 500 karakter.',
+        ]);
+
         try {
             $oldStatus = (string) $booking->status;
             $absentCode = 'MTG-' . strtoupper(uniqid());
@@ -614,6 +739,7 @@ class BookingController extends Controller
             $booking->update([
                 'status' => 1,
                 'absent_code' => $absentCode,
+                'approval_note' => $request->input('approval_note'),
                 'processed_by' => Auth::id(),
                 'processed_at' => now(),
             ]);
@@ -621,7 +747,7 @@ class BookingController extends Controller
             $booking->load(['user', 'room']);
             $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, '1');
 
-            return back()->with('success', 'Booking berhasil disetujui dan kode absensi telah dibuat.');
+            return back()->with('success', 'Booking berhasil disetujui dan kode presensi telah dibuat.');
 
         } catch (\Exception $e) {
             Log::error('Booking approve error: ' . $e->getMessage());
@@ -630,9 +756,52 @@ class BookingController extends Controller
     }
 
     /**
+     * Daftar ruangan yang benar-benar kosong pada rentang waktu tertentu.
+     * Dipakai live oleh dropdown "Ruangan Pengganti" di modal Alihkan —
+     * supaya admin tidak bisa memilih ruangan yang ternyata sudah terpakai.
+     * Rumus overlap disamakan persis dengan checkAvailability()/relocate()
+     * supaya hasilnya selalu sepakat satu sama lain.
+     */
+    public function availableRooms(Request $request)
+    {
+        if (Auth::user()->role != 1) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+        ]);
+
+        $busyRoomIds = Booking::whereIn('status', [0, 1])
+            ->where('start_time', '<', $request->end_time)
+            ->where('end_time', '>', $request->start_time)
+            ->when($request->exclude_booking_id, function ($q) use ($request) {
+                $q->where('id', '!=', $request->exclude_booking_id);
+            })
+            ->pluck('room_id');
+
+        $rooms = Room::where('status', 1)
+            ->whereNotIn('id', $busyRoomIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'location', 'capacity']);
+
+        return response()->json(['rooms' => $rooms]);
+    }
+
+    /**
      * Alihkan booking yang bentrok (displaced_by_id terisi) ke ruangan
      * dan/atau waktu lain. Admin wajib mengisi catatan alasan yang akan
      * dikirim ke peminjam. Setelah berhasil, flag konflik dilepas.
+     */
+    /**
+     * Admin MENGUSULKAN pengalihan booking yang bentrok (displaced_by_id
+     * terisi) ke ruangan/waktu lain. Ini BUKAN keputusan final — status
+     * booking dikembalikan ke 0 (Pending) dan awaiting_user_confirmation
+     * diaktifkan, supaya peminjam sendiri yang memutuskan setuju/tolak
+     * lewat confirmRelocation()/declineRelocation(). Kalau langsung
+     * dianggap "disetujui" tanpa peminjam tahu, mereka bisa saja tidak
+     * bisa hadir di ruangan/jam baru itu.
      */
     public function relocate(Request $request, Booking $booking)
     {
@@ -642,6 +811,13 @@ class BookingController extends Controller
 
         if (!$booking->displaced_by_id) {
             return back()->with('error', 'Booking ini tidak sedang dalam status konflik.');
+        }
+
+        // Booking yang sudah ditolak/selesai tidak perlu (dan tidak boleh)
+        // dialihkan lagi — displaced_by_id yang masih terisi di sini cuma
+        // sisa data lama sebelum status finalnya diputuskan.
+        if ($booking->status == 2) {
+            return back()->with('error', 'Booking ini sudah ditolak, tidak perlu dialihkan lagi.');
         }
 
         $request->validate([
@@ -677,7 +853,9 @@ class BookingController extends Controller
             }
 
             $oldRoomName = $booking->room->name;
+            $oldRoomId = $booking->room_id;
             $oldStartTime = $booking->start_time;
+            $oldEndTime = $booking->end_time;
 
             $booking->update([
                 'room_id' => $request->room_id,
@@ -685,20 +863,117 @@ class BookingController extends Controller
                 'end_time' => $request->end_time,
                 'relocation_note' => $request->relocation_note,
                 'displaced_by_id' => null,
+                // Balik ke Pending — BUKAN langsung disetujui. Peminjam yang
+                // harus konfirmasi ruangan/waktu penggantinya, bukan admin
+                // yang memutuskan sepihak atas nama peminjam.
+                'status' => 0,
+                'awaiting_user_confirmation' => true,
+                'relocated_from_room_id' => $oldRoomId,
+                'relocated_from_start_time' => $oldStartTime,
+                'relocated_from_end_time' => $oldEndTime,
+                'relocated_at' => now(),
+                // Kode presensi lama (kalau ada, dari sebelum bentrok) tidak
+                // relevan lagi selama menunggu konfirmasi — dibuat ulang saat
+                // peminjam benar-benar menyetujui di confirmRelocation().
+                'absent_code' => null,
+                // Bersihkan sisa keputusan SIKLUS SEBELUMNYA (approval_note/
+                // rejection_reason/processed_by/processed_at) — kalau tidak,
+                // timeline bisa menampilkan "Booking Ditolak" dari siklus lama
+                // berdampingan dengan "Menunggu Konfirmasi" dari siklus baru,
+                // padahal keduanya bukan cerita yang sama.
+                'approval_note' => null,
+                'rejection_reason' => null,
+                'processed_by' => null,
+                'processed_at' => null,
             ]);
 
             $booking->load(['user', 'room']);
-            $this->notificationService->notifyRelocated($booking, $oldRoomName, $oldStartTime, $request->relocation_note);
+            $this->notificationService->notifyRelocationProposed($booking, $oldRoomName, $oldStartTime, $oldEndTime, $request->relocation_note);
 
             DB::commit();
 
             return redirect()->route('bookings.show', $booking->id)
-                ->with('success', 'Booking berhasil dialihkan dan peminjam telah diberi tahu.');
+                ->with('success', 'Usulan pengalihan terkirim. Menunggu konfirmasi dari peminjam.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Booking relocate error: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat mengalihkan booking.')->withInput();
+        }
+    }
+
+    /**
+     * Peminjam MENYETUJUI usulan pengalihan ruangan/waktu dari admin.
+     * Hanya pemilik booking yang boleh — ini keputusan pribadi peminjam,
+     * admin (siapa pun rolenya) tidak boleh mengonfirmasi atas nama orang
+     * lain.
+     */
+    public function confirmRelocation(Booking $booking)
+    {
+        if ($booking->user_id != Auth::id()) {
+            abort(403, 'Hanya pemilik booking yang bisa mengonfirmasi pengalihan ini.');
+        }
+
+        if (!$booking->awaiting_user_confirmation) {
+            return back()->with('error', 'Booking ini tidak sedang menunggu konfirmasi pengalihan.');
+        }
+
+        try {
+            $absentCode = $booking->absent_code ?? ('MTG-' . strtoupper(uniqid()));
+
+            $booking->update([
+                'status' => 1,
+                'awaiting_user_confirmation' => false,
+                'absent_code' => $absentCode,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+            ]);
+
+            $booking->load(['user', 'room']);
+            $this->notificationService->notifyRelocationConfirmed($booking);
+
+            return back()->with('success', 'Pengalihan disetujui. Kode presensi telah dibuat.');
+
+        } catch (\Exception $e) {
+            Log::error('Booking confirmRelocation error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat menyetujui pengalihan.');
+        }
+    }
+
+    /**
+     * Peminjam MENOLAK usulan pengalihan ruangan/waktu dari admin — booking
+     * ini otomatis berstatus Ditolak (bukan "batal alih lalu balik ke
+     * jadwal semula", karena jadwal semula sudah pasti terpakai booking
+     * Priority yang menyebabkan konflik). Peminjam perlu mengajukan
+     * peminjaman baru kalau masih membutuhkan ruangan.
+     */
+    public function declineRelocation(Booking $booking)
+    {
+        if ($booking->user_id != Auth::id()) {
+            abort(403, 'Hanya pemilik booking yang bisa menolak pengalihan ini.');
+        }
+
+        if (!$booking->awaiting_user_confirmation) {
+            return back()->with('error', 'Booking ini tidak sedang menunggu konfirmasi pengalihan.');
+        }
+
+        try {
+            $booking->update([
+                'status' => 2,
+                'awaiting_user_confirmation' => false,
+                'rejection_reason' => 'Peminjam menolak usulan pengalihan ruangan/waktu dari admin.',
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+            ]);
+
+            $booking->load(['user', 'room']);
+            $this->notificationService->notifyRelocationDeclined($booking);
+
+            return back()->with('success', 'Pengalihan ditolak. Booking ini otomatis berstatus Ditolak — silakan ajukan peminjaman baru bila masih membutuhkan ruangan.');
+
+        } catch (\Exception $e) {
+            Log::error('Booking declineRelocation error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat menolak pengalihan.');
         }
     }
 
@@ -713,6 +988,10 @@ class BookingController extends Controller
 
         if (!in_array($booking->status, [0, 1])) {
             return back()->with('error', 'Booking dengan status ini tidak dapat ditolak.');
+        }
+
+        if ($booking->awaiting_user_confirmation) {
+            return back()->with('error', 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam, bukan penolakan admin.');
         }
 
         if ($booking->status == 1) {
@@ -734,6 +1013,15 @@ class BookingController extends Controller
                 'rejection_reason' => $request->input('rejection_reason'),
                 'processed_by' => Auth::id(),
                 'processed_at' => now(),
+                // FIX: kalau booking ini SENDIRI sedang bentrok (displaced_by_id
+                // terisi, belum sempat dialihkan) lalu admin langsung menolaknya
+                // lewat Tolak (bukan lewat Alihkan), displaced_by_id dulu tetap
+                // nyangkut di database walau bookingnya sudah mati (Ditolak) —
+                // efeknya badge "BENTROK" dan tombol "Alihkan" masih muncul di
+                // booking yang sudah ditolak. Booking yang sudah ditolak tidak
+                // relevan lagi untuk dialihkan, jadi bersihkan sekalian.
+                'displaced_by_id' => null,
+                'awaiting_user_confirmation' => false,
             ]);
 
             $booking->load(['user', 'room']);
@@ -788,8 +1076,18 @@ class BookingController extends Controller
             $status = $request->action === 'approve' ? 1 : 2;
             $message = $request->action === 'approve' ? 'disetujui' : 'ditolak';
 
+            // FIX (bug krusial): sebelumnya query ini cuma cek status==0
+            // tanpa mengecualikan booking yang sedang MENUNGGU KONFIRMASI
+            // PEMINJAM (hasil pengalihan admin — statusnya tetap 0/Pending
+            // selama menunggu). Akibatnya admin bisa tidak sengaja
+            // "Setujui Semua"/"Tolak Semua" booking yang keputusannya
+            // seharusnya cuma boleh diambil peminjam sendiri lewat tombol
+            // Setuju/Tolak Pengalihan — melangkahi alur konfirmasi yang
+            // sudah dibangun khusus untuk itu. Booking seperti ini sekarang
+            // dikecualikan dari bulk action sama sekali.
             $bookings = Booking::whereIn('id', $request->booking_ids)
                 ->where('status', 0)
+                ->where('awaiting_user_confirmation', false)
                 ->get();
 
             foreach ($bookings as $booking) {
@@ -832,53 +1130,176 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        // FIX (bug tersembunyi): sebelumnya method ini membaca parameter
+        // filter LAMA (status/date_from/date_to) dari satu tabel gabungan
+        // yang sudah tidak ada lagi sejak halaman ini diganti jadi 3 tabel
+        // independen (Pending/Disetujui/Ditolak) — masing-masing sekarang
+        // pakai parameter berawalan pending_/approved_/rejected_. Karena
+        // parameter lama itu tidak pernah lagi dikirim dari halaman mana
+        // pun, kondisi if($request->filled('status')) dkk selalu FALSE —
+        // tombol "Export" diam-diam SELALU mengekspor SEMUA booking, tidak
+        // peduli filter apa yang sedang aktif di layar (tanpa tanda apa
+        // pun kalau itu terjadi — pengguna bisa mengira file yang diunduh
+        // sudah sesuai filter, padahal tidak).
+        //
+        // Karena sekarang ada 3 filter independen sekaligus (bukan satu),
+        // tidak ada cara jelas untuk memutuskan filter MANA yang harus
+        // dipakai export satu file. Solusi paling jujur & sederhana:
+        // Export selalu mengekspor SEMUA data (tanpa filter), TIDAK diam-
+        // diam berpura-pura mengikuti filter yang sebenarnya tidak pernah
+        // sampai ke sini. Kalau nanti dibutuhkan export per-tabel/filter,
+        // itu perlu tombol Export terpisah di tiap tabel — perubahan
+        // fitur baru, di luar cakupan perbaikan bug ini.
         $query = Booking::with(['user', 'room']);
-
-        if ($request->filled('status')) {
-            $statusMap = ['pending' => 0, 'approved' => 1, 'rejected' => 2];
-            if (isset($statusMap[$request->status])) {
-                $query->where('status', $statusMap[$request->status]);
-            }
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('start_time', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('start_time', '<=', $request->date_to);
-        }
 
         $bookings = $query->orderBy('created_at', 'desc')->get();
 
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="bookings_' . date('Y-m-d') . '.csv"',
-        ];
+        $rows = $bookings->map(function ($b) {
+            $status = $b->status == 0 ? 'Pending' : ($b->status == 1 ? 'Disetujui' : 'Ditolak');
+            return [
+                $b->id,
+                $b->user->full_name ?? 'Unknown',
+                $b->user->nip ?? '-',
+                $b->room->name,
+                Carbon::parse($b->start_time)->format('d/m/Y'),
+                Carbon::parse($b->start_time)->format('H:i'),
+                Carbon::parse($b->end_time)->format('H:i'),
+                $b->purpose,
+                $status,
+                $b->booking_type,
+                $b->created_at->format('d/m/Y H:i'),
+            ];
+        })->all();
 
-        $callback = function() use ($bookings) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['ID', 'Peminjam', 'NIP', 'Ruangan', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Keperluan', 'Status', 'Tipe', 'Dibuat Pada']);
+        return $this->downloadStyledExcel(
+            ['ID', 'Peminjam', 'NIP', 'Ruangan', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Keperluan', 'Status', 'Tipe', 'Dibuat Pada'],
+            $rows,
+            'Data Peminjaman Ruangan',
+            'bookings_' . date('Y-m-d') . '.xlsx'
+        );
+    }
 
-            foreach ($bookings as $b) {
-                $status = $b->status == 0 ? 'Pending' : ($b->status == 1 ? 'Disetujui' : 'Ditolak');
-                fputcsv($file, [
-                    $b->id,
-                    $b->user->full_name ?? 'Unknown',
-                    $b->user->nip ?? '-',
-                    $b->room->name,
-                    Carbon::parse($b->start_time)->format('d/m/Y'),
-                    Carbon::parse($b->start_time)->format('H:i'),
-                    Carbon::parse($b->end_time)->format('H:i'),
-                    $b->purpose,
-                    $status,
-                    $b->booking_type,
-                    $b->created_at->format('d/m/Y H:i'),
-                ]);
+    /**
+     * Export daftar hadir (presensi) satu booking ke Excel.
+     * Format kolom: No. | Nama Peserta | Instansi / Divisi | Waktu Check-in | Status
+     */
+    public function exportAttendance(Booking $booking)
+    {
+        if (Auth::user()->role != 1 && $booking->user_id != Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $attendees = $booking->attendances()->with('user')->orderBy('check_in_time', 'asc')->get();
+
+        $rows = $attendees->map(function ($att, $i) {
+            return [
+                $i + 1,
+                // FIX: nama yang diketik di form (guest_name, wajib isi) jadi
+                // sumber utama — bukan nama akun yang kebetulan sedang login
+                // saat mengisi presensi.
+                $att->guest_name ?: ($att->user->full_name ?? '-'),
+                $att->guest_institution ?: ($att->user ? 'Internal' : '-'),
+                Carbon::parse($att->check_in_time)->format('d/m/Y H:i') . ' WIB',
+                $att->status ?? 'Hadir',
+            ];
+        })->values()->all();
+
+        return $this->downloadStyledExcel(
+            ['No.', 'Nama Peserta', 'Instansi / Divisi', 'Waktu Check-in', 'Status'],
+            $rows,
+            'Daftar Hadir - ' . $booking->room->name . ' (' . Carbon::parse($booking->start_time)->format('d/m/Y') . ')',
+            'daftar-hadir-' . Str::slug($booking->room->name) . '-' . Carbon::parse($booking->start_time)->format('Y-m-d') . '.xlsx'
+        );
+    }
+
+    /**
+     * FIX (export CSV dibaca berantakan di Excel): sebelumnya kedua fitur
+     * export di atas menghasilkan file .csv mentah (cuma teks dipisah koma).
+     * Excel menafsirkan delimiter CSV berdasarkan pengaturan region Windows
+     * pengguna — di banyak setup lokal Indonesia, Excel mengharapkan titik
+     * koma (;) sebagai pemisah, bukan koma (,) — hasilnya SEMUA data
+     * "menempel" jadi satu kolom persis seperti yang terlihat. Solusinya
+     * bukan ganti delimiter (masih rapuh, tergantung setting tiap PC),
+     * tapi generate file .xlsx SUNGGUHAN pakai PhpSpreadsheet — kolom
+     * sudah pasti terpisah dengan benar di komputer siapa pun, sekaligus
+     * dapat header berwarna, border, dan lebar kolom otomatis supaya
+     * langsung enak dibaca tanpa perlu dirapikan manual dulu.
+     */
+    private function downloadStyledExcel(array $headers, array $rows, string $title, string $filename)
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+
+        // Baris judul di atas tabel, digabung penuh selebar kolom.
+        $sheet->setCellValue('A1', $title);
+        $sheet->mergeCells("A1:{$lastCol}1");
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13)->setColor(
+            new \PhpOffice\PhpSpreadsheet\Style\Color('FF16A34A')
+        );
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+        $sheet->getRowDimension(1)->setRowHeight(24);
+
+        // Baris header tabel (baris ke-3, kasih 1 baris kosong sebagai jarak).
+        $headerRow = 3;
+        foreach ($headers as $i => $label) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue("{$col}{$headerRow}", $label);
+        }
+        $headerRange = "A{$headerRow}:{$lastCol}{$headerRow}";
+        $sheet->getStyle($headerRange)->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle($headerRange)->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFF2751A');
+        $sheet->getStyle($headerRange)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getRowDimension($headerRow)->setRowHeight(22);
+
+        // Baris data.
+        $r = $headerRow + 1;
+        foreach ($rows as $row) {
+            foreach ($row as $i => $value) {
+                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+                $sheet->setCellValue("{$col}{$r}", $value);
             }
-            fclose($file);
-        };
+            $r++;
+        }
+        $lastRow = max($headerRow, $r - 1);
 
-        return Response::stream($callback, 200, $headers);
+        // Border tipis di seluruh tabel (header + data) supaya terlihat
+        // sebagai satu tabel yang jelas, bukan teks lepas.
+        $tableRange = "A{$headerRow}:{$lastCol}{$lastRow}";
+        $sheet->getStyle($tableRange)->getBorders()->getAllBorders()
+            ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+            ->getColor()->setARGB('FFE2E8F0');
+
+        // Baris data selang-seling warna supaya lebih mudah dipindai matanya.
+        for ($row = $headerRow + 1; $row <= $lastRow; $row++) {
+            if (($row - $headerRow) % 2 === 0) {
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFF8FAFC');
+            }
+        }
+
+        // Lebar kolom otomatis menyesuaikan isi.
+        foreach (range(1, count($headers)) as $i) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Bekukan baris header supaya tetap terlihat saat scroll ke bawah.
+        $sheet->freezePane('A' . ($headerRow + 1));
+
+        $sheet->setTitle('Data');
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'siap_export_') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tmpPath);
+
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
@@ -896,22 +1317,85 @@ class BookingController extends Controller
             'time' => $booking->created_at,
         ];
 
+        // Riwayat pengalihan — dicatat SEBELUM entri approve/reject supaya
+        // urutannya kronologis kalau booking ini sempat dialihkan lalu
+        // baru dikonfirmasi/ditolak peminjam setelahnya.
+        if ($booking->relocated_at) {
+            $fromRoomName = $booking->relocatedFromRoom->name ?? 'ruangan sebelumnya';
+            $timeChanged = $booking->relocated_from_start_time && (
+                !$booking->relocated_from_start_time->eq($booking->start_time)
+                || !$booking->relocated_from_end_time->eq($booking->end_time)
+            );
+
+            $desc = "Dari {$fromRoomName}";
+            if ($booking->relocated_from_start_time) {
+                $desc .= ' (' . $booking->relocated_from_start_time->locale('id')->isoFormat('D MMM, HH:mm') .
+                          '–' . $booking->relocated_from_end_time->format('H:i') . ')';
+            }
+            $desc .= " ke {$booking->room->name}";
+            if ($booking->relocated_from_start_time) {
+                $desc .= ' (' . $booking->start_time->locale('id')->isoFormat('D MMM, HH:mm') .
+                          '–' . $booking->end_time->format('H:i') . ')';
+                $desc .= $timeChanged ? '. Jam berubah.' : '. Jam tidak berubah.';
+            }
+            if ($booking->relocation_note) {
+                $desc .= ' Catatan admin: "' . $booking->relocation_note . '"';
+            }
+
+            $timeline[] = [
+                'icon' => 'bi-arrow-left-right',
+                'color' => 'warning',
+                'title' => $booking->awaiting_user_confirmation
+                    ? 'Admin Mengusulkan Pengalihan — Menunggu Konfirmasi'
+                    : 'Dialihkan oleh Admin',
+                'description' => $desc,
+                'time' => $booking->relocated_at,
+            ];
+        }
+
         if ($booking->processed_at) {
             $action = $booking->status == 1 ? 'Disetujui' : 'Ditolak';
-            $timeline[] = [
-                'icon' => $booking->status == 1 ? 'bi-check-circle' : 'bi-x-circle',
-                'color' => $booking->status == 1 ? 'success' : 'danger',
-                'title' => 'Booking ' . $action,
-                'description' => $booking->rejection_reason ? 'Alasan: ' . $booking->rejection_reason : 'Booking telah diproses oleh admin',
-                'time' => $booking->processed_at,
-            ];
+
+            $description = 'Booking telah diproses oleh admin';
+            if ($booking->status == 1 && $booking->approval_note) {
+                $description = 'Catatan: ' . $booking->approval_note;
+            } elseif ($booking->rejection_reason) {
+                $description = 'Alasan: ' . $booking->rejection_reason;
+            }
+
+            // Kalau proses ini adalah tindak lanjut dari pengalihan (peminjam
+            // sendiri yang konfirmasi/tolak, bukan admin approve/reject
+            // biasa), judulnya dibedakan supaya jelas siapa yang memutuskan.
+            $wasRelocationResponse = $booking->relocated_at
+                && $booking->processed_at->gte($booking->relocated_at)
+                && $booking->processed_by == $booking->user_id;
+
+            if ($wasRelocationResponse) {
+                $timeline[] = [
+                    'icon' => $booking->status == 1 ? 'bi-check-circle' : 'bi-x-circle',
+                    'color' => $booking->status == 1 ? 'success' : 'danger',
+                    'title' => $booking->status == 1 ? 'Peminjam Menyetujui Pengalihan' : 'Peminjam Menolak Pengalihan',
+                    'description' => $booking->status == 1
+                        ? 'Ruangan & waktu pengganti dikonfirmasi oleh peminjam.'
+                        : 'Peminjam menolak usulan pengalihan. Booking otomatis ditolak.',
+                    'time' => $booking->processed_at,
+                ];
+            } else {
+                $timeline[] = [
+                    'icon' => $booking->status == 1 ? 'bi-check-circle' : 'bi-x-circle',
+                    'color' => $booking->status == 1 ? 'success' : 'danger',
+                    'title' => 'Booking ' . $action,
+                    'description' => $description,
+                    'time' => $booking->processed_at,
+                ];
+            }
         }
 
         if ($booking->status == 1) {
             $timeline[] = [
                 'icon' => 'bi-qr-code',
                 'color' => 'info',
-                'title' => 'Kode Absensi Dibuat',
+                'title' => 'Kode Presensi Dibuat',
                 'description' => 'Kode: ' . $booking->absent_code,
                 'time' => $booking->processed_at,
             ];
@@ -920,8 +1404,8 @@ class BookingController extends Controller
                 $timeline[] = [
                     'icon' => 'bi-people',
                     'color' => 'success',
-                    'title' => 'Absensi Dimulai',
-                    'description' => $booking->attendances->count() . ' peserta telah melakukan absensi',
+                    'title' => 'Presensi Dimulai',
+                    'description' => $booking->attendances->count() . ' peserta telah melakukan presensi',
                     'time' => $booking->attendances->first()->check_in_time ?? null,
                 ];
             }
@@ -941,7 +1425,7 @@ class BookingController extends Controller
      */
 
     /**
-     * Cek validitas kode absensi & jendela waktu check-in. Dipakai bareng
+     * Cek validitas kode presensi & jendela waktu check-in. Dipakai bareng
      * oleh attendMeeting() (GET, tampilkan form) dan submitAttendance()
      * (POST, proses absen) supaya aturannya konsisten di satu tempat.
      */
@@ -952,14 +1436,14 @@ class BookingController extends Controller
         if (!$booking) {
             return [
                 'ok' => false,
-                'message' => 'Kode absensi tidak ditemukan. Pastikan Anda memindai QR code yang benar.',
+                'message' => 'Kode presensi tidak ditemukan. Pastikan Anda memindai QR code yang benar.',
             ];
         }
 
         if ($booking->status == 2) {
             return [
                 'ok' => false,
-                'message' => 'Peminjaman ruangan ini telah ditolak, absensi tidak tersedia.',
+                'message' => 'Peminjaman ruangan ini telah ditolak, presensi tidak tersedia.',
                 'booking' => $booking,
             ];
         }
@@ -967,21 +1451,22 @@ class BookingController extends Controller
         if ($booking->status == 0) {
             return [
                 'ok' => false,
-                'message' => 'Peminjaman ruangan ini belum disetujui admin, absensi belum dapat dilakukan.',
+                'message' => 'Peminjaman ruangan ini belum disetujui admin, presensi belum dapat dilakukan.',
                 'booking' => $booking,
             ];
         }
 
-        // Jendela absensi: 15 menit sebelum mulai s/d 15 menit setelah selesai,
-        // supaya tamu yang datang sedikit lebih awal/telat tetap bisa absen.
+        // Jendela presensi: 1 jam sebelum mulai s/d 2 jam setelah selesai,
+        // supaya tamu yang datang lebih awal atau baru sempat mengisi
+        // presensi agak lama setelah rapat masih tetap bisa tercatat.
         $now = Carbon::now();
-        $opens = Carbon::parse($booking->start_time)->subMinutes(15);
-        $closes = Carbon::parse($booking->end_time)->addMinutes(15);
+        $opens = Carbon::parse($booking->start_time)->subHour();
+        $closes = Carbon::parse($booking->end_time)->addHours(2);
 
         if ($now->lt($opens)) {
             return [
                 'ok' => false,
-                'message' => 'Sesi absensi belum dibuka. Absensi tersedia mulai pukul ' . $opens->format('H:i') . ' WIB.',
+                'message' => 'Sesi presensi belum dibuka. Presensi tersedia mulai pukul ' . $opens->format('H:i') . ' WIB.',
                 'booking' => $booking,
             ];
         }
@@ -989,7 +1474,7 @@ class BookingController extends Controller
         if ($now->gt($closes)) {
             return [
                 'ok' => false,
-                'message' => 'Sesi absensi sudah ditutup. Rapat ini berakhir pada pukul ' . Carbon::parse($booking->end_time)->format('H:i') . ' WIB.',
+                'message' => 'Sesi presensi sudah ditutup. Rapat ini berakhir pada pukul ' . Carbon::parse($booking->end_time)->format('H:i') . ' WIB.',
                 'booking' => $booking,
             ];
         }
@@ -998,7 +1483,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Halaman form absensi yang dibuka saat tamu scan QR code (publik, tanpa login).
+     * Halaman form presensi yang dibuka saat tamu scan QR code (publik, tanpa login).
      */
     public function attendMeeting(string $code)
     {
@@ -1011,11 +1496,18 @@ class BookingController extends Controller
             ]);
         }
 
-        return view('attendance.form', ['booking' => $result['booking']]);
+        // Daftar yang sudah absen ditampilkan di form, supaya orang yang
+        // membuka halaman ini bisa langsung cek namanya sudah tercatat
+        // atau belum, tanpa perlu submit ulang untuk mencari tahu.
+        $attendees = Attendance::where('booking_id', $result['booking']->id)
+            ->orderBy('check_in_time', 'asc')
+            ->get();
+
+        return view('attendance.form', ['booking' => $result['booking'], 'attendees' => $attendees]);
     }
 
     /**
-     * Proses submit form absensi.
+     * Proses submit form presensi.
      */
     public function submitAttendance(Request $request, string $code)
     {
@@ -1037,28 +1529,43 @@ class BookingController extends Controller
 
         $booking = $result['booking'];
 
-        // Hindari duplikat kalau orang yang sama tidak sengaja submit dua kali
-        // (misal double-tap tombol atau refresh halaman).
+        // FIX: sebelumnya duplikat cuma dicek dari NAMA saja — jadi dua orang
+        // yang kebetulan namanya sama (dari instansi berbeda) tidak bisa
+        // absen keduanya. Sekarang dicek dari KOMBINASI nama + bidang/
+        // instansi/perusahaan — kalau keduanya identik (bukan cuma salah
+        // satu), baru dianggap orang yang sama dan ditolak. Selain itu,
+        // sebelumnya kalau ketahuan duplikat, sistem DIAM-DIAM tidak
+        // menyimpan tapi tetap mengarahkan ke halaman sukses seolah-olah
+        // berhasil — sekarang ditolak eksplisit dengan pesan yang jelas,
+        // sesuai permintaan: tidak boleh ada duplikat.
+        $normalizedName = strtolower(trim($request->name));
+        $normalizedInstitution = strtolower(trim($request->institution ?? ''));
+
         $alreadyCheckedIn = Attendance::where('booking_id', $booking->id)
-            ->whereRaw('LOWER(TRIM(guest_name)) = ?', [strtolower(trim($request->name))])
+            ->whereRaw('LOWER(TRIM(guest_name)) = ?', [$normalizedName])
+            ->whereRaw('LOWER(TRIM(COALESCE(guest_institution, \'\'))) = ?', [$normalizedInstitution])
             ->exists();
 
-        if (!$alreadyCheckedIn) {
-            Attendance::create([
-                'booking_id' => $booking->id,
-                'user_id' => Auth::id(), // terisi otomatis kalau yang scan sedang login
-                'guest_name' => trim($request->name),
-                'guest_institution' => $request->institution,
-                'check_in_time' => now(),
-                'status' => 'Hadir',
-            ]);
+        if ($alreadyCheckedIn) {
+            return back()
+                ->withInput()
+                ->withErrors(['name' => 'Nama dan Bidang/Instansi/Perusahaan ini sudah tercatat hadir sebelumnya. Presensi tidak boleh ganda.']);
         }
+
+        Attendance::create([
+            'booking_id' => $booking->id,
+            'user_id' => Auth::id(), // terisi otomatis kalau yang scan sedang login
+            'guest_name' => trim($request->name),
+            'guest_institution' => $request->institution,
+            'check_in_time' => now(),
+            'status' => 'Hadir',
+        ]);
 
         return redirect()->route('attendance.success', $booking->absent_code);
     }
 
     /**
-     * Halaman sukses setelah absensi berhasil.
+     * Halaman sukses setelah presensi berhasil.
      */
     public function attendanceSuccess(string $code)
     {

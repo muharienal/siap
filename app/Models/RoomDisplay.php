@@ -15,6 +15,7 @@ class RoomDisplay extends Model
         'type',
         'display_token',
         'orientation',
+        'theme',
         'show_qr',
         'show_upcoming',
         'upcoming_count',

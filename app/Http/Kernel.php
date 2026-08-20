@@ -54,6 +54,10 @@ class Kernel extends HttpKernel
      */
     protected $middlewareAliases = [
         'auth' => \App\Http\Middleware\Authenticate::class,
+        // FIX (bug keamanan kritis): middleware baru untuk melindungi
+        // seluruh area /settings — lihat penjelasan lengkap di
+        // app/Http/Middleware/EnsureUserIsAdmin.php.
+        'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,

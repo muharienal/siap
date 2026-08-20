@@ -1030,6 +1030,7 @@
 
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ asset('js/live-poll.js') }}"></script>
     
     @if(config('app.key'))
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -1092,10 +1093,25 @@
             $.ajax({
                 url: '{{ route("notifications.get") }}',
                 method: 'GET',
-                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-                success: function(response) { updateNotificationUI(response); },
-                error: function() {
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'X-Requested-With': 'XMLHttpRequest' },
+                success: function(response) {
+                    updateNotificationUI(response);
+                    notifPollBackoffMs = NOTIF_POLL_BASE_MS; // berhasil -> reset kecepatan polling normal
+                },
+                error: function(xhr) {
                     $('#notificationList').html('<div class="text-center py-3 text-muted" style="font-size:var(--font-size-sm);"><i class="bi bi-exclamation-triangle"></i> Gagal memuat</div>');
+                    // FIX: sebelumnya polling ini jalan TERUS setiap 30 detik
+                    // selamanya, bahkan setelah sesi habis (401/419) atau
+                    // dibiarkan idle berjam-jam — menumpuk request percuma yang
+                    // bikin aplikasi terasa berat. Sekarang berhenti permanen
+                    // kalau sesinya sudah jelas habis, dan melambat bertahap
+                    // untuk error lain (bukan terus mencoba secepat semula).
+                    if (xhr.status === 401 || xhr.status === 419) {
+                        notifPollStopped = true;
+                        if (typeof showSessionExpiredBanner === 'function') showSessionExpiredBanner();
+                    } else {
+                        notifPollBackoffMs = Math.min(notifPollBackoffMs * 1.7, 5 * 60 * 1000);
+                    }
                 }
             });
         }
@@ -1205,8 +1221,34 @@
         } else {
             loadNotifications();
         }
-        
-        setInterval(loadNotifications, 30000);
+
+        // FIX: setInterval polos di bawah ini sebelumnya jalan tiap 30 detik
+        // TANPA PERNAH BERHENTI, walau tab dibiarkan idle berjam-jam atau
+        // sesi sudah habis. Sekarang pakai scheduler sendiri: skip kalau
+        // idle/tab tersembunyi/sesi sudah habis, dan interval melambat
+        // otomatis kalau lagi ada error jaringan (lihat notifPollBackoffMs
+        // di dalam loadNotifications()).
+        var NOTIF_POLL_BASE_MS = 30000;
+        var notifPollBackoffMs = NOTIF_POLL_BASE_MS;
+        var notifPollStopped = false;
+
+        function scheduleNotifPoll() {
+            if (notifPollStopped) return;
+            setTimeout(function () {
+                if (notifPollStopped) return;
+                var idle = typeof isSiapUserIdle === 'function' ? isSiapUserIdle() : false;
+                if (!document.hidden && !idle) {
+                    loadNotifications();
+                }
+                scheduleNotifPoll();
+            }, notifPollBackoffMs);
+        }
+        scheduleNotifPoll();
+
+        // Begitu tab aktif lagi, langsung cek saat itu juga.
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && !notifPollStopped) loadNotifications();
+        });
 
         // PREVENT iOS DOUBLE TAP ZOOM
         document.addEventListener('touchend', function(e) {
