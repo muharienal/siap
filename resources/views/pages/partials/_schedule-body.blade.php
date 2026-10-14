@@ -27,6 +27,8 @@
                 0 => ['bg' => 'rgba(245,158,11,0.10)', 'border' => '#f59e0b', 'text' => '#b45309', 'chipBg' => 'rgba(245,158,11,0.18)', 'label' => 'Pending'],
                 1 => ['bg' => 'rgba(16,185,129,0.10)', 'border' => '#10b981', 'text' => '#047857', 'chipBg' => 'rgba(16,185,129,0.18)', 'label' => 'Disetujui'],
                 2 => ['bg' => 'rgba(239,68,68,0.08)',  'border' => '#ef4444', 'text' => '#b91c1c', 'chipBg' => 'rgba(239,68,68,0.18)', 'label' => 'Ditolak'],
+                // Status 2 yang berasal dari persetujuan yang DIBATALKAN (lihat Booking::was_cancelled_approval)
+                'cancelled' => ['bg' => 'rgba(100,116,139,0.08)', 'border' => '#64748b', 'text' => '#475569', 'chipBg' => 'rgba(100,116,139,0.18)', 'label' => 'Dibatalkan'],
             ];
         @endphp
 
@@ -164,6 +166,7 @@
                                             $topPx = max(0, ($bStartMin - $dayStartMinutes) * $pxPerMin);
                                             $heightPx = max(28, ($bEndMin - $bStartMin) * $pxPerMin);
                                             $colors = $statusColors[$booking->status] ?? $statusColors[0];
+                                            if ($booking->was_cancelled_approval) { $colors = $statusColors['cancelled']; }
                                             $bookerName = $booking->user->full_name ?? 'Unknown';
                                             $initial = strtoupper(mb_substr($bookerName, 0, 1));
                                             $isCompact = $heightPx < 52;
@@ -282,6 +285,7 @@
                                             $bStart = Carbon::parse($slotBooking->start_time);
                                             $bEnd = Carbon::parse($slotBooking->end_time);
                                             $colors = $statusColors[$slotBooking->status] ?? $statusColors[0];
+                                            if ($slotBooking->was_cancelled_approval) { $colors = $statusColors['cancelled']; }
                                             $bookerName = $slotBooking->user->full_name ?? 'Unknown';
                                             $bidangName = $slotBooking->user->position->name ?? null;
                                             $canOpenSlot = Auth::user()->role == 1 || $slotBooking->user_id == Auth::id();

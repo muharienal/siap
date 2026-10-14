@@ -51,8 +51,8 @@
                 <tbody>
                     @foreach($bookings as $booking)
                         @php
-                            $statusClass = $booking->status == 0 ? 'pending' : ($booking->status == 1 ? 'approved' : 'rejected');
-                            $statusLabel = $booking->status == 0 ? 'Pending' : ($booking->status == 1 ? 'Disetujui' : 'Ditolak');
+                            $statusClass = $booking->status_key; // pending|approved|rejected|cancelled
+                            $statusLabel = $booking->status_label; // Pending|Disetujui|Ditolak|Dibatalkan
                             $typeClass = $booking->booking_type == 'Priority' ? 'priority' : 'regular';
                             $typeLabel = $booking->booking_type == 'Priority' ? 'Priority' : 'Reguler';
                             $roomPhoto = $booking->room->photos->isNotEmpty() ? $booking->room->photos->first()->photo_url : null;
@@ -160,8 +160,8 @@
         <div class="booking-cards">
             @foreach($bookings as $booking)
                 @php
-                    $statusClass = $booking->status == 0 ? 'pending' : ($booking->status == 1 ? 'approved' : 'rejected');
-                    $statusLabel = $booking->status == 0 ? 'Pending' : ($booking->status == 1 ? 'Disetujui' : 'Ditolak');
+                    $statusClass = $booking->status_key; // pending|approved|rejected|cancelled
+                    $statusLabel = $booking->status_label; // Pending|Disetujui|Ditolak|Dibatalkan
                     $typeClass = $booking->booking_type == 'Priority' ? 'priority' : 'regular';
                     $typeLabel = $booking->booking_type == 'Priority' ? 'Priority' : 'Reguler';
                     $roomPhoto = $booking->room->photos->isNotEmpty() ? $booking->room->photos->first()->photo_url : null;
@@ -231,7 +231,7 @@
                         @if($booking->status == 2 && $booking->rejection_reason)
                         <div class="text-danger small mt-2">
                             <i class="bi bi-exclamation-triangle"></i> 
-                            <strong>Alasan Ditolak:</strong> {{ $booking->rejection_reason }}
+                            <strong>{{ $booking->was_cancelled_approval ? 'Alasan Dibatalkan' : 'Alasan Ditolak' }}:</strong> {{ $booking->rejection_reason }}
                         </div>
                         @elseif($booking->status == 1 && ($booking->approval_note || $booking->relocation_note))
                         <div class="text-success small mt-2">

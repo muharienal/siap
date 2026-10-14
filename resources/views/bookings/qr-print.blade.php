@@ -51,6 +51,8 @@
 
 <div class="qr-print-card">
     <h1 class="qr-print-room">{{ $booking->room->name }}</h1>
+                    <div class="qr-print-purpose"><strong>Agenda:</strong><br>{!! nl2br(e($booking->purpose)) !!}</div>
+
     <div class="qr-print-meta">
         {{ \Carbon\Carbon::parse($booking->start_time)->locale('id')->isoFormat('dddd, D MMMM Y') }}<br>
         {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }} WIB

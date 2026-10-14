@@ -524,6 +524,7 @@
                         Konsumsi
                     </label>
                     <input type="number" name="consumption_qty" class="additional-input" placeholder="Jumlah Peserta" min="1" id="consumptionQty" value="{{ old('consumption_qty', $booking->consumption_qty) }}" {{ old('needs_consumption', $booking->consumption_qty) ? '' : 'disabled' }}>
+                    <textarea name="consumption_notes" class="additional-input" rows="3" maxlength="500" placeholder="Keterangan konsumsi (contoh: nasi kotak, snack, air mineral)" id="consumptionNotes" {{ old('needs_consumption', $booking->consumption_qty) ? '' : 'disabled' }}>{{ old('consumption_notes', $booking->consumption_notes) }}</textarea>
                 </div>
 
                 <div class="additional-option">
@@ -646,7 +647,11 @@
 <script>
     function toggleConsumption(checkbox) {
         document.getElementById('consumptionQty').disabled = !checkbox.checked;
-        if (!checkbox.checked) document.getElementById('consumptionQty').value = '';
+        document.getElementById('consumptionNotes').disabled = !checkbox.checked;
+        if (!checkbox.checked) {
+            document.getElementById('consumptionQty').value = '';
+            document.getElementById('consumptionNotes').value = '';
+        }
     }
     function toggleOther(checkbox) {
         document.getElementById('otherNotes').disabled = !checkbox.checked;
@@ -1055,13 +1060,18 @@
         var badges = [];
         var needsConsumption = document.getElementById('needsConsumption').checked;
         var consumptionQty = document.getElementById('consumptionQty').value;
+        var consumptionNotes = document.getElementById('consumptionNotes').value.trim();
+        function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
         if (needsConsumption) {
             badges.push('<span class="confirm-badge"><i class="bi bi-cup-hot"></i> Konsumsi' + (consumptionQty ? ' &middot; ' + consumptionQty + ' orang' : '') + '</span>');
+            if (consumptionNotes) {
+                badges.push('<span class="confirm-badge"><i class="bi bi-card-text"></i> ' + esc(consumptionNotes) + '</span>');
+            }
         }
         var needsOther = document.getElementById('needsOther').checked;
         var otherNotes = document.getElementById('otherNotes').value.trim();
         if (needsOther) {
-            badges.push('<span class="confirm-badge"><i class="bi bi-sticky"></i> ' + (otherNotes || 'Lain-lain') + '</span>');
+            badges.push('<span class="confirm-badge"><i class="bi bi-sticky"></i> ' + (otherNotes ? esc(otherNotes) : 'Lain-lain') + '</span>');
         }
         document.getElementById('confirmFacilities').innerHTML = badges.length
             ? badges.join('')

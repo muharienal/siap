@@ -91,7 +91,7 @@
     /* Stat Cards */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: var(--space-4);
         margin-bottom: var(--space-5);
     }
@@ -119,6 +119,7 @@
     .stat-icon.amber  { background: rgba(245,158,11,0.12); color: #b45309; }
     .stat-icon.green  { background: rgba(16,185,129,0.1);  color: var(--brand-green-dark); }
     .stat-icon.red    { background: rgba(239,68,68,0.1);   color: #b91c1c; }
+    .stat-icon.slate  { background: rgba(100,116,139,0.12); color: #475569; }
     .stat-body { min-width: 0; }
     .stat-value {
         font-size: var(--font-size-2xl);
@@ -701,6 +702,7 @@
     .status-pending { background: rgba(245,158,11,0.12); color: #b45309; }
     .status-approved { background: rgba(16,185,129,0.12); color: #047857; }
     .status-rejected { background: rgba(239,68,68,0.12); color: #b91c1c; }
+    .status-cancelled { background: rgba(100,116,139,0.14); color: #475569; }
 
     .conflict-badge {
         font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill);
@@ -770,6 +772,7 @@
     .booking-card.status-pending { border-left-color: #f59e0b; }
     .booking-card.status-approved { border-left-color: #22C55E; }
     .booking-card.status-rejected { border-left-color: #ef4444; }
+    .booking-card.status-cancelled { border-left-color: #64748b; }
 
     .booking-card-header {
         display: flex;
@@ -899,6 +902,9 @@
         font-size: 1.1rem; font-weight: 700; color: var(--text-primary);
         padding: var(--space-5) var(--space-5) var(--space-4);
     }
+    .status-table-heading .status-export-btn {
+        margin-left: auto; font-size: 0.85rem; font-weight: 600;
+    }
     .status-table-heading .heading-icon {
         width: 32px; height: 32px; border-radius: 9px;
         display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0;
@@ -956,9 +962,12 @@
 
 <div class="db-toolbar">
     <div>
-        <a href="{{ route('bookings.export') }}" class="btn-outline-sm">
-            <i class="bi bi-download"></i> Export
+        @if(Auth::user()->role == 1)
+        <a href="{{ route('bookings.export', ['scope' => 'all']) }}" class="btn-outline-sm"
+           title="Export SEMUA data peminjaman (semua status, tanpa filter)">
+            <i class="bi bi-download"></i> Export Semua
         </a>
+        @endif
     </div>
     <div class="actions">
         <a href="{{ route('bookings.create') }}" class="btn-primary-sm">
@@ -999,7 +1008,13 @@
             'showBulk' => false,
         ],
         [
-            'prefix' => 'rejected', 'label' => 'Ditolak', 'icon' => 'bi-x-circle',
+            // FIX: judul diganti "Ditolak/Dibatalkan" — tabel ini memang
+            // menampung DUA jenis booking berbeda maknanya (ditolak
+            // langsung dari Pending, ATAU sempat Disetujui lalu
+            // dibatalkan admin), keduanya sama-sama status==2. Label
+            // per-baris di dalam tabelnya sendiri sudah otomatis
+            // membedakan Ditolak vs Dibatalkan lewat Booking::status_label.
+            'prefix' => 'rejected', 'label' => 'Ditolak/Dibatalkan', 'icon' => 'bi-x-circle',
             'heading_class' => 'rejected', 'bookings' => $rejectedBookings, 'hasDateFilter' => $rejectedHasDateFilter,
             'showBulk' => false,
         ],
@@ -1012,6 +1027,24 @@
         <span class="heading-icon"><i class="bi {{ $t['icon'] }}"></i></span>
         Peminjaman {{ $t['label'] }}
         <span class="status-table-count">{{ $t['bookings']->total() }}</span>
+
+        @if(Auth::user()->role == 1)
+            @php
+                // Export per card: bawa status card ini + filter card ini saja
+                // (tanggal & ruangan). Filter card lain tidak ikut terbawa.
+                $exportParams = array_filter([
+                    'scope' => $t['prefix'],
+                    $t['prefix'] . '_date' => request($t['prefix'] . '_date'),
+                    $t['prefix'] . '_date_from' => request($t['prefix'] . '_date_from'),
+                    $t['prefix'] . '_date_to' => request($t['prefix'] . '_date_to'),
+                    $t['prefix'] . '_room' => request($t['prefix'] . '_room'),
+                ], fn ($v) => filled($v));
+            @endphp
+            <a href="{{ route('bookings.export', $exportParams) }}" class="btn-outline-sm status-export-btn"
+               title="Export tabel &quot;{{ $t['label'] }}&quot; sesuai filter Tanggal &amp; Ruangan di card ini">
+                <i class="bi bi-download"></i> Export
+            </a>
+        @endif
     </div>
 
     <form action="{{ route('bookings.index') }}" method="GET" id="{{ $t['prefix'] }}FilterForm">
@@ -1212,6 +1245,19 @@
 
         if (!confirm(`${message} ${ids.length} booking yang dipilih?`)) return;
 
+        // Penolakan WAJIB beralasan (sama seperti tombol Tolak di halaman detail)
+        // — alasan ini dikirim ke setiap peminjam lewat notifikasi.
+        let reason = null;
+        if (action === 'reject') {
+            reason = prompt('Alasan penolakan untuk peminjam (minimal 10 karakter):');
+            if (reason === null) return;
+            reason = reason.trim();
+            if (reason.length < 10) {
+                alert('Alasan penolakan minimal 10 karakter.');
+                return;
+            }
+        }
+
         fetch('{{ route("bookings.bulk-action") }}', {
             method: 'POST',
             headers: {
@@ -1219,7 +1265,7 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify({ booking_ids: ids, action: action })
+            body: JSON.stringify({ booking_ids: ids, action: action, rejection_reason: reason })
         })
         .then(r => r.json())
         .then(data => {
@@ -1406,7 +1452,7 @@
     }
 
     createLivePoller({
-        url: window.location.pathname + window.location.search,
+        url: function () { return window.location.pathname + window.location.search; },
         interval: 15000,
         // Jangan tukar DOM kalau admin sedang menyeleksi checkbox untuk aksi
         // massal — supaya seleksinya tidak hilang tiba-tiba.

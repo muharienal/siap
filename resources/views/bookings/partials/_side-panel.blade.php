@@ -1,23 +1,7 @@
-    {{-- KOLOM SAMPING: QR Presensi + Timeline --}}
+{{-- KOLOM SAMPING: cuma Timeline Peminjaman. QR Presensi & Daftar
+         Hadir sudah dipindah jadi satu card gabungan di kolom utama
+         (lihat partial _qr-attendance.blade.php). --}}
     <div class="booking-side-col" id="liveSideCol">
-        @if($booking->status == 1 && $booking->absent_code)
-        <div class="detail-card">
-            <div class="card-section">
-                <div class="section-title">
-                    <i class="bi bi-qr-code"></i> Kode Presensi
-                </div>
-                <div class="qr-section">
-                    <p class="text-muted small mb-2">Tunjukkan QR ini kepada peserta rapat untuk presensi</p>
-                    <div class="qr-code" id="qrCodeContainer"></div>
-                    <div class="qr-label">Kode: {{ $booking->absent_code }}</div>
-                    <button type="button" class="btn-outline-sm mt-3" style="display:inline-flex;" data-bs-toggle="modal" data-bs-target="#printQrModal">
-                        <i class="bi bi-printer"></i> Cetak QR
-                    </button>
-                </div>
-            </div>
-        </div>
-        @endif
-
         <div class="detail-card">
             <div class="card-section">
                 <div class="section-title">

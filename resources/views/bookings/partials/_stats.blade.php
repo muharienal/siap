@@ -27,4 +27,17 @@
             <div class="stat-label">Ditolak</div>
         </div>
     </div>
+    {{-- FIX: sebelumnya "Ditolak" dan "Dibatalkan" digabung jadi satu
+         kartu/angka — padahal maknanya beda (ditolak dari awal vs sempat
+         disetujui lalu dibatalkan). Sekarang kartu TERPISAH, masing-
+         masing punya angkanya sendiri. Tabel di bagian bawah halaman
+         tetap SATU tabel gabungan ("Peminjaman Ditolak/Dibatalkan") —
+         cuma label per-barisnya yang membedakan, sesuai permintaan. --}}
+    <div class="stat-card">
+        <div class="stat-icon slate"><i class="bi bi-slash-circle"></i></div>
+        <div class="stat-body">
+            <div class="stat-value">{{ $stats['cancelled'] ?? 0 }}</div>
+            <div class="stat-label">Dibatalkan</div>
+        </div>
+    </div>
 </div>

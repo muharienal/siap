@@ -16,6 +16,7 @@ class Booking extends Model
         'end_time',
         'purpose',
         'consumption_qty',
+        'consumption_notes',
         'other_notes',
         'status',
         'booking_type',
@@ -93,5 +94,55 @@ class Booking extends Model
     public function relocatedFromRoom()
     {
         return $this->belongsTo(Room::class, 'relocated_from_room_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ATURAN BAKU: "Ditolak" vs "Dibatalkan"
+    |--------------------------------------------------------------------------
+    | Keduanya disimpan sebagai status = 2 (tidak ada status 3). Pembedanya
+    | adalah kolom absent_code:
+    |
+    |  - DITOLAK    : status 2 & absent_code KOSONG. Pengajuan TIDAK PERNAH
+    |                 disetujui. Penyebab: (a) admin menolak saat Pending, atau
+    |                 (b) peminjam menolak usulan pengalihan dari admin.
+    |  - DIBATALKAN : status 2 & absent_code TERISI. Booking SEMPAT disetujui
+    |                 (kode presensi pernah dibuat), lalu persetujuannya dicabut
+    |                 admin lewat "Batalkan Persetujuan".
+    |
+    | Kenapa absent_code bisa jadi pembeda: kolom ini hanya diisi saat
+    | approve()/bulk approve/confirmRelocation(), dibiarkan saat dibatalkan
+    | (reject() tidak menghapusnya), dan DIKOSONGKAN saat relocate() — jadi
+    | booking yang dialihkan lalu ditolak peminjam tetap terbaca "Ditolak".
+    |
+    | SEMUA tampilan/pesan/ekspor/statistik wajib memakai tiga accessor di
+    | bawah ini, jangan menulis ulang rumus status di tempat lain.
+    */
+
+    // true = status 2 karena persetujuan DIBATALKAN (bukan ditolak dari awal)
+    public function getWasCancelledApprovalAttribute(): bool
+    {
+        return (int) $this->status === 2 && !empty($this->absent_code);
+    }
+
+    // Kunci status untuk kelas CSS: pending | approved | rejected | cancelled
+    public function getStatusKeyAttribute(): string
+    {
+        return match ((int) $this->status) {
+            0 => 'pending',
+            1 => 'approved',
+            default => $this->was_cancelled_approval ? 'cancelled' : 'rejected',
+        };
+    }
+
+    // Label status untuk ditampilkan: Pending | Disetujui | Ditolak | Dibatalkan
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status_key) {
+            'pending' => 'Pending',
+            'approved' => 'Disetujui',
+            'cancelled' => 'Dibatalkan',
+            default => 'Ditolak',
+        };
     }
 }

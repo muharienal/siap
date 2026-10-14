@@ -121,7 +121,7 @@
         var lastSignature = 'initial';
 
         createLivePoller({
-            url: window.location.pathname,
+            url: function () { return window.location.pathname; },
             interval: 25000,
             onUpdate: function (data) {
                 if (data.signature === lastSignature) return;

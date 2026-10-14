@@ -36,11 +36,20 @@ class BookingController extends Controller
         // Stats for cards — tetap ringkasan GLOBAL (semua status/tanggal),
         // tidak terikat filter salah satu dari 3 tabel di bawah.
         $statsQuery = $user->role == 1 ? Booking::query() : Booking::where('user_id', $user->id);
+        // FIX: "Ditolak" dan "Dibatalkan" itu 2 hal yang beda maknanya buat
+        // peminjam (ditolak dari awal vs sempat disetujui lalu dibatalkan)
+        // — sebelumnya digabung jadi satu angka "rejected" di kartu
+        // statistik. Sekarang dipecah jadi 2 kartu terpisah, pakai kolom
+        // absent_code sebagai pembeda (SAMA PERSIS dengan logic
+        // Booking::getWasCancelledApprovalAttribute() — absent_code cuma
+        // pernah diisi lewat approve(), dan tidak pernah dikosongkan lagi
+        // oleh reject() saat membatalkan persetujuan).
         $stats = [
             'total' => $statsQuery->count(),
             'pending' => (clone $statsQuery)->where('status', 0)->count(),
             'approved' => (clone $statsQuery)->where('status', 1)->count(),
-            'rejected' => (clone $statsQuery)->where('status', 2)->count(),
+            'rejected' => (clone $statsQuery)->where('status', 2)->whereNull('absent_code')->count(),
+            'cancelled' => (clone $statsQuery)->where('status', 2)->whereNotNull('absent_code')->count(),
             'today' => (clone $statsQuery)->whereDate('start_time', Carbon::today())->count(),
         ];
 
@@ -146,13 +155,35 @@ class BookingController extends Controller
         $hasDateFilter = (bool) ($dateParam || $dateFromParam || $dateToParam);
         if ($dateParam) {
             $query->whereDate('start_time', $dateParam);
-        } elseif (!$hasDateFilter) {
-            // UX: tanpa filter tanggal eksplisit, jangan diam-diam batasi ke
-            // hari ini saja — tampilkan hari ini & semua yang akan datang.
-            $query->whereDate('start_time', '>=', Carbon::today());
         }
+        // FIX: sebelumnya tanpa filter tanggal eksplisit, tabel diam-diam
+        // dibatasi cuma "hari ini & mendatang" (whereDate >= hari ini) —
+        // data lampau jadi tersembunyi total kecuali admin memfilter
+        // tanggal secara manual satu per satu. Sekarang SEMUA data
+        // ditampilkan (lampau maupun mendatang), tidak dibatasi apa pun,
+        // persis seperti tabel Riwayat Peminjaman yang dulu terpisah —
+        // bedanya sekarang jadi satu tabel per status, bukan dipisah lagi.
 
-        $query->orderBy('start_time', 'asc');
+        if ($dateParam || $dateFromParam || $dateToParam) {
+            // Ada filter tanggal eksplisit — urutan kronologis biasa di
+            // dalam rentang/tanggal yang dipilih itu paling masuk akal.
+            $query->orderBy('start_time', 'asc');
+        } else {
+            // FIX: percobaan sebelumnya membandingkan waktu PERSIS ke
+            // detik (start_time >= NOW()) — akibatnya booking "Hari Ini"
+            // yang JAMNYA sudah lewat (mis. sekarang jam 14:00, booking
+            // tadi pagi jam 08:00) ikut kehitung "sudah lewat" dan
+            // terlempar ke rombongan bawah, padahal tanggalnya masih hari
+            // ini. Sekarang perbandingannya berbasis TANGGAL KALENDER
+            // (DATE(start_time) vs CURDATE()) — bukan jam persis. Jadi
+            // urutannya sekarang benar-benar 2 rombongan: [Hari Ini +
+            // mendatang, urut naik dari yang paling dekat] lalu [yang
+            // sudah lewat harinya, urut mundur dari yang paling baru
+            // lewat].
+            $query->orderByRaw('CASE WHEN DATE(start_time) >= CURDATE() THEN 0 ELSE 1 END ASC')
+                ->orderByRaw('CASE WHEN DATE(start_time) >= CURDATE() THEN start_time END ASC')
+                ->orderByRaw('CASE WHEN DATE(start_time) < CURDATE() THEN start_time END DESC');
+        }
 
         return [
             'bookings' => $query->paginate(10, ['*'], "{$prefix}_page")->appends($request->query()),
@@ -210,6 +241,7 @@ class BookingController extends Controller
                 'end_time' => $request->end_time,
                 'purpose' => $request->purpose,
                 'consumption_qty' => $request->boolean('needs_consumption') ? $request->consumption_qty : null,
+                'consumption_notes' => $request->boolean('needs_consumption') ? $request->consumption_notes : null,
                 'other_notes' => $request->boolean('needs_other') ? $request->other_notes : null,
                 'status' => 0,
                 'booking_type' => $bookingType,
@@ -374,6 +406,7 @@ class BookingController extends Controller
         return response()->json([
             'top' => view('bookings.partials._top-status', compact('booking', 'isConflicted', 'awaitingConfirmation', 'isBookingOwner'))->render(),
             'side' => view('bookings.partials._side-panel', compact('booking', 'timeline'))->render(),
+            'qr_attendance' => view('bookings.partials._qr-attendance', compact('booking'))->render(),
             'has_qr' => (bool) ($booking->status == 1 && $booking->absent_code),
             'absent_code' => $booking->absent_code,
             'updated_at' => optional($booking->updated_at)->timestamp,
@@ -396,7 +429,7 @@ class BookingController extends Controller
         // Sekarang berlaku untuk SEMUA role tanpa kecuali, termasuk admin.
         if ($booking->status != 0) {
             return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah — riwayat bersifat permanen.');
+                ->with('error', 'Booking yang sudah disetujui/ditolak/dibatalkan tidak dapat diubah — riwayat bersifat permanen.');
         }
 
         // Sedang menunggu peminjam konfirmasi usulan pengalihan — ruangan/
@@ -430,7 +463,7 @@ class BookingController extends Controller
         // semua role, termasuk admin.
         if ($booking->status != 0) {
             return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat diubah — riwayat bersifat permanen.');
+                ->with('error', 'Booking yang sudah disetujui/ditolak/dibatalkan tidak dapat diubah — riwayat bersifat permanen.');
         }
 
         if ($booking->awaiting_user_confirmation) {
@@ -453,6 +486,7 @@ class BookingController extends Controller
                 'end_time' => $request->end_time,
                 'purpose' => $request->purpose,
                 'consumption_qty' => $request->boolean('needs_consumption') ? $request->consumption_qty : null,
+                'consumption_notes' => $request->boolean('needs_consumption') ? $request->consumption_notes : null,
                 'other_notes' => $request->boolean('needs_other') ? $request->other_notes : null,
                 'status' => $booking->status,
             ]);
@@ -519,61 +553,22 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // FIX: sebelumnya admin (role==1) BOLEH menghapus booking yang sudah
-        // diproses (disetujui/ditolak), padahal riwayat harusnya permanen —
-        // tidak bisa dihapus siapa pun begitu sudah diputuskan. Sekarang
-        // berlaku untuk SEMUA role tanpa kecuali, termasuk admin.
-        if ($booking->status != 0) {
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Booking yang sudah disetujui/ditolak tidak dapat dihapus — riwayat bersifat permanen.'
-                ], 403);
-            }
-            return redirect()->route('bookings.index')
-                ->with('error', 'Booking yang sudah disetujui/ditolak tidak dapat dihapus — riwayat bersifat permanen.');
+        // FIX: sebelumnya booking berstatus Pending (status==0) masih
+        // boleh dihapus (oleh admin maupun pemiliknya sendiri) — tapi
+        // sekarang aturannya diperketat lagi: booking APA PUN, statusnya
+        // apa pun (Pending/Disetujui/Ditolak), TIDAK BISA DIHAPUS oleh
+        // siapa pun tanpa kecuali. Semua booking harus tetap tercatat
+        // sebagai record permanen — tidak boleh ada yang hilang/terhapus.
+        // Method ini SENGAJA dibiarkan ada (bukan dihapus routenya)
+        // supaya kalau ada yang mencoba akses endpoint ini langsung
+        // (bukan lewat tombol UI, yang memang sudah tidak ditampilkan
+        // sama sekali di halaman manapun), tetap diblokir dengan jelas
+        // di sisi server — bukan cuma disembunyikan di tampilan.
+        $msg = 'Peminjaman tidak dapat dihapus — setiap peminjaman harus tetap tersimpan sebagai riwayat permanen.';
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json(['success' => false, 'message' => $msg], 403);
         }
-
-        if ($booking->awaiting_user_confirmation) {
-            $msg = 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam — tidak bisa dihapus sampai dijawab.';
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => false, 'message' => $msg], 403);
-            }
-            return redirect()->route('bookings.show', $booking->id)->with('error', $msg);
-        }
-
-        try {
-            // Kalau booking ini menyebabkan booking lain "bentrok", beri tahu
-            // pemiliknya dulu sebelum dihapus (kolom displaced_by_id akan
-            // otomatis ter-null-kan oleh database lewat foreign key).
-            $this->clearDisplacedConflicts($booking);
-
-            BookingFacility::where('booking_id', $booking->id)->delete();
-            $booking->delete();
-
-            // FIX: Tambahkan response JSON untuk AJAX
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Booking berhasil dihapus.'
-                ], 200, ['Content-Type' => 'application/json']);
-            }
-
-            return redirect()->route('bookings.index')
-                ->with('success', 'Booking berhasil dihapus.');
-
-        } catch (\Exception $e) {
-            Log::error('Booking delete error: ' . $e->getMessage());
-            
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Terjadi kesalahan saat menghapus booking.'
-                ], 500, ['Content-Type' => 'application/json']);
-            }
-
-            return back()->with('error', 'Terjadi kesalahan saat menghapus booking.');
-        }
+        return redirect()->route('bookings.index')->with('error', $msg);
     }
 
     /**
@@ -817,7 +812,7 @@ class BookingController extends Controller
         // dialihkan lagi — displaced_by_id yang masih terisi di sini cuma
         // sisa data lama sebelum status finalnya diputuskan.
         if ($booking->status == 2) {
-            return back()->with('error', 'Booking ini sudah ditolak, tidak perlu dialihkan lagi.');
+            return back()->with('error', 'Booking ini sudah ditolak/dibatalkan, tidak perlu dialihkan lagi.');
         }
 
         $request->validate([
@@ -978,7 +973,12 @@ class BookingController extends Controller
     }
 
     /**
-     * Reject booking (admin only).
+     * Tolak ATAU batalkan booking (admin only). Hasil akhirnya sama-sama status 2,
+     * tapi maknanya beda (lihat aturan baku di Booking model):
+     *  - status Pending (0)   -> DITOLAK    (pengajuan tidak pernah disetujui)
+     *  - status Disetujui (1) -> DIBATALKAN (persetujuan dicabut; absent_code
+     *                            sengaja dibiarkan sebagai penanda pembatalan)
+     * Alasan WAJIB diisi untuk keduanya (min. 10 karakter) — dikirim ke peminjam.
      */
     public function reject(Request $request, Booking $booking)
     {
@@ -987,26 +987,30 @@ class BookingController extends Controller
         }
 
         if (!in_array($booking->status, [0, 1])) {
-            return back()->with('error', 'Booking dengan status ini tidak dapat ditolak.');
+            return back()->with('error', 'Booking dengan status ini tidak dapat ditolak atau dibatalkan.');
         }
 
         if ($booking->awaiting_user_confirmation) {
             return back()->with('error', 'Booking ini sedang menunggu konfirmasi pengalihan dari peminjam, bukan penolakan admin.');
         }
 
-        if ($booking->status == 1) {
-            $request->validate([
-                'rejection_reason' => 'required|string|min:10|max:500'
-            ], [
-                'rejection_reason.required' => 'Alasan pembatalan persetujuan harus diisi',
-                'rejection_reason.min' => 'Alasan pembatalan minimal 10 karakter',
-                'rejection_reason.max' => 'Alasan pembatalan maksimal 500 karakter'
-            ]);
-        }
+        // Alasan wajib untuk penolakan DAN pembatalan (form di halaman detail
+        // memang sudah mewajibkannya; sekarang server ikut memaksa supaya
+        // peminjam selalu menerima penjelasan, juga kalau diakses langsung).
+        $noun = $booking->status == 1 ? 'pembatalan' : 'penolakan';
+        $request->validate([
+            'rejection_reason' => 'required|string|min:10|max:500'
+        ], [
+            'rejection_reason.required' => "Alasan {$noun} harus diisi",
+            'rejection_reason.min' => "Alasan {$noun} minimal 10 karakter",
+            'rejection_reason.max' => "Alasan {$noun} maksimal 500 karakter"
+        ]);
 
         try {
             $oldStatus = (string) $booking->status;
-            $actionMessage = $booking->status == 1 ? 'Persetujuan booking berhasil dibatalkan' : 'Booking berhasil ditolak';
+            $actionMessage = $booking->status == 1
+                ? 'Booking berhasil dibatalkan — statusnya kini Dibatalkan dan peminjam sudah diberi tahu.'
+                : 'Booking berhasil ditolak — peminjam sudah diberi tahu.';
 
             $booking->update([
                 'status' => 2,
@@ -1069,7 +1073,13 @@ class BookingController extends Controller
         $request->validate([
             'booking_ids' => 'required|array',
             'booking_ids.*' => 'exists:bookings,id',
-            'action' => 'required|in:approve,reject'
+            'action' => 'required|in:approve,reject',
+            // Tolak massal sama seperti tolak satuan: alasan WAJIB (min. 10 karakter).
+            'rejection_reason' => 'required_if:action,reject|nullable|string|min:10|max:500',
+        ], [
+            'rejection_reason.required_if' => 'Alasan penolakan harus diisi (minimal 10 karakter).',
+            'rejection_reason.min' => 'Alasan penolakan minimal 10 karakter.',
+            'rejection_reason.max' => 'Alasan penolakan maksimal 500 karakter.',
         ]);
 
         try {
@@ -1099,12 +1109,23 @@ class BookingController extends Controller
 
                 if ($request->action === 'approve') {
                     $updateData['absent_code'] = 'MTG-' . strtoupper(uniqid());
+                } else {
+                    // Sama seperti reject(): simpan alasan & lepaskan flag bentrok
+                    // milik booking ini sendiri (kalau tidak, badge "Bentrok" nyangkut).
+                    $updateData['rejection_reason'] = $request->input('rejection_reason');
+                    $updateData['displaced_by_id'] = null;
                 }
 
                 $oldStatus = (string) $booking->status;
                 $booking->update($updateData);
                 $booking->load(['user', 'room']);
                 $this->notificationService->notifyBookingStatusChange($booking, $oldStatus, (string) $status);
+
+                // Kalau yang ditolak adalah booking Priority yang menyebabkan booking
+                // lain bentrok, lepaskan flag bentrok itu (sama seperti reject()).
+                if ($request->action === 'reject') {
+                    $this->clearDisplacedConflicts($booking);
+                }
             }
 
             return response()->json([
@@ -1122,7 +1143,15 @@ class BookingController extends Controller
     }
 
     /**
-     * Export bookings (CSV).
+     * Export booking ke Excel.
+     *
+     * Parameter `scope`:
+     *  - all (default)             : SEMUA booking, semua status, TANPA filter
+     *                                (tombol "Export Semua" di atas halaman).
+     *  - pending/approved/rejected : hanya booking berstatus itu, dan MENGIKUTI
+     *                                filter Tanggal & Ruangan card tersebut
+     *                                (tombol "Export" di masing-masing card).
+     *                                "rejected" mencakup Ditolak + Dibatalkan.
      */
     public function export(Request $request)
     {
@@ -1130,32 +1159,67 @@ class BookingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // FIX (bug tersembunyi): sebelumnya method ini membaca parameter
-        // filter LAMA (status/date_from/date_to) dari satu tabel gabungan
-        // yang sudah tidak ada lagi sejak halaman ini diganti jadi 3 tabel
-        // independen (Pending/Disetujui/Ditolak) — masing-masing sekarang
-        // pakai parameter berawalan pending_/approved_/rejected_. Karena
-        // parameter lama itu tidak pernah lagi dikirim dari halaman mana
-        // pun, kondisi if($request->filled('status')) dkk selalu FALSE —
-        // tombol "Export" diam-diam SELALU mengekspor SEMUA booking, tidak
-        // peduli filter apa yang sedang aktif di layar (tanpa tanda apa
-        // pun kalau itu terjadi — pengguna bisa mengira file yang diunduh
-        // sudah sesuai filter, padahal tidak).
-        //
-        // Karena sekarang ada 3 filter independen sekaligus (bukan satu),
-        // tidak ada cara jelas untuk memutuskan filter MANA yang harus
-        // dipakai export satu file. Solusi paling jujur & sederhana:
-        // Export selalu mengekspor SEMUA data (tanpa filter), TIDAK diam-
-        // diam berpura-pura mengikuti filter yang sebenarnya tidak pernah
-        // sampai ke sini. Kalau nanti dibutuhkan export per-tabel/filter,
-        // itu perlu tombol Export terpisah di tiap tabel — perubahan
-        // fitur baru, di luar cakupan perbaikan bug ini.
+        $scopes = [
+            'all'      => ['status' => null, 'label' => 'Semua',                'slug' => 'semua'],
+            'pending'  => ['status' => 0,    'label' => 'Menunggu Persetujuan', 'slug' => 'menunggu-persetujuan'],
+            'approved' => ['status' => 1,    'label' => 'Disetujui',            'slug' => 'disetujui'],
+            'rejected' => ['status' => 2,    'label' => 'Ditolak/Dibatalkan',   'slug' => 'ditolak-dibatalkan'],
+        ];
+
+        $scope = $request->get('scope', 'all');
+        if (!isset($scopes[$scope])) {
+            abort(404);
+        }
+
         $query = Booking::with(['user', 'room']);
+        $filterInfo = []; // ditulis di judul file supaya jelas filter apa yang dipakai
+
+        if ($scope !== 'all') {
+            $request->validate([
+                "{$scope}_date" => 'nullable|date_format:Y-m-d',
+                "{$scope}_date_from" => 'nullable|date_format:Y-m-d',
+                "{$scope}_date_to" => 'nullable|date_format:Y-m-d',
+                "{$scope}_room" => 'nullable|integer',
+            ]);
+
+            $query->where('status', $scopes[$scope]['status']);
+
+            // Rumus filter SAMA dengan filteredBookingsByStatus() (tabel di layar),
+            // jadi isi file = isi tabel card itu (tanpa batas paginasi).
+            if ($request->filled("{$scope}_room")) {
+                $query->where('room_id', $request->get("{$scope}_room"));
+                $roomName = Room::find($request->get("{$scope}_room"))?->name;
+                if ($roomName) {
+                    $filterInfo[] = 'Ruangan: ' . $roomName;
+                }
+            }
+
+            $dateParam = $request->get("{$scope}_date");
+            $dateFrom = $request->get("{$scope}_date_from");
+            $dateTo = $request->get("{$scope}_date_to");
+
+            if ($dateFrom) {
+                $query->whereDate('start_time', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('start_time', '<=', $dateTo);
+            }
+            if ($dateParam) {
+                $query->whereDate('start_time', $dateParam);
+                $filterInfo[] = 'Tanggal: ' . Carbon::parse($dateParam)->format('d/m/Y');
+            } elseif ($dateFrom || $dateTo) {
+                $filterInfo[] = 'Tanggal: '
+                    . ($dateFrom ? Carbon::parse($dateFrom)->format('d/m/Y') : '...')
+                    . ' s/d '
+                    . ($dateTo ? Carbon::parse($dateTo)->format('d/m/Y') : '...');
+            }
+        }
 
         $bookings = $query->orderBy('created_at', 'desc')->get();
 
         $rows = $bookings->map(function ($b) {
-            $status = $b->status == 0 ? 'Pending' : ($b->status == 1 ? 'Disetujui' : 'Ditolak');
+            // Pending | Disetujui | Ditolak | Dibatalkan (aturan baku di Booking model).
+            $status = $b->status_label;
             return [
                 $b->id,
                 $b->user->full_name ?? 'Unknown',
@@ -1165,17 +1229,26 @@ class BookingController extends Controller
                 Carbon::parse($b->start_time)->format('H:i'),
                 Carbon::parse($b->end_time)->format('H:i'),
                 $b->purpose,
+                $b->consumption_qty ?: '-',
+                $b->consumption_notes ?: '-',
+                $b->other_notes ?: '-',
                 $status,
                 $b->booking_type,
                 $b->created_at->format('d/m/Y H:i'),
             ];
         })->all();
 
+        $title = 'Data Peminjaman Ruangan - ' . $scopes[$scope]['label']
+            . ($filterInfo ? ' (' . implode(', ', $filterInfo) . ')' : '');
+
         return $this->downloadStyledExcel(
-            ['ID', 'Peminjam', 'NIP', 'Ruangan', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Keperluan', 'Status', 'Tipe', 'Dibuat Pada'],
+            ['ID', 'Peminjam', 'NIP', 'Ruangan', 'Tanggal', 'Jam Mulai', 'Jam Selesai', 'Keperluan', 'Jumlah Konsumsi', 'Keterangan Konsumsi', 'Catatan Lain-lain', 'Status', 'Tipe', 'Dibuat Pada'],
             $rows,
-            'Data Peminjaman Ruangan',
-            'bookings_' . date('Y-m-d') . '.xlsx'
+            $title,
+            'bookings_' . $scopes[$scope]['slug'] . '_' . date('Y-m-d') . '.xlsx',
+            // Kolom teks panjang (Keperluan, Keterangan Konsumsi, Catatan Lain-lain)
+            // dibatasi lebarnya & di-wrap supaya tabel tidak melebar ke samping.
+            [8, 10, 11]
         );
     }
 
@@ -1225,7 +1298,7 @@ class BookingController extends Controller
      * dapat header berwarna, border, dan lebar kolom otomatis supaya
      * langsung enak dibaca tanpa perlu dirapikan manual dulu.
      */
-    private function downloadStyledExcel(array $headers, array $rows, string $title, string $filename)
+    private function downloadStyledExcel(array $headers, array $rows, string $title, string $filename, array $wrapCols = [])
     {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -1260,7 +1333,15 @@ class BookingController extends Controller
         foreach ($rows as $row) {
             foreach ($row as $i => $value) {
                 $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
-                $sheet->setCellValue("{$col}{$r}", $value);
+                $cell = "{$col}{$r}";
+                if (is_string($value)) {
+                    // Paksa sebagai TEKS: input pengguna (mis. keperluan/catatan yang
+                    // diawali "=") tidak boleh dieksekusi Excel sebagai rumus, dan
+                    // angka berawalan nol (mis. NIP) tidak berubah jadi angka.
+                    $sheet->setCellValueExplicit($cell, $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue($cell, $value);
+                }
             }
             $r++;
         }
@@ -1285,7 +1366,18 @@ class BookingController extends Controller
         // Lebar kolom otomatis menyesuaikan isi.
         foreach (range(1, count($headers)) as $i) {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
-            $sheet->getColumnDimension($col)->setAutoSize(true);
+            if (in_array($i, $wrapCols, true)) {
+                $sheet->getColumnDimension($col)->setAutoSize(false)->setWidth(40);
+                $sheet->getStyle("{$col}{$headerRow}:{$col}{$lastRow}")->getAlignment()->setWrapText(true);
+            } else {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+        }
+
+        // Teks rata atas supaya sel yang di-wrap tetap rapi sejajar.
+        if ($lastRow > $headerRow) {
+            $sheet->getStyle('A' . ($headerRow + 1) . ":{$lastCol}{$lastRow}")
+                ->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
         }
 
         // Bekukan baris header supaya tetap terlihat saat scroll ke bawah.
@@ -1354,13 +1446,21 @@ class BookingController extends Controller
         }
 
         if ($booking->processed_at) {
-            $action = $booking->status == 1 ? 'Disetujui' : 'Ditolak';
+            // FIX: sebelumnya cuma "Disetujui"/"Ditolak" — tidak pernah
+            // mempertimbangkan kasus "sempat Disetujui lalu Dibatalkan"
+            // (persis seperti label status_label di Model Booking).
+            // Dideteksi dari sinyal yang sama: absent_code cuma pernah
+            // terisi lewat approve(), jadi kalau sekarang statusnya
+            // Ditolak TAPI absent_code ada isinya, berarti ini pembatalan
+            // — bukan penolakan dari awal.
+            $action = $booking->status == 1 ? 'Disetujui' : ($booking->was_cancelled_approval ? 'Dibatalkan' : 'Ditolak');
 
             $description = 'Booking telah diproses oleh admin';
             if ($booking->status == 1 && $booking->approval_note) {
                 $description = 'Catatan: ' . $booking->approval_note;
             } elseif ($booking->rejection_reason) {
-                $description = 'Alasan: ' . $booking->rejection_reason;
+                $description = ($booking->was_cancelled_approval ? 'Persetujuan dicabut oleh admin. ' : '')
+                    . 'Alasan: ' . $booking->rejection_reason;
             }
 
             // Kalau proses ini adalah tindak lanjut dari pengalihan (peminjam
@@ -1391,6 +1491,16 @@ class BookingController extends Controller
             }
         }
 
+        // CATATAN: entri "Kode Presensi Dibuat" SENGAJA tetap digantungkan
+        // ke status SAAT INI (bukan ke "absent_code pernah ada") — kalau
+        // ditampilkan juga untuk booking yang sudah dibatalkan, waktunya
+        // akan ikut terbaca sebagai waktu PEMBATALAN (karena processed_at
+        // ter-timpa saat dibatalkan, bukan menyimpan waktu approve asli),
+        // jadi kelihatan seperti "QR dibuat setelah booking dibatalkan" —
+        // membingungkan dan tidak masuk akal dibaca. Menyimpan timestamp
+        // approval asli secara terpisah butuh kolom baru (migrasi), jadi
+        // untuk sekarang lebih aman disembunyikan saja daripada
+        // ditampilkan dengan waktu yang salah/menyesatkan.
         if ($booking->status == 1) {
             $timeline[] = [
                 'icon' => 'bi-qr-code',
@@ -1443,7 +1553,9 @@ class BookingController extends Controller
         if ($booking->status == 2) {
             return [
                 'ok' => false,
-                'message' => 'Peminjaman ruangan ini telah ditolak, presensi tidak tersedia.',
+                'message' => $booking->was_cancelled_approval
+                    ? 'Peminjaman ruangan ini telah dibatalkan, presensi tidak tersedia.'
+                    : 'Peminjaman ruangan ini telah ditolak, presensi tidak tersedia.',
                 'booking' => $booking,
             ];
         }

@@ -9,27 +9,47 @@ use App\Models\Booking;
 class NotificationService
 {
     /**
-     * Create notification for booking status change
+     * Create notification for booking status change.
+     *
+     * Status 2 punya dua makna berbeda bagi peminjam:
+     *  - Ditolak    : pengajuan (Pending) tidak disetujui.
+     *  - Dibatalkan : booking yang SEMPAT Disetujui, persetujuannya dicabut admin
+     *                 (terdeteksi dari transisi status lama 1 -> baru 2).
+     * Redaksi notifikasinya dibedakan supaya peminjam tahu persis yang terjadi.
      */
     public function notifyBookingStatusChange(Booking $booking, string $oldStatus, string $newStatus)
     {
+        $isCancellation = $oldStatus == '1' && $newStatus == '2';
+
         $statusMessages = [
             '0' => 'Pending',
-            '1' => 'Disetujui', 
-            '2' => 'Ditolak'
+            '1' => 'Disetujui',
+            '2' => $isCancellation ? 'Dibatalkan' : 'Ditolak',
         ];
+        // Label status LAMA tidak pernah "Dibatalkan" (booking yang dibatalkan
+        // tidak bisa berubah status lagi), jadi cukup dari peta di atas.
+        $oldLabel = $oldStatus == '2' ? 'Ditolak' : $statusMessages[$oldStatus];
 
-        $message = "Status peminjaman ruangan {$booking->room->name} Anda telah diubah dari {$statusMessages[$oldStatus]} menjadi {$statusMessages[$newStatus]}.";
-        
+        $schedule = $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i');
+
+        $message = "Status peminjaman ruangan {$booking->room->name} Anda telah diubah dari {$oldLabel} menjadi {$statusMessages[$newStatus]}.";
+
         if ($newStatus == '1') {
-            $message .= " Anda dapat menggunakan ruangan pada " . $booking->start_time->format('d M Y, H:i') . " - " . $booking->end_time->format('H:i') . ".";
+            $message .= " Anda dapat menggunakan ruangan pada " . $schedule . ".";
             if ($booking->approval_note) {
                 $message .= " Catatan admin: " . $booking->approval_note;
             }
-        } elseif ($newStatus == '2') {
-            $message .= " Mohon ajukan peminjaman ulang dengan waktu atau ruangan yang berbeda.";
+        } elseif ($isCancellation) {
+            $message .= " Persetujuan untuk jadwal {$schedule} dicabut oleh admin, sehingga ruangan tidak dapat digunakan pada jadwal tersebut."
+                      . " Mohon ajukan peminjaman ulang dengan waktu atau ruangan yang berbeda.";
             if ($booking->rejection_reason) {
-                $message .= " Alasan: " . $booking->rejection_reason;
+                $message .= " Alasan pembatalan: " . $booking->rejection_reason;
+            }
+        } elseif ($newStatus == '2') {
+            $message .= " Pengajuan untuk jadwal {$schedule} tidak disetujui."
+                      . " Mohon ajukan peminjaman ulang dengan waktu atau ruangan yang berbeda.";
+            if ($booking->rejection_reason) {
+                $message .= " Alasan penolakan: " . $booking->rejection_reason;
             }
         }
 

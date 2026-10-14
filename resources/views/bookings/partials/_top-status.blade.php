@@ -57,17 +57,31 @@
             </button>
         @endif
 
-        {{-- FIX: sama seperti Edit — status==0 sekarang berlaku untuk semua
-             role tanpa kecuali, termasuk admin. --}}
-        @if(!$awaitingConfirmation && $booking->status == 0 && (Auth::user()->role == 1 || $isBookingOwner))
-        <form action="{{ route('bookings.destroy', $booking->id) }}" method="POST" onsubmit="return confirm('Hapus peminjaman ini?')">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="btn-danger-outline">
-                <i class="bi bi-trash"></i> Hapus
-            </button>
-        </form>
+        {{-- FIX: booking yang SUDAH Disetujui sekarang bisa dibatalkan
+             admin (statusnya jadi Ditolak, dengan alasan wajib diisi —
+             tetap tercatat permanen di riwayat, bukan dihapus) — tapi
+             TETAP TIDAK BISA DIHAPUS (lihat tombol Hapus di bawah, masih
+             terkunci cuma untuk status Pending). Method reject() di
+             controller sebenarnya SUDAH lama mendukung skenario ini
+             (mewajibkan alasan pembatalan saat status==1), cuma
+             tombolnya belum pernah ditampilkan untuk booking yang sudah
+             disetujui — sekarang ditampilkan, dengan label yang beda
+             ("Batalkan Persetujuan") supaya jelas bedanya dengan
+             "Tolak" booking yang masih Pending. --}}
+        @if(Auth::user()->role == 1 && !$awaitingConfirmation && $booking->status == 1)
+        <button type="button" class="btn-danger-outline" data-bs-toggle="modal" data-bs-target="#rejectModal">
+            <i class="bi bi-x-lg"></i> Batalkan Persetujuan
+        </button>
         @endif
+
+        {{-- FIX: tombol Hapus DIHAPUS SELURUHNYA dari sini — sebelumnya
+             masih ada untuk booking berstatus Pending, tapi sekarang
+             SEMUA booking (apa pun statusnya) harus tetap tersimpan
+             sebagai record permanen, tidak ada yang boleh terhapus sama
+             sekali. Endpoint bookings.destroy tetap ada di server tapi
+             sekarang selalu menolak (lihat BookingController::destroy())
+             — ini murni menyembunyikan tombolnya karena aksinya memang
+             sudah tidak pernah bisa berhasil lagi. --}}
     </div>
 </div>
 
@@ -96,8 +110,8 @@
                 </div>
             </div>
             @php
-                $statusClass = $booking->status == 0 ? 'pending' : ($booking->status == 1 ? 'approved' : 'rejected');
-                $statusLabel = $booking->status == 0 ? 'Pending' : ($booking->status == 1 ? 'Disetujui' : 'Ditolak');
+                $statusClass = $booking->status_key; // pending|approved|rejected|cancelled
+                $statusLabel = $booking->status_label;
             @endphp
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 @if(Auth::user()->role == 1)
@@ -214,7 +228,7 @@
     <div class="card-section">
         <div class="rejection-alert">
             <div class="rejection-alert-title">
-                <i class="bi bi-exclamation-triangle"></i> Alasan Penolakan
+                <i class="bi bi-exclamation-triangle"></i> {{ $booking->was_cancelled_approval ? 'Alasan Pembatalan' : 'Alasan Penolakan' }}
             </div>
             <div class="rejection-alert-text">{{ $booking->rejection_reason }}</div>
         </div>

@@ -309,6 +309,7 @@
         align-items: start;
     }
     .booking-side-col { display: flex; flex-direction: column; gap: var(--space-5); }
+    .booking-main-col { display: flex; flex-direction: column; gap: var(--space-5); }
 
     .extra-info-grid {
         display: grid;
@@ -334,6 +335,7 @@
     .status-pending { background: rgba(245,158,11,0.12); color: #b45309; }
     .status-approved { background: rgba(16,185,129,0.12); color: #047857; }
     .status-rejected { background: rgba(239,68,68,0.12); color: #b91c1c; }
+    .status-cancelled { background: rgba(100,116,139,0.14); color: #475569; }
 
     .info-grid {
         display: grid;
@@ -868,6 +870,12 @@
                                     <div class="facility-detail-name">Konsumsi</div>
                                     <span class="facility-detail-qty">{{ $booking->consumption_qty }} Peserta</span>
                                 </div>
+                                @if($booking->consumption_notes)
+                                    <div class="info-item">
+                                        <div class="info-label">Keterangan Konsumsi</div>
+                                        <div class="info-value" style="font-weight: 500; white-space: pre-line;">{{ $booking->consumption_notes }}</div>
+                                    </div>
+                                @endif
                             @endif
                             @if($booking->other_notes)
                                 <div class="info-item">
@@ -898,46 +906,13 @@
             </div>
             @endif
         </div>
+
+        @include('bookings.partials._qr-attendance', ['booking' => $booking])
     </div>
 
     @include('bookings.partials._side-panel', ['booking' => $booking, 'timeline' => $timeline])
 </div>
 
-{{-- DAFTAR HADIR — full-width di bawah grid, karena daftarnya bisa
-     panjang dan butuh ruang horizontal lebih untuk nyaman dibaca. --}}
-@if($booking->attendances->count() > 0)
-<div class="detail-card" style="margin-top: var(--space-5);">
-    <div class="card-section">
-        <div class="section-title" style="justify-content: space-between; margin-bottom: var(--space-4);">
-            <span style="display: flex; align-items: center; gap: 8px;">
-                <i class="bi bi-people"></i> Daftar Hadir ({{ $booking->attendances->count() }})
-            </span>
-            <a href="{{ route('bookings.attendance.export', $booking->id) }}" class="btn-outline-sm">
-                <i class="bi bi-file-earmark-excel"></i> Export Excel
-            </a>
-        </div>
-        <div class="facility-list-detail">
-            @foreach($booking->attendances as $att)
-                <div class="facility-detail-item">
-                    <div>
-                        {{-- FIX: sebelumnya nama AKUN yang sedang login (user->full_name)
-                             menimpa nama yang benar-benar diketik di form presensi
-                             (guest_name) — jadi kalau admin scan QR sambil login lalu
-                             mengisi nama tamu, yang tampil malah "Administrator Sistem",
-                             bukan nama tamu yang diketik. guest_name selalu wajib diisi
-                             di form, jadi itu yang seharusnya jadi sumber tampilan utama;
-                             user_id cuma metadata pelacakan siapa yang login saat submit,
-                             bukan pengganti nama yang diinput. --}}
-                        <div class="facility-detail-name">{{ $att->guest_name ?: ($att->user->full_name ?? '-') }}</div>
-                        <small class="text-muted">{{ $att->guest_institution ?? 'Internal' }}</small>
-                    </div>
-                    <small class="text-muted">{{ \Carbon\Carbon::parse($att->check_in_time)->format('H:i') }}</small>
-                </div>
-            @endforeach
-        </div>
-    </div>
-</div>
-@endif
 
 {{-- Print QR Modal — cetak QR tanpa pindah halaman --}}
 @if($booking->status == 1 && $booking->absent_code)
@@ -1001,6 +976,7 @@
             </div>
             <div class="qr-print-body">
                 <h3 class="qr-print-room">{{ $booking->room->name }}</h3>
+                <div class="qr-print-purpose"><strong>Agenda:</strong><br>{!! nl2br(e($booking->purpose)) !!}</div>
                 <div class="qr-print-meta">
                     {{ \Carbon\Carbon::parse($booking->start_time)->locale('id')->isoFormat('dddd, D MMMM Y') }}<br>
                     {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }} WIB
@@ -1029,6 +1005,7 @@
     <div class="qr-print-page">
         <div class="brand">SIAP &middot; Sistem Informasi Peminjaman Ruangan</div>
         <h1>{{ $booking->room->name }}</h1>
+        <div class="qr-print-purpose"><strong>Agenda:</strong><br>{!! nl2br(e($booking->purpose)) !!}</div>
         <div class="meta">
             {{ \Carbon\Carbon::parse($booking->start_time)->locale('id')->isoFormat('dddd, D MMMM Y') }} &middot;
             {{ \Carbon\Carbon::parse($booking->start_time)->format('H:i') }} - {{ \Carbon\Carbon::parse($booking->end_time)->format('H:i') }} WIB
@@ -1182,6 +1159,9 @@
                                     <div class="approve-badges">
                                         @if($booking->consumption_qty)
                                             <span class="approve-badge"><i class="bi bi-cup-hot"></i> Konsumsi &middot; {{ $booking->consumption_qty }} peserta</span>
+                                            @if($booking->consumption_notes)
+                                                <span class="approve-badge"><i class="bi bi-card-text"></i> {{ $booking->consumption_notes }}</span>
+                                            @endif
                                         @endif
                                         @foreach($booking->bookingFacilities as $bf)
                                             <span class="approve-badge"><i class="bi bi-box-seam"></i> {{ $bf->facility->name }} &middot; {{ $bf->quantity }}</span>
@@ -1231,17 +1211,31 @@
                 @csrf
                 @method('PATCH')
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-x-circle text-danger"></i> Tolak Booking</h5>
+                    <h5 class="modal-title">
+                        <i class="bi bi-x-circle text-danger"></i>
+                        {{ $booking->status == 1 ? 'Batalkan Persetujuan' : 'Tolak Booking' }}
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Berikan alasan penolakan untuk peminjam:</p>
+                    @if($booking->status == 1)
+                        <p class="text-muted">
+                            Booking ini sudah <strong>Disetujui</strong>. Membatalkannya akan mengubah status
+                            jadi <strong>Dibatalkan</strong> secara permanen dan kode presensi tidak berlaku lagi.
+                            Berikan alasan pembatalan untuk peminjam:
+                        </p>
+                    @else
+                        <p class="text-muted">
+                            Booking ini akan berstatus <strong>Ditolak</strong> secara permanen.
+                            Berikan alasan penolakan untuk peminjam:
+                        </p>
+                    @endif
                     <textarea name="rejection_reason" class="form-control" rows="4" placeholder="Minimal 10 karakter..." required minlength="10" maxlength="500"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="bi bi-x-lg"></i> Tolak Booking
+                        <i class="bi bi-x-lg"></i> {{ $booking->status == 1 ? 'Ya, Batalkan Persetujuan' : 'Tolak Booking' }}
                     </button>
                 </div>
             </form>
@@ -1834,8 +1828,10 @@
 
             var topArea = document.getElementById('liveTopArea');
             var sideCol = document.getElementById('liveSideCol');
+            var qrAttendanceArea = document.getElementById('liveQrAttendance');
             if (topArea) topArea.outerHTML = data.top;
             if (sideCol) sideCol.outerHTML = data.side;
+            if (qrAttendanceArea && data.qr_attendance !== undefined) qrAttendanceArea.outerHTML = data.qr_attendance;
 
             if (data.has_qr) {
                 renderMeetingQr(data.absent_code);

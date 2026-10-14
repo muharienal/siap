@@ -985,6 +985,18 @@
         align-items: flex-start;
         gap: 7px;
         min-width: 0;
+        /* FIX: booking berdurasi panjang (kotak tinggi) — tanpa ini,
+           judul+avatar cuma terlihat sebentar di puncak kotak lalu hilang
+           tergulir begitu area kalender di-scroll, menyisakan kotak
+           warna polos kosong sampai jauh ke bawah (baru ketemu badge
+           status), terlihat seperti rusak/kosong padahal cuma soal
+           posisi scroll. Sekarang "menempel" di bagian atas area yang
+           sedang terlihat selama masih di dalam batas kotak booking-nya
+           sendiri — informasi utama selalu bisa dilihat kapan pun,
+           tidak cuma sekilas di awal. */
+        position: sticky;
+        top: 6px;
+        z-index: 3;
     }
     .cal-event-avatar {
         width: 21px; height: 21px;
@@ -1124,15 +1136,21 @@
     .cal-event:hover .cal-event-tooltip {
         opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
     }
-    /* Kalau kartu ada di baris paling atas kalender, tooltip yang
-       muncul ke ATAS akan terpotong tak terlihat (kepotong tepi
-       layar) — dibalik ke bawah kartu untuk kartu pertama di tiap
-       kolom ruangan (yang jamnya paling awal, otomatis di posisi
-       paling atas grid). */
-    .cal-room-col > .cal-event:first-child .cal-event-tooltip {
+    /* FIX: sebelumnya posisi tooltip (atas/bawah kartu) ditentukan statis
+       lewat CSS `:first-child` — cuma benar untuk kartu paling awal
+       secara urutan DOM, TIDAK memperhitungkan posisi SCROLL yang
+       sesungguhnya. Begitu area kalender di-scroll, kartu mana pun bisa
+       ada di dekat tepi atas area yang terlihat (bukan cuma kartu
+       pertama), dan tooltip yang keukeuh muncul ke atas jadi kepotong/
+       terlihat aneh di tepi layar — persis keluhan "kenapa di atas
+       terus, gabisa fleksibel". Sekarang posisinya dihitung ULANG lewat
+       JS setiap kali di-hover (lihat script di bagian bawah file),
+       berdasarkan ruang yang BENAR-BENAR tersedia saat itu — class
+       .tooltip-below di bawah ini di-toggle otomatis oleh JS tersebut. */
+    .cal-event.tooltip-below .cal-event-tooltip {
         bottom: auto; top: calc(100% + 10px);
     }
-    .cal-room-col > .cal-event:first-child .cal-event-tooltip::after {
+    .cal-event.tooltip-below .cal-event-tooltip::after {
         top: auto; bottom: 100%;
         border-top-color: transparent; border-bottom-color: #1e293b;
     }
@@ -1623,7 +1641,7 @@
             <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>Semua Status</option>
             <option value="pending" {{ ($statusFilter ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
             <option value="approved" {{ ($statusFilter ?? '') === 'approved' ? 'selected' : '' }}>Disetujui</option>
-            <option value="rejected" {{ ($statusFilter ?? '') === 'rejected' ? 'selected' : '' }}>Ditolak</option>
+            <option value="rejected" {{ ($statusFilter ?? '') === 'rejected' ? 'selected' : '' }}>Ditolak/Dibatalkan</option>
         </select>
     </div>
 
@@ -2071,7 +2089,7 @@
     var lastSignature = 'initial';
 
     createLivePoller({
-        url: window.location.pathname + window.location.search,
+        url: function () { return window.location.pathname + window.location.search; },
         interval: 15000,
         onUpdate: function (data) {
             if (data.signature === lastSignature) return;
@@ -2095,6 +2113,60 @@
             }
         }
     });
+
+    // ============================================================
+    // TOOLTIP KALENDER — POSISI DINAMIS (fix "kenapa di atas terus,
+    // gabisa fleksibel"). Dipasang lewat event delegation di
+    // `.schedule-card` (bukan di #scheduleBody langsung) — SENGAJA,
+    // karena #scheduleBody DIGANTI SELURUHNYA (outerHTML) setiap kali
+    // live-update jalan; kalau listener dipasang langsung di situ,
+    // begitu tertukar sekali, listener-nya ikut hilang dan tooltip
+    // berhenti berfungsi sampai reload manual — pelajaran yang sama
+    // seperti bug listener notifikasi yang pernah diperbaiki sebelumnya.
+    // ============================================================
+    var scheduleCardEl = document.querySelector('.schedule-card');
+    if (scheduleCardEl) {
+        scheduleCardEl.addEventListener('mouseover', function (e) {
+            var card = e.target.closest('.cal-event');
+            if (!card || !scheduleCardEl.contains(card)) return;
+
+            var tooltip = card.querySelector('.cal-event-tooltip');
+            if (!tooltip) return;
+
+            var scrollBody = document.getElementById('scheduleBody');
+            var cardRect = card.getBoundingClientRect();
+            var boundsRect = (scrollBody || scheduleCardEl).getBoundingClientRect();
+
+            // Perkiraan tinggi tooltip (dibuat sedikit lebih besar dari
+            // biasanya supaya ada margin aman) — dipakai untuk mengecek
+            // apakah ruang di ATAS kartu cukup lega sebelum diputuskan
+            // muncul ke atas; kalau tidak cukup, dibalik ke bawah.
+            var estimatedTooltipHeight = 130;
+            var spaceAbove = cardRect.top - boundsRect.top;
+
+            card.classList.toggle('tooltip-below', spaceAbove < estimatedTooltipHeight);
+
+            // Cegah tooltip terpotong tepi kiri/kanan area kalender —
+            // tooltip aslinya selalu coba center persis di tengah kartu
+            // (translateX(-50%)), tapi untuk kartu yang mepet ke tepi
+            // kiri/kanan grid, itu bisa membuat sebagian tooltip
+            // terpotong tak terlihat. Digeser secukupnya kalau perlu.
+            tooltip.style.left = '';
+            tooltip.style.right = '';
+            tooltip.style.transform = '';
+            var tooltipRect = tooltip.getBoundingClientRect();
+            var overflowRight = tooltipRect.right - boundsRect.right;
+            var overflowLeft = boundsRect.left - tooltipRect.left;
+            if (overflowRight > 0) {
+                tooltip.style.left = 'auto';
+                tooltip.style.right = '0';
+                tooltip.style.transform = 'translateX(0)';
+            } else if (overflowLeft > 0) {
+                tooltip.style.left = '0';
+                tooltip.style.transform = 'translateX(0)';
+            }
+        }, true);
+    }
 })();
 </script>
 @endpush

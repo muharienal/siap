@@ -727,7 +727,7 @@
         var lastSignature = 'initial';
 
         createLivePoller({
-            url: window.location.pathname,
+            url: function () { return window.location.pathname; },
             interval: 20000,
             shouldPause: function () { return document.querySelector('.modal.show') !== null; },
             onUpdate: function (data) {

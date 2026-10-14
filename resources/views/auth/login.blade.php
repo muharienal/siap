@@ -672,7 +672,7 @@
                                 <i class="bi bi-person-badge field-icon"></i>
                                 <input id="nip" type="text"
                                        class="field-input"
-                                       name="nip" value="{{ old('nip') }}"
+                                       name="nip" value="{{ old('nip', request()->cookie('remembered_nip')) }}"
                                        required autocomplete="off" autofocus
                                        placeholder="NIK Karyawan" aria-label="NIK">
                             </div>
@@ -707,8 +707,13 @@
                         <!-- Options -->
                         <div class="form-options">
                             <div>
+                                {{-- FIX: sebelumnya cuma dicentang ulang kalau submit
+                                     sebelumnya gagal validasi (old('remember')) — sekarang
+                                     juga otomatis tercentang kalau memang ada NIK yang
+                                     "diingat" dari kunjungan sebelumnya, supaya statusnya
+                                     konsisten dengan field NIK yang sudah otomatis terisi. --}}
                                 <input class="form-check-input" type="checkbox" name="remember" id="remember"
-                                       {{ old('remember') ? 'checked' : '' }}>
+                                       {{ (old('remember') || request()->cookie('remembered_nip')) ? 'checked' : '' }}>
                                 <label class="form-check-label" for="remember">
                                     Ingat saya
                                 </label>

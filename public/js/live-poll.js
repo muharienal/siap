@@ -119,7 +119,23 @@
      * @returns {{stop: function(), pokeNow: function()}}
      */
     function createLivePoller(config) {
-        var url = config.url;
+        // FIX: sebelumnya `url` SELALU berupa string yang "dibekukan" satu
+        // kali saat poller ini pertama kali didaftarkan (biasanya
+        // window.location.search dibaca sekali di awal). Untuk halaman
+        // yang punya navigasi client-side TANPA reload penuh (mis.
+        // Dashboard: tombol "<"/">" pindah tanggal lewat history.
+        // pushState, bukan reload) — poller ini terus-menerus menembak
+        // URL LAMA selamanya, tidak pernah tahu URL sudah berganti.
+        // Akibatnya tiap beberapa detik dia menimpa balik tampilan yang
+        // sudah dipindah user ke tanggal lain dengan data dari tanggal
+        // AWAL saat halaman dimuat — persis gejala "geser tanggal, tahu-
+        // tahu balik sendiri". Sekarang `url` boleh berupa FUNGSI yang
+        // dipanggil ULANG setiap kali polling jalan, supaya selalu
+        // membaca URL/state TERBARU, bukan yang dibekukan di awal.
+        var urlConfig = config.url;
+        function resolveUrl() {
+            return typeof urlConfig === 'function' ? urlConfig() : urlConfig;
+        }
         var baseInterval = config.interval || 20000;
         var onUpdate = config.onUpdate || function () {};
         var shouldPause = config.shouldPause || function () { return false; };
@@ -149,7 +165,7 @@
             }
 
             isFetching = true;
-            fetch(url, {
+            fetch(resolveUrl(), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                 credentials: 'same-origin'
             })

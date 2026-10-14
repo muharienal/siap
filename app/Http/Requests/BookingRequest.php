@@ -78,6 +78,8 @@ class BookingRequest extends FormRequest
             // Kebutuhan tambahan (checkbox "Konsumsi" & "Lain-lain (Catatan)")
             'needs_consumption' => 'sometimes|boolean',
             'consumption_qty' => 'required_if:needs_consumption,1|nullable|integer|min:1|max:1000',
+            // Keterangan konsumsi (jenis makanan/minuman) — wajib diisi kalau "Konsumsi" dicentang
+            'consumption_notes' => 'required_if:needs_consumption,1|nullable|string|max:500',
             'needs_other' => 'sometimes|boolean',
             'other_notes' => 'required_if:needs_other,1|nullable|string|max:1000',
         ];
@@ -108,6 +110,8 @@ class BookingRequest extends FormRequest
             'consumption_qty.required_if' => 'Jumlah peserta konsumsi harus diisi.',
             'consumption_qty.integer' => 'Jumlah peserta konsumsi harus berupa angka.',
             'consumption_qty.min' => 'Jumlah peserta konsumsi minimal 1.',
+            'consumption_notes.required_if' => 'Keterangan konsumsi harus diisi.',
+            'consumption_notes.max' => 'Keterangan konsumsi maksimal 500 karakter.',
             'other_notes.required_if' => 'Catatan kebutuhan lain-lain harus diisi.',
             'other_notes.max' => 'Catatan kebutuhan lain-lain maksimal 1000 karakter.',
         ];
